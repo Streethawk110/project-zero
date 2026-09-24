@@ -11,7 +11,7 @@ export const HOTBAR_SIZE = 6;
 export const FOG_RES = 128;
 
 export function defaultAppearance(): Appearance {
-  return { body: 0.5, height: 1, skin: 1, hair: 0, hairColor: 2, beard: 0, eyes: 0, scar: 0 };
+  return { body: 0.5, height: 1, skin: 1, hair: 0, hairColor: 2, beard: 0, eyes: 0, scar: 0, sex: 0 };
 }
 
 export function sanitizeName(name: string): string | null {
@@ -38,6 +38,7 @@ export function clampAppearance(a: Partial<Appearance> | undefined): Appearance 
     beard: num(a?.beard, 0, 3, d.beard),
     eyes: num(a?.eyes, 0, 4, d.eyes),
     scar: num(a?.scar, 0, 3, d.scar),
+    sex: num(a?.sex, 0, 1, 0),
   };
 }
 

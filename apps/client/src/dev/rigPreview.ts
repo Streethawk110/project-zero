@@ -2,7 +2,8 @@
 // gerendert (http://localhost:5173/rig-preview.html). Nicht Teil des Spiel-Builds.
 import * as THREE from 'three';
 import { loadManifest, preloadModels } from '../render/models.ts';
-import { loadBakedTextures } from '../render/textures.ts';
+import { loadBakedTextures, loadFoliageTextures } from '../render/textures.ts';
+import { loadHumanTextures } from '../render/human.ts';
 import { HumanoidRig } from '../render/rig.ts';
 
 const params = new URLSearchParams(location.search);
@@ -13,6 +14,7 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.shadowMap.enabled = true;
 const scene = new THREE.Scene();
+(window as unknown as { __scene: THREE.Scene }).__scene = scene;
 scene.background = new THREE.Color(0x8fa3b8);
 const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
 scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x4a3f2c, 1.2));
@@ -30,20 +32,22 @@ scene.add(ground);
 await loadManifest();
 await preloadModels(() => {});
 await loadBakedTextures(512);
+await loadFoliageTextures(1024);
+await loadHumanTextures();
 
-const specs: { outfit: string; hair: number; beard: number; anim: string; t: number; speed: number; weapon?: string; offhand?: string; skin: number; body: number }[] = [
+const specs: { outfit: string; hair: number; beard: number; anim: string; t: number; speed: number; weapon?: string; offhand?: string; skin: number; body: number; sex?: number }[] = [
   { outfit: 'armor_gambeson', hair: 0, beard: 0, anim: 'idle', t: 1, speed: 0, skin: 1, body: 0.5 },
-  { outfit: 'villager', hair: 2, beard: 0, anim: 'walk', t: 0.6, speed: 2, skin: 2, body: 0.3 },
+  { outfit: 'villager', hair: 2, beard: 0, anim: 'walk', t: 0.6, speed: 2, skin: 2, body: 0.3, sex: 1 },
   { outfit: 'armor_chain', hair: 1, beard: 1, anim: 'run', t: 0.4, speed: 5, weapon: 'sword_rusty', offhand: 'shield_wood', skin: 1, body: 0.8 },
   { outfit: 'armor_robe', hair: 4, beard: 2, anim: 'cast', t: 0.35, speed: 0, weapon: 'staff_oak', skin: 3, body: 0.5 },
-  { outfit: 'armor_leather', hair: 5, beard: 3, anim: 'atk1', t: 0.25, speed: 0, weapon: 'sword_rusty', skin: 4, body: 0.6 },
+  { outfit: 'armor_leather', hair: 1, beard: 0, anim: 'atk1', t: 0.25, speed: 0, weapon: 'sword_rusty', skin: 1, body: 0.6, sex: 1 },
   { outfit: 'guard', hair: 0, beard: 1, anim: 'block', t: 0.5, speed: 0, weapon: 'sword_steel', offhand: 'shield_guard', skin: 0, body: 0.9 },
 ];
 const only = params.get('only');
 const list = only !== null ? [specs[Number(only)]!] : specs;
 const rigs: HumanoidRig[] = [];
 list.forEach((s, i) => {
-  const rig = new HumanoidRig({ appearance: { skin: s.skin, hair: s.hair, hairColor: i % 6, beard: s.beard, body: s.body, height: 1, eyes: i % 4, scar: 0 }, outfit: s.outfit });
+  const rig = new HumanoidRig({ appearance: { skin: s.skin, hair: s.hair, hairColor: i % 6, beard: s.beard, body: s.body, height: 1, eyes: i % 4, scar: 0, sex: s.sex ?? 0 }, outfit: s.outfit });
   rig.setEquipment(s.weapon ?? '', s.offhand ?? '', s.outfit);
   rig.root.position.set((i - (list.length - 1) / 2) * 1.25, 0, 0);
   rig.root.rotation.y = Math.PI + Number(params.get('turn') ?? 0.35);

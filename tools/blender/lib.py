@@ -305,14 +305,16 @@ def export(name, objs=None, lod_ratio=None, uv_scale=None, lod1_objs=None):
     targets = objs if objs is not None else [o for o in bpy.context.scene.objects if o.type == "MESH"]
     bpy.context.view_layer.update()
     for o in targets:
-        if not o.data.uv_layers:
+        if o.type == "MESH" and not o.data.uv_layers:
             dims = max(o.dimensions) if o.dimensions else 1.0
             box_uv(o, uv_scale if uv_scale else (0.5 if dims > 3 else 1.0))
     for o in targets:
         o.select_set(True)
-    bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True, export_apply=True, export_yup=True,
+    # Mit Armatur: Skin (Gelenke + Gewichte) exportieren, Modifikatoren dann nicht anwenden
+    skinned = any(o.type == "ARMATURE" for o in targets)
+    bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True, export_apply=not skinned, export_yup=True,
                               export_texcoords=True, export_normals=True, export_materials="EXPORT", export_extras=False,
-                              export_animations=False, export_skins=False, export_vertex_color="ACTIVE")
+                              export_animations=False, export_skins=skinned, export_vertex_color="ACTIVE")
     entry = {"file": f"{name}.glb"}
     if lod1_objs:
         bpy.ops.object.select_all(action="DESELECT")
@@ -336,7 +338,7 @@ def export(name, objs=None, lod_ratio=None, uv_scale=None, lod1_objs=None):
         bpy.ops.export_scene.gltf(filepath=lpath, export_format="GLB", use_selection=True, export_apply=True, export_yup=True,
                                   export_materials="EXPORT", export_animations=False, export_skins=False)
         entry["lod1"] = f"{name}_lod1.glb"
-    tris = sum(len(p.vertices) - 2 for o in targets for p in o.data.polygons)
+    tris = sum(len(p.vertices) - 2 for o in targets if o.type == "MESH" for p in o.data.polygons)
     print(f"[blender] {name}: {tris} Dreiecke -> {path}")
     return entry
 

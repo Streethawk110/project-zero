@@ -10,7 +10,7 @@ import { meshopt, prune, dedup } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 
 const dir = process.argv[2] ?? 'apps/client/public/assets/models';
-const SKIP = new Set(['humanoid', 'weapons', 'glassrunner', 'colossus', 'moth']);
+const SKIP = new Set(['humanoid', 'weapons', 'glassrunner', 'colossus', 'moth', 'human_male', 'human_female']);
 
 await MeshoptEncoder.ready;
 await MeshoptDecoder.ready;

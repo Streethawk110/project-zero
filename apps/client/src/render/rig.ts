@@ -9,6 +9,7 @@ import { HAIR_COLORS, SKIN_COLORS, EYE_COLORS, ITEMS, type Appearance } from '@p
 import { getModel, hasModel, namedMaterial } from './models.ts';
 import { TEX } from './textures.ts';
 import { buildSkinnedParts, hasCharacterModel, headPiece, type SkinPart } from './skinned.ts';
+import { buildHuman, eyeMaterial, hairMaterial, hasHumanModel, humanJoints, skinMaterial, type Sex } from './human.ts';
 
 export type JointName =
   | 'hips' | 'spine' | 'chest' | 'neck' | 'head'
@@ -87,6 +88,13 @@ export class HumanoidRig {
   hairMat: THREE.MeshStandardMaterial;
   /** Durchgehende, gebundene Figur aus dem Blender-Modell „character“ (sonst Einzelteile). */
   private useSkin = hasCharacterModel();
+  /** Realistische Figur (tools/blender/human.py) – hat Vorrang vor „character“. */
+  private human = false;
+  private sex: Sex = 'male';
+  private humanParts = new Map<string, THREE.Group>();
+  private humanHair: THREE.MeshStandardMaterial[] = [];
+  private humanCap: THREE.MeshStandardMaterial | null = null;
+  private outfitCur: (typeof OUTFITS)[string] | null = null;
   private pieces = new Map<SkinPart, THREE.Group>();
   private eyeMat = new THREE.MeshStandardMaterial({ color: 0x4b3621, roughness: 0.25 });
   private hairNode = new THREE.Group();
@@ -107,7 +115,12 @@ export class HumanoidRig {
     const a: Appearance = { body: 0.5, height: 1, skin: 1, hair: 0, hairColor: 2, beard: 0, eyes: 0, scar: 0, ...opts.appearance };
     this.appearance = a;
     const echo = !!opts.echo;
-    this.skinMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(SKIN_COLORS[a.skin] ?? SKIN_COLORS[1]), roughness: 0.6, map: TEX.skin().map });
+    this.sex = a.sex === 1 ? 'female' : 'male';
+    this.human = hasHumanModel(this.sex);
+    if (this.human) this.useSkin = true;
+    this.skinMat = this.human
+      ? skinMaterial(this.sex, new THREE.Color(SKIN_COLORS[a.skin] ?? SKIN_COLORS[1]!), new THREE.Color(HAIR_COLORS[a.hairColor] ?? '#3b2718'))
+      : new THREE.MeshStandardMaterial({ color: new THREE.Color(SKIN_COLORS[a.skin] ?? SKIN_COLORS[1]), roughness: 0.6, map: TEX.skin().map });
     const outfit = OUTFITS[opts.outfit ?? 'armor_gambeson'] ?? OUTFITS['armor_gambeson']!;
     this.bodyMat = mat(outfit.body, outfit.metal ? { metalness: 0.7, roughness: 0.55 } : {}, outfit.metal ? 'metal' : 'cloth');
     this.legMat = mat(outfit.legs);
@@ -234,6 +247,7 @@ export class HumanoidRig {
     hood.scale.set(1, 1.1, 1.08);
     if (!this.useSkin) this.hoodNode.add(hood);
     this.hoodNode.visible = !!outfit.hood;
+    if (this.human) this.placeHumanJoints(bw);
     // Adern der Berührung (leuchtend, abhängig vom Berührungswert)
     const veinMat = new THREE.MeshStandardMaterial({ color: 0x9ff8ff, emissive: 0x7ff6ff, emissiveIntensity: 0, transparent: true, opacity: 0 });
     this.veins.push(veinMat);
@@ -244,8 +258,44 @@ export class HumanoidRig {
     }
   }
 
+  /** Gelenke auf die Ruhepositionen der realistischen Figur setzen (Körperbau berücksichtigt). */
+  private placeHumanJoints(bw: number) {
+    const J = humanJoints(this.sex, JOINTS);
+    const neckY = J.get('neck')?.y ?? 1.5;
+    const world = (n: string) => {
+      const p = J.get(n)!.clone();
+      if (p.y < neckY - 0.02) { p.x *= this.humanBw(bw); p.z *= 0.9 + this.humanBw(bw) * 0.1; }
+      return p;
+    };
+    for (const n of JOINTS) {
+      if (!J.has(n)) continue;
+      const parent = this.j[n].parent as THREE.Object3D;
+      const pw = parent === this.body || !J.has(parent.name) ? new THREE.Vector3() : world(parent.name);
+      this.j[n].position.copy(world(n)).sub(pw);
+    }
+  }
+
+  /** Körperbau der realistischen Figur: nur leicht variieren (Proportionen stammen aus dem Modell). */
+  private humanBw(bw: number) {
+    return 1 + (bw - 1) * 0.45;
+  }
+
   /** Bindet die durchgehende Figur an die Gelenke (Ruhepose). */
   private bindSkin(outfit: (typeof OUTFITS)[string]) {
+    if (this.human) {
+      const a = this.appearance;
+      const hc = new THREE.Color(HAIR_COLORS[a.hairColor] ?? '#3b2718');
+      const hair = hairMaterial(hc, false);
+      const curly = hairMaterial(hc, true);
+      this.humanHair = [hair, curly];
+      this.humanCap = new THREE.MeshStandardMaterial({ color: hc.clone().multiplyScalar(0.55), roughness: 0.8 });
+      const eye = eyeMaterial(new THREE.Color(EYE_COLORS[a.eyes] ?? '#4b3621'));
+      this.eyeMat = eye;
+      const cloth = (n: string): THREE.Material => n.startsWith('legs') ? this.legMat : n.startsWith('accent') ? this.accentMat : this.bodyMat;
+      this.humanParts = buildHuman(this.sex, this.j, JOINTS, this.body, this.humanBw(0.85 + a.body * 0.3), { skin: this.skinMat, eye, hair, hairCurly: curly, hairCap: this.humanCap, cloth });
+      this.applyOutfitPieces(outfit);
+      return;
+    }
     const white = new THREE.MeshStandardMaterial({ color: 0xece6dc, roughness: 0.3 });
     const black = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.2 });
     const matFor = (n: string): THREE.Material => {
@@ -267,6 +317,23 @@ export class HumanoidRig {
   }
 
   private applyOutfitPieces(o: (typeof OUTFITS)[string]) {
+    this.outfitCur = o;
+    if (this.human) {
+      const a = this.appearance;
+      const vis = (n: string, v: boolean) => { const p = this.humanParts.get(n); if (p) p.visible = v; };
+      for (const n of this.humanParts.keys()) vis(n, false);
+      for (const n of ['skin', 'eyes', 'tunic', 'trousers', 'boots']) vis(n, true);
+      vis('tunic_skirt', !o.robe);
+      vis('belt', !o.robe);
+      vis('robe', !!o.robe);
+      vis('hood', !!o.hood);
+      vis('hood_cowl', !!o.hood);
+      vis('plates', !!o.metal);
+      vis('pauldrons', !!o.metal);
+      if (!o.hood) { vis(`hair_${a.hair}`, true); vis(`hair_${a.hair}_cap`, true); }
+      if (this.sex === 'male' && a.beard) vis(`beard_${a.beard}`, true);
+      return;
+    }
     if (!this.useSkin) return;
     const show = (n: SkinPart, v: boolean) => { const p = this.pieces.get(n); if (p) p.visible = v; };
     show('skin', true);
@@ -283,6 +350,19 @@ export class HumanoidRig {
 
   setAppearance(a: Appearance) {
     this.appearance = a;
+    if (this.human) {
+      const hc = new THREE.Color(HAIR_COLORS[a.hairColor] ?? '#3b2718');
+      const skin = new THREE.Color(SKIN_COLORS[a.skin] ?? SKIN_COLORS[1]!);
+      const fresh = skinMaterial(this.sex, skin, hc);
+      this.skinMat.color.copy(fresh.color);
+      fresh.dispose();
+      (this.skinMat.userData['hairCol'] as { value: THREE.Color } | undefined)?.value.copy(hc);
+      for (const m of this.humanHair) m.color.copy(hc);
+      this.humanCap?.color.copy(hc).multiplyScalar(0.55);
+      (this.eyeMat.userData['iris'] as { value: THREE.Color } | undefined)?.value.set(EYE_COLORS[a.eyes] ?? '#4b3621');
+      if (this.outfitCur) this.applyOutfitPieces(this.outfitCur);
+      return;
+    }
     this.skinMat.color.set(SKIN_COLORS[a.skin] ?? SKIN_COLORS[1]!);
     this.hairMat.color.set(HAIR_COLORS[a.hairColor] ?? '#3b2718');
     this.hairNode.clear();

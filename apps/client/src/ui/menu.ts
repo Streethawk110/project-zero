@@ -138,6 +138,7 @@ export class MainMenu {
       h('h3', null, 'Name'), nameIn,
       h('h3', { style: { marginTop: '0.8em' } }, 'Startausrichtung'), originsEl,
       h('h3', null, 'Erscheinung'),
+      h('div', { class: 'small dim' }, 'Körper'), chips(['Männlich', 'Weiblich'], () => ap.sex ?? 0, (v) => { ap.sex = v; if (v === 1) ap.beard = 0; }),
       h('div', { class: 'small dim' }, 'Hautton'), swatches(SKIN_COLORS, () => ap.skin, (v) => (ap.skin = v)),
       h('div', { class: 'small dim' }, 'Frisur'), chips(HAIR_STYLES, () => ap.hair, (v) => (ap.hair = v)),
       h('div', { class: 'small dim' }, 'Haarfarbe'), swatches(HAIR_COLORS, () => ap.hairColor, (v) => (ap.hairColor = v)),
@@ -168,7 +169,8 @@ export class MainMenu {
     this.stopPreview();
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMapping = THREE.AgXToneMapping;
+    renderer.toneMappingExposure = 1.6;
     const scene = new THREE.Scene();
     const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
     cam.position.set(0, 1.25, 4.2);

@@ -21,9 +21,10 @@ import characters  # noqa: E402
 import creatures  # noqa: E402
 import character  # noqa: E402
 import trees  # noqa: E402
+import human  # noqa: E402
 
 REGISTRY = {}
-for mod in (buildings, props, nature, characters, creatures, character, trees):
+for mod in (buildings, props, nature, characters, creatures, character, trees, human):
     REGISTRY.update(mod.ASSETS)
 
 

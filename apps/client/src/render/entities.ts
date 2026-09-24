@@ -141,7 +141,7 @@ export class EntityManager {
         break;
       }
       case 'c': {
-        const rig = new HumanoidRig({ appearance: { skin: 1, hair: 4, hairColor: 6, beard: 0, height: 0.99, body: 0.35, eyes: 1, scar: 0 }, outfit: 'scholar' });
+        const rig = new HumanoidRig({ appearance: { sex: 1, skin: 1, hair: 4, hairColor: 6, beard: 0, height: 0.99, body: 0.35, eyes: 1, scar: 0 }, outfit: 'scholar' });
         rig.setEquipment('bow_short', '', '');
         // Laterne am Gürtel
         const lantern = new THREE.Group();
@@ -174,7 +174,7 @@ export class EntityManager {
             break;
           }
           case 'bandit': {
-            const rig = new HumanoidRig({ outfit: 'bandit', scale: def.scale, appearance: { skin: (s.i % 5), hair: s.i % 6, hairColor: s.i % 8, beard: s.i % 4 } });
+            const rig = new HumanoidRig({ outfit: 'bandit', scale: def.scale, appearance: { sex: s.i % 4 === 1 ? 1 : 0, skin: (s.i % 5), hair: s.i % 6, hairColor: s.i % 8, beard: s.i % 4 === 1 ? 0 : s.i % 4 } });
             rig.setEquipment(def.id === 'bandit_archer' ? 'bow_short' : 'axe_bandit', def.id === 'bandit_chief' ? 'shield_wood' : '', '');
             v.rig = rig;
             break;

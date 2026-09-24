@@ -119,9 +119,19 @@ export async function loadBakedTextures(size: number, onProgress?: (p: number) =
   return baked.size;
 }
 
+/** Einzelbild für Modelle mit glTF-UVs (ohne Spiegelung, flipY = false), vorab dekodiert. */
+export async function loadGltfTexture(url: string, srgb: boolean) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${url}: ${r.status}`);
+  const bmp = await createImageBitmap(await r.blob(), { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' });
+  const t = bitmapTex(bmp, srgb);
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
+}
+
 // ---------- Blattwerk-Atlanten (tools/blender/foliage_bake.py) ----------
 
-export const FOLIAGE_NAMES = ['oak', 'bush', 'spruce', 'pine', 'grass', 'dry'] as const;
+export const FOLIAGE_NAMES = ['oak', 'bush', 'spruce', 'pine', 'grass', 'dry', 'hair', 'curly'] as const;
 const foliage = new Map<string, { map: THREE.Texture; normalMap: THREE.Texture }>();
 
 /** Lädt die Zweig-/Grasbilder (Farbe mit Deckung, Normalen). */

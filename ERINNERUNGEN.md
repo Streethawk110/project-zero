@@ -42,6 +42,24 @@ Profiler nicht mitgezählt – behoben).
   automatisch wieder gefangen.
 - Nächster Schwerpunkt laut Nutzer: MENSCHEN wie in KCD2. Plan: MakeHuman-
   Basisfigur (CC0, raw.githubusercontent.com erreichbar) als Körper/Kopf.
+- MENSCHEN NEU (`tools/blender/human.py`): MakeHuman-Basisfigur + Formvorgaben +
+  Game-Engine-Gewichte (alles CC0, wird nach `tools/blender/.mh_cache` geladen,
+  nicht im Repo). Mann 1,81 m / Frau 1,69 m, Arme per Skinning in Ruhehaltung,
+  Armatur mit den 19 Spiel-Gelenken → `human_male/female.glb` (NICHT quantisieren:
+  verzerrt Normalen bei Skin-Modellen → in optimize.mjs SKIP).
+  Kleidung aus MakeHuman-Hilfsnetzen (tights/skirt): tunic, tunic_skirt, trousers,
+  boots, belt, robe, hood (eigene Schale + Gewichtsübertragung), hood_cowl, plates,
+  pauldrons; Haut unter Kleidung entfernt. Haare: Karten + Kappe (Stile 0–5),
+  Bärte 2/3 (1 = Stoppeln in der Haut). Haut: `skin_bake.py` (Poren, Rötung,
+  Brauen, Stoppeln, Falten; B-Kanal = Haarmaske), Augen `eye_color.webp`.
+  Vorschauen: preview_human.py / preview_face.py.
+- Client: `render/human.ts` (Ruhepose = Knochen×inverse Bindung×Bindung,
+  Gelenkpositionen aus dem Modell, Haut-/Augen-/Haarshader), Rig nutzt es
+  automatisch; Aussehen hat jetzt `sex` (0/1), weibliche NSC markiert, Auswahl
+  in der Charaktererstellung. Texturen werden vorab geladen (`loadHumanTextures`).
+- Offen (Nutzerliste): Fluss-Streifen (schwarz, wo der Fluss hineingeht),
+  begehbare Häuser, Gebäude/Requisiten/Berge realistischer, ALLE Texturen
+  gründlich überarbeiten; Menschen: LOD für Leistung, Waffenhaltung prüfen.
 - Tests ohne GPU: gegen statischen Build testen (Vite-Dev-Server lädt bei
   Codeänderungen neu → Screenshots brechen ab).
 

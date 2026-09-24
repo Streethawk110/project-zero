@@ -227,6 +227,8 @@ export interface Appearance {
   beard: number; // 0 = keiner
   eyes: number;
   scar: number;
+  /** 0 = männlich, 1 = weiblich (Körperbau); fehlt in älteren Spielständen → männlich */
+  sex?: number;
 }
 
 export interface CharacterData {

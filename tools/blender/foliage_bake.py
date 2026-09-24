@@ -444,6 +444,42 @@ def grass_clump(rnd, dry=False):
     return bld.finish("clump", [flat_material("stem"), flat_material("blade")])
 
 
+def hair_strands(rnd, curly=False):
+    """Haarsträhnen für Haarkarten: Wurzel unten (v=0), Spitzen oben (v=1), Grauwerte (Client färbt).
+    Viele feine, leicht gewellte Haare, zu den Rändern und Spitzen hin lichter."""
+    bld = Builder()
+    n = 1300
+    for i in range(n):
+        x0 = rnd.gauss(0, 0.2)
+        if abs(x0) > 0.46:
+            continue
+        L = rnd.uniform(0.75, 1.0) * (1 - abs(x0) * 0.6)
+        steps = 12
+        pts = []
+        phase = rnd.uniform(0, 6.28)
+        amp = rnd.uniform(0.004, 0.012) * (3 if curly else 1)
+        drift = rnd.uniform(-0.05, 0.05)
+        start = rnd.uniform(0.0, 0.3)  # versetzte Wurzeln: keine harte Kante am Kartenanfang
+        L = min(L, 1.0 - start)
+        for s in range(steps + 1):
+            t = s / steps
+            pts.append(Vector((x0 + drift * t + math.sin(t * (9 if curly else 4) + phase) * amp, -0.5 + start + t * L, rnd.uniform(-0.01, 0.01))))
+        g = rnd.uniform(0.55, 1.0)
+        # dunklere Haare innen (Tiefe), hellere außen
+        g *= 0.75 + 0.25 * rnd.random()
+        w = rnd.uniform(0.0016, 0.0028)
+        left, right, ul, ur = [], [], [], []
+        for s, p in enumerate(pts):
+            t = s / steps
+            ww = w * (1 - t ** 3 * 0.8)
+            left.append(p - Vector((ww, 0, 0)))
+            right.append(p + Vector((ww, 0, 0)))
+            ul.append((-1, t))
+            ur.append((1, t))
+        bld.quad_strip(left, right, ul, ur, (g, g, g, 1), 1)
+    return bld.finish("hair", [flat_material("root"), flat_material("strand")])
+
+
 # ---------------------------------------------------------------------------
 # Rendern: Farbe (mit Alpha) und Normalen; 2× überabgetastet, Ränder ausgeweitet
 # ---------------------------------------------------------------------------
@@ -540,7 +576,7 @@ def linear_to_srgb(c):
 
 def bake(kind):
     reset()
-    rnd = random.Random({"oak": 11, "bush": 12, "spruce": 13, "pine": 14, "grass": 15, "dry": 16}[kind])
+    rnd = random.Random({"oak": 11, "bush": 12, "spruce": 13, "pine": 14, "grass": 15, "dry": 16, "hair": 17, "curly": 18}[kind])
     if kind == "oak":
         obj = oak_twig(rnd)
     elif kind == "bush":
@@ -551,6 +587,8 @@ def bake(kind):
         obj = needle_sprig(rnd, pine=True)
     elif kind == "grass":
         obj = grass_clump(rnd)
+    elif kind in ("hair", "curly"):
+        obj = hair_strands(rnd, kind == "curly")
     else:
         obj = grass_clump(rnd, dry=True)
     col, nrm = render(obj)

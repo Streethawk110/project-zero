@@ -14,3 +14,4 @@ playwright-report/
 *.tsbuildinfo
 tools/blender/__pycache__/
 release/
+tools/blender/.mh_cache/

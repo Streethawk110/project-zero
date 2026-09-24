@@ -18,22 +18,22 @@ export const NPCS: NpcDef[] = [
   },
   {
     id: 'hedda', name: 'Hedda', title: 'Wirtin der „Letzten Laterne“', x: 44, z: 24, rot: Math.PI, dialogue: 'hedda_root',
-    appearance: { outfit: 'villager', skin: 1, hair: 2, hairColor: 6, beard: 0, height: 0.97, body: 0.6 },
+    appearance: { sex: 1, outfit: 'villager', skin: 1, hair: 2, hairColor: 6, beard: 0, height: 0.97, body: 0.6 },
     bark: ['Die Suppe ist warm, die Betten sind kalt.', 'Nachts kratzt etwas an meiner Kellertür.'],
   },
   {
     id: 'brann', name: 'Brann', title: 'Wachfrau am Westtor', x: -34, z: 34, rot: Math.PI / 2, dialogue: 'brann_root',
-    appearance: { outfit: 'guard', skin: 3, hair: 4, hairColor: 0, beard: 0, height: 1.03, body: 0.6 },
+    appearance: { sex: 1, outfit: 'guard', skin: 3, hair: 4, hairColor: 0, beard: 0, height: 1.03, body: 0.6 },
     bark: ['Augen offen. Der Wald hat Zähne bekommen.', 'Rotbart und seine Bande werden dreister.'],
   },
   {
     id: 'lina', name: 'Lina', title: 'Tochter der Wäscherin', x: 30, z: 64, rot: 0.5, dialogue: 'lina_root', wander: 5,
-    appearance: { outfit: 'child', skin: 0, hair: 1, hairColor: 4, beard: 0, height: 0.62, body: 0.2 },
+    appearance: { sex: 1, outfit: 'child', skin: 0, hair: 1, hairColor: 4, beard: 0, height: 0.62, body: 0.2 },
     bark: ['Hast du Glimmer gesehen? Er ist ganz grau und ein bisschen durchsichtig.'],
   },
   {
     id: 'ysolde', name: 'Ysolde Harn', title: 'Präzeptorin der Stillen Flamme', faction: 'order', x: 1, z: 15, rot: -Math.PI / 2, dialogue: 'ysolde_root', shop: 'order',
-    appearance: { outfit: 'priest', skin: 0, hair: 3, hairColor: 7, beard: 0, height: 1.06, body: 0.5, scar: 1 },
+    appearance: { sex: 1, outfit: 'priest', skin: 0, hair: 1, hairColor: 7, beard: 0, height: 1.06, body: 0.5, scar: 1 },
     bark: ['Die Flamme reinigt, was das Licht verdirbt.', 'Jede Nacht zähle ich die Feuer. Jede Nacht sind es weniger.'],
   },
   {
@@ -43,7 +43,7 @@ export const NPCS: NpcDef[] = [
   },
   {
     id: 'maren', name: 'Maren', title: 'Seherin der Verwurzelten', faction: 'rooted', x: -193, z: -100, rot: 2.2, dialogue: 'maren_root', shop: 'maren',
-    appearance: { outfit: 'rooted', skin: 2, hair: 2, hairColor: 7, beard: 0, height: 0.98, body: 0.3, scar: 3 },
+    appearance: { sex: 1, outfit: 'rooted', skin: 2, hair: 2, hairColor: 7, beard: 0, height: 0.98, body: 0.3, scar: 3 },
     bark: ['Hörst du es? Es atmet unter uns.', 'Die Wurzeln erinnern sich an alles.'],
   },
   {
@@ -68,7 +68,7 @@ export const NPCS: NpcDef[] = [
   },
   {
     id: 'isra_npc', name: 'Isra Venn', title: 'Kartografin der Expedition', x: 40, z: 30, rot: 2.6, dialogue: 'isra_root', cond: 'mode:mp',
-    appearance: { outfit: 'scholar', skin: 1, hair: 4, hairColor: 6, beard: 0, height: 0.99, body: 0.35 },
+    appearance: { sex: 1, outfit: 'scholar', skin: 1, hair: 4, hairColor: 6, beard: 0, height: 0.99, body: 0.35 },
     bark: ['Jede Karte lügt ein bisschen. Meine lügen weniger.'],
   },
   {
@@ -78,7 +78,7 @@ export const NPCS: NpcDef[] = [
   },
   {
     id: 'ute', name: 'Ute', title: 'Wäscherin', x: 12, z: 60, rot: -1, dialogue: 'ute_root', wander: 6,
-    appearance: { outfit: 'villager', skin: 1, hair: 1, hairColor: 3, beard: 0, height: 0.96, body: 0.5 },
+    appearance: { sex: 1, outfit: 'villager', skin: 1, hair: 1, hairColor: 3, beard: 0, height: 0.96, body: 0.5 },
     bark: ['Lina! LINA! Wo steckt das Kind wieder?', 'Der Fluss ist so kalt wie das Herz des Kontormeisters.'],
   },
   // Wachen, die je nach Entscheidung erscheinen
@@ -89,7 +89,7 @@ export const NPCS: NpcDef[] = [
   },
   {
     id: 'kontor_foreman', name: 'Vorarbeiterin Gisla', title: 'Kontor', faction: 'kontor', x: 244, z: -222, rot: 0, dialogue: 'kontor_foreman', cond: 'flag:choice_kontor',
-    appearance: { outfit: 'miner', skin: 3, hair: 4, hairColor: 3, beard: 0, height: 1, body: 0.7 },
+    appearance: { sex: 1, outfit: 'miner', skin: 3, hair: 4, hairColor: 3, beard: 0, height: 1, body: 0.7 },
     bark: ['Schichtwechsel in zehn Minuten!'],
   },
   {
