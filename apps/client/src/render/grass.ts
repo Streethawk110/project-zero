@@ -142,6 +142,8 @@ export class Grass {
             // Halmansatz im Eigenschatten, leichte Farbvariation je Büschel
             diffuseColor.rgb *= mix(0.38, 1.05, smoothstep(0.0, 0.7, vGrass.x));
             diffuseColor.rgb *= mix(vec3(0.9, 0.95, 0.85), vec3(1.08, 1.04, 0.9), vGrass.z);`)
+          // Rückseiten nicht umdrehen: die Normale zeigt bewusst nach oben (sonst schwarze Büschel)
+          .replace('#include <normal_fragment_begin>', THREE.ShaderChunk.normal_fragment_begin.replace('gl_FrontFacing ? 1.0 : - 1.0', '1.0'))
           .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
             vec3 Vg = normalize(vViewPosition);
             float backG = pow(clamp(dot(-Vg, uSunDirView), 0.0, 1.0), 5.0);

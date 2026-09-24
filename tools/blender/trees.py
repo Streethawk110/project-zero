@@ -148,7 +148,7 @@ def spruce(lod, seed=7):
     trunk = [Vector((math.sin(i * 0.7) * 0.05 * i / n, math.cos(i * 0.5) * 0.04 * i / n, (H - 0.9) * i / n)) for i in range(n + 1)]
     radii = [0.3 * (1 - i / n) ** 0.9 + 0.025 for i in range(n + 1)]
     trunk[0].z = -0.3  # etwas in den Boden
-    tm.tube(trunk, radii, 10 if lod == 0 else 6, [0.0] * (n + 1))
+    tm.tube(trunk, radii, 8 if lod == 0 else 5, [0.0] * (n + 1))
     # Wurzelanläufe
     if lod == 0:
         for k in range(5):
@@ -181,21 +181,26 @@ def spruce(lod, seed=7):
             base = axis_at(z) + Vector((d.x, d.y, 0)) * radii[min(n, int(z / H * n))] * 0.8 + Vector((0, 0, z - axis_at(z).z))
             Lb = L * rnd.uniform(0.85, 1.1)
             droop = 0.32 * (1 - rel) + 0.06
-            segs = 4 if lod == 0 else 2
+            segs = 3 if lod == 0 else 2
             pts = curve_pts(base, d, Lb, droop, 0.12, segs)
             r0 = 0.018 + 0.028 * Lb / 3.5
-            tm.tube(pts, [r0 * (1 - i / segs * 0.8) for i in range(segs + 1)], 5 if lod == 0 else 3, [0.1 + 0.5 * i / segs for i in range(segs + 1)])
+            # Äste liegen fast ganz im Nadelwerk: dreikantig genügt, kurze Äste ohne Mittelstück
+            bs = segs if Lb > 1.2 else 1
+            bpts = pts if bs == segs else [pts[0], pts[-1]]
+            tm.tube(bpts, [r0 * (1 - i / max(1, bs) * 0.8) for i in range(bs + 1)], 3, [0.1 + 0.5 * i / max(1, bs) for i in range(bs + 1)])
             # Karten entlang des Astes: flach (Zweigfläche) + steiler (Vorhang, Tiefe von der Seite)
-            step = 0.5 if lod == 0 else 1.0
+            step = 0.6 if lod == 0 else 1.0
             t = 0.12
             while t <= 1.0:
                 i0 = min(segs - 1, int(t * segs))
                 p = pts[i0].lerp(pts[i0 + 1], t * segs - i0)
                 tangent = (pts[i0 + 1] - pts[i0]).normalized()
-                size = (0.95 if lod == 0 else 1.5) * (0.75 + 0.35 * min(1.0, Lb / 3.0)) * rnd.uniform(0.85, 1.15)
+                size = (1.2 if lod == 0 else 1.6) * (0.75 + 0.35 * min(1.0, Lb / 3.0)) * rnd.uniform(0.85, 1.15)
                 wind = 0.35 + 0.65 * t
                 ao = min(1.0, 0.25 + 0.75 * t) * (0.75 + 0.25 * rel)
-                for roll in ((rnd.uniform(-0.35, 0.35),) if lod else (rnd.uniform(-0.35, 0.35), rnd.uniform(0.9, 1.3) * (1 if rnd.random() < 0.5 else -1))):
+                # Außen zusätzlich eine steilere Karte (Vorhang, Tiefe von der Seite); innen verdeckt
+                rolls = (rnd.uniform(-0.35, 0.35),) if lod or t < 0.4 else (rnd.uniform(-0.35, 0.35), rnd.uniform(0.9, 1.3) * (1 if rnd.random() < 0.5 else -1))
+                for roll in rolls:
                     nrm = Matrix.Rotation(roll, 3, tangent) @ Vector((0, 0, 1))
                     up = (tangent + Vector((0, 0, -0.15))).normalized()
                     tm.card(p - up * size * 0.15, up, nrm, size, size, wind, ao, rnd.random(), bend)
@@ -228,7 +233,7 @@ def oak(lod, seed=21):
     tips = []
 
     def grow(p, d, L, r, depth, wind0):
-        segs = 4 if lod == 0 else 2
+        segs = (3 if depth < 2 else 2) if lod == 0 else 2
         pts = [p]
         dd = d.copy()
         for i in range(segs):
@@ -237,7 +242,7 @@ def oak(lod, seed=21):
             pts.append(pts[-1] + dd * (L / segs))
         radii = [r * (1 - 0.35 * i / segs) for i in range(segs + 1)]
         winds = [min(1.0, wind0 + 0.25 * i / segs) for i in range(segs + 1)]
-        tm.tube(pts, radii, max(3, int(10 - depth * 2)) if lod == 0 else max(3, 6 - depth * 2), winds)
+        tm.tube(pts, radii, max(3, 8 - depth * 2) if lod == 0 else max(3, 5 - depth * 2), winds)
         end = pts[-1]
         max_depth = 3 if lod == 0 else 2
         if depth >= max_depth or r < 0.035:

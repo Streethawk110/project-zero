@@ -31,6 +31,17 @@ Profiler nicht mitgezählt – behoben).
   Stufen (`treeLodRanges`), dynamische Auflösung (Einstellung, Stufen 100–56 %),
   Umgebungs-Spiegelung auf 7 Bilder verteilt, neues Gras (`grass.ts`: Lambert →
   bekommt Schatten, 2 Ringe, trockene Flecken, Durchscheinen).
+- WICHTIGER FUND: `tools/models/optimize.mjs` hat mit `prune()` alle UVs
+  entfernt (Materialien ohne Bildtextur) → Häuser/Felsen/Bäume ohne richtige
+  Texturen. Jetzt `prune({ keepAttributes: true })`, alle Modelle neu gebaut.
+- Bäume verschlankt (Fichte 3,5k, Eiche 4,6k Dreiecke; Äste im Laub dreikantig).
+- AgX-Tonemapping statt ACES (Belichtung angepasst, Sättigung 1,16).
+- Gras: Rückseiten-Normalen nicht umdrehen (sonst schwarze Büschel).
+- Nutzer: Kamera „nicht premium“ → Drehung ~30 ms geglättet, Verfolgung gefedert,
+  Rohdaten-Maus (`unadjustedMovement`); nach Fenster-Schließen wird die Maus
+  automatisch wieder gefangen.
+- Nächster Schwerpunkt laut Nutzer: MENSCHEN wie in KCD2. Plan: MakeHuman-
+  Basisfigur (CC0, raw.githubusercontent.com erreichbar) als Körper/Kopf.
 - Tests ohne GPU: gegen statischen Build testen (Vite-Dev-Server lädt bei
   Codeänderungen neu → Screenshots brechen ab).
 

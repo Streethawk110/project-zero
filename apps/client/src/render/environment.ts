@@ -215,7 +215,7 @@ export class Environment {
       this.ambient.color.setHex(0x4a5570);
       this.fog.color.setHex(0x05070a);
       this.fog.density = 0.035;
-      this.renderer.toneMappingExposure = 1.15;
+      this.renderer.toneMappingExposure = 1.9;
     } else {
       this.sun.castShadow = settings.shadows;
       this.sun.color.copy(sunCol);
@@ -227,7 +227,8 @@ export class Environment {
       this.ambient.color.setHex(0x8aa0d0);
       this.fog.color.copy(fogDay).multiplyScalar(1 + flash * 0.8);
       this.fog.density = fogDensity;
-      this.renderer.toneMappingExposure = THREE.MathUtils.lerp(0.62, 0.95, day) + flash * 0.4;
+      // AgX bildet Mittelgrau dunkler ab als ACES (dort ist ein Faktor 1/0,6 eingebaut)
+      this.renderer.toneMappingExposure = THREE.MathUtils.lerp(1.15, 1.7, day) + flash * 0.6;
     }
 
     // Umgebungsreflexionen gelegentlich neu erzeugen – verteilt auf 7 Bilder (je eine Würfelseite,

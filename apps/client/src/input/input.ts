@@ -96,12 +96,22 @@ export class Input {
     return () => { this.listeners = this.listeners.filter((l) => l !== fn); };
   }
 
+  /** Maus fangen – mit Rohdaten ohne Mausbeschleunigung des Systems, wo der Browser das kann. */
   requestLock() {
+    if (document.pointerLockElement === this.canvas) return;
+    const plain = () => {
+      try {
+        const r = this.canvas.requestPointerLock() as unknown as Promise<void> | undefined;
+        r?.catch?.(() => {});
+      } catch {
+        /* ignorieren */
+      }
+    };
     try {
-      const r = this.canvas.requestPointerLock() as unknown as Promise<void> | undefined;
-      r?.catch?.(() => {});
+      const r = (this.canvas.requestPointerLock as (o?: { unadjustedMovement?: boolean }) => Promise<void> | undefined)({ unadjustedMovement: true });
+      if (r && typeof r.catch === 'function') r.catch((e: Error) => { if (e?.name === 'NotSupportedError') plain(); });
     } catch {
-      /* ignorieren */
+      plain();
     }
   }
   releaseLock() {

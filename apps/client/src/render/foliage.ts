@@ -86,7 +86,8 @@ export function foliageMaterial(kind: FoliageKind) {
     side: THREE.DoubleSide,
     roughness: kind === 'oak' || kind === 'bush' ? 0.62 : 0.78,
     metalness: 0,
-    color: map ? 0xffffff : kind === 'oak' ? 0x3f5a28 : 0x2c4428,
+    // Nadeln etwas satter/dunkler (sonst wirken Fichten im Dunst türkis)
+    color: map ? (kind === 'spruce' || kind === 'pine' ? 0xc2cfae : 0xffffff) : kind === 'oak' ? 0x3f5a28 : 0x2c4428,
   });
   mat.alphaToCoverage = msaa;
   mat.onBeforeCompile = (shader) => {

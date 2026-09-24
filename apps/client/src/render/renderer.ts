@@ -23,7 +23,7 @@ const GradeShader = {
     tDiffuse: { value: null as THREE.Texture | null },
     uVignette: { value: 0.22 },
     uSaturation: { value: 1.12 },
-    uContrast: { value: 1.1 },
+    uContrast: { value: 1.12 },
     uTint: { value: new THREE.Color(1, 1, 1) },
     uSight: { value: 0 },
     uDamage: { value: 0 },
@@ -317,7 +317,8 @@ export class Renderer {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
     const r = this.renderer;
     r.outputColorSpace = THREE.SRGBColorSpace;
-    r.toneMapping = THREE.ACESFilmicToneMapping;
+    // AgX: natürlichere Farben und Lichter als ACES (kein Gelbstich im Grün, weiche Spitzlichter)
+    r.toneMapping = THREE.AgXToneMapping;
     r.toneMappingExposure = 1.0;
     r.shadowMap.enabled = settings.shadows;
     r.shadowMap.type = THREE.PCFSoftShadowMap;

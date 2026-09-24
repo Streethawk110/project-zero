@@ -24,7 +24,9 @@ for (const f of (await readdir(dir)).filter((f) => f.endsWith('.glb')).sort()) {
   const doc = await io.read(path);
   if (doc.getRoot().listExtensionsUsed().some((e) => e.extensionName === 'EXT_meshopt_compression')) continue;
   const size0 = (await stat(path)).size;
-  await doc.transform(dedup(), prune(), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+  // keepAttributes: Die Blender-Materialien haben keine Bildtexturen – ohne die Option würde prune
+  // die Texturkoordinaten als „unbenutzt“ entfernen (die Texturen kommen erst im Client dazu).
+  await doc.transform(dedup(), prune({ keepAttributes: true }), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
   await io.write(path, doc);
   const size1 = (await stat(path)).size;
   before += size0;

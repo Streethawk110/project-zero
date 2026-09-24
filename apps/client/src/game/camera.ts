@@ -14,6 +14,12 @@ export class ThirdPersonCamera {
   private curDist = 4.6;
   shoulder = 0.55;
   fovBoost = 0;
+  // Sichtbare (geglättete) Werte: yaw/pitch sind das Ziel der Maus und steuern das Spiel direkt,
+  // die Kamera folgt mit einer sehr kurzen, gleichmäßigen Glättung → ruhiges, hochwertiges Gefühl
+  private vYaw = 0.6;
+  private vPitch = -0.18;
+  private headS = new THREE.Vector3();
+  private headInit = false;
 
   constructor(readonly camera: THREE.PerspectiveCamera) {}
 
@@ -37,10 +43,22 @@ export class ThirdPersonCamera {
     const hf = getWorldLayout().hf;
     const col = getWorldLayout().collision;
     this.dist += (this.targetDist - this.dist) * Math.min(1, dt * 8);
-    const head = new THREE.Vector3(player.x, player.y + 1.65, player.z);
-    const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+    // Drehung: kritisch gedämpft (~30 ms), große Sprünge (Laden, Teleport) sofort übernehmen
+    const kr = 1 - Math.exp(-dt * 32);
+    if (Math.abs(this.yaw - this.vYaw) > 1.5) this.vYaw = this.yaw; else this.vYaw += (this.yaw - this.vYaw) * kr;
+    if (Math.abs(this.pitch - this.vPitch) > 1.5) this.vPitch = this.pitch; else this.vPitch += (this.pitch - this.vPitch) * kr;
+    // Verfolgung: seitlich straff, in der Höhe weicher (Treppen, Sprünge, Hänge)
+    const headRaw = new THREE.Vector3(player.x, player.y + 1.65, player.z);
+    if (!this.headInit || this.headS.distanceTo(headRaw) > 4) { this.headS.copy(headRaw); this.headInit = true; }
+    const kh = 1 - Math.exp(-dt * 22), kv = 1 - Math.exp(-dt * 10);
+    this.headS.x += (headRaw.x - this.headS.x) * kh;
+    this.headS.z += (headRaw.z - this.headS.z) * kh;
+    this.headS.y += (headRaw.y - this.headS.y) * kv;
+    const head = this.headS.clone();
+    const yaw = this.vYaw, pitch = this.vPitch;
+    const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
     const target = head.clone().addScaledVector(right, this.shoulder * Math.min(1, this.dist / 4));
-    const back = new THREE.Vector3(Math.sin(this.yaw) * Math.cos(this.pitch), -Math.sin(this.pitch), Math.cos(this.yaw) * Math.cos(this.pitch));
+    const back = new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
     // Kollision: Gelände entlang des Strahls
     let d = this.dist;
     for (let t = 0.3; t <= this.dist; t += 0.25) {

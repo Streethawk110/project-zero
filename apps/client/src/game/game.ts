@@ -84,6 +84,7 @@ export class Game {
   private footT = 0;
   private sightOn = false;
   frameMs = 0;
+  private prevUiBlocks = false;
 
   constructor(canvas: HTMLCanvasElement, audio: AudioEngine) {
     this.audio = audio;
@@ -506,6 +507,10 @@ export class Game {
     const uiBlocks = this.ui.blocksGameInput();
     i.uiCapture = uiBlocks;
     if (uiBlocks && i.locked && !this.ui.wantsPointerLock()) i.releaseLock();
+    // Fenster/Dialog geschlossen: Maus sofort wieder fangen (der Klick bzw. Tastendruck zählt
+    // als Nutzeraktion) – kein zusätzlicher Klick ins Bild nötig
+    if (this.prevUiBlocks && !uiBlocks && !i.locked) i.requestLock();
+    this.prevUiBlocks = uiBlocks;
 
     if (!this.paused) {
       this.time += dt;
@@ -567,7 +572,7 @@ export class Game {
       u['uSight']!.value += ((sight ? 1 : 0) - u['uSight']!.value) * Math.min(1, dt * 5);
       const hpf = this.me ? this.me.hp / Math.max(1, this.me.mhp) : 1;
       u['uDamage']!.value = Math.max(0, (0.35 - hpf) / 0.35) * (settings.reducedEffects ? 0.5 : 1);
-      u['uSaturation']!.value = this.weather === 'nullstorm' ? 0.85 : 1.05;
+      u['uSaturation']!.value = this.weather === 'nullstorm' ? 0.9 : 1.16;
     }
     this.renderer.setBloom(this.inDungeon ? 0.5 : 0.24 + this.env.nightFactor * 0.22);
     this.renderer.setAtmosphere(this.env.atmosphere(), dt);
