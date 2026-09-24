@@ -46,18 +46,20 @@ async function boot() {
   await progress(0.05, 'Konfiguration …');
   await loadRuntimeConfig();
   await loadManifest();
-  await progress(0.1, 'Modelle …');
-  const mod = await preloadModels((p) => { fill.style.transform = `scaleX(${0.1 + p * 0.3})`; });
+  await progress(0.1, 'Texturen …');
+  // Gebackene Blender-Texturen VOR den Modellen laden: die Modellmaterialien werden beim Laden
+  // erzeugt und zwischengespeichert – sonst bekämen sie dauerhaft die prozeduralen Ersatztexturen.
+  setTextureSize(Math.min(settings.textureQuality, 1024));
+  const tex = await loadBakedTextures(settings.textureQuality, (p) => { fill.style.transform = `scaleX(${0.1 + p * 0.15})`; });
+  diag.textures = `${tex}/${BAKED_NAMES.length}`;
+  await progress(0.25, 'Modelle …');
+  const mod = await preloadModels((p) => { fill.style.transform = `scaleX(${0.25 + p * 0.25})`; });
   diag.models = `${mod.loaded}/${mod.total}`;
   diag.figure = hasCharacterModel() ? 'neu' : 'alt (Ersatz)';
   diag.gpu = gpuName();
   await progress(0.42, 'Gelände und Welt …');
   getWorldLayout();
-  await progress(0.5, 'Texturen …');
-  setTextureSize(Math.min(settings.textureQuality, 1024));
-  // Gebackene Blender-Texturen (fehlende werden prozedural ersetzt)
-  const tex = await loadBakedTextures(settings.textureQuality, (p) => { fill.style.transform = `scaleX(${0.5 + p * 0.2})`; });
-  diag.textures = `${tex}/${BAKED_NAMES.length}`;
+  await progress(0.55, 'Laub …');
   const fol = await loadFoliageTextures(settings.graphics === 'niedrig' ? 512 : 1024);
   diag.textures += ` + Laub ${fol}/${FOLIAGE_NAMES.length}`;
   await loadHumanTextures();

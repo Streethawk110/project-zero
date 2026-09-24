@@ -92,7 +92,11 @@ Profiler nicht mitgezählt – behoben).
 - Gebäude: Dach mit Durchhang, Firstziegel/Strohwulst, behauene Balken
   (`hewn`), Dach-UVs hangaufwärts (`box_uv`), Hof-Details `_yard` +
   `homeExtras`-Kollision; Sockelschmutz im Client (`render/weathering.ts`).
-- Offen: Bake abschließen, Metall neu backen, alles im Spiel prüfen.
+- 2K-Bake aller 18 Texturen fertig, Metall heller neu gebacken.
+- GROSSER FUND: `main.ts` lud die Modelle VOR den gebackenen Texturen →
+  alle Modellmaterialien (Gebäude, Requisiten) nutzten dauerhaft die
+  prozeduralen Ersatztexturen (weiße „Fliesen“ an der Kapelle). Reihenfolge
+  umgedreht (auch in `dev/rigPreview.ts`).
 
 ## 2026-09-24 – Cloud-Sitzung: Grafik-Offensive (Fortsetzung)
 

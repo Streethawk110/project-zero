@@ -30,8 +30,8 @@ ground.receiveShadow = true;
 scene.add(ground);
 
 await loadManifest();
-await preloadModels(() => {});
 await loadBakedTextures(512);
+await preloadModels(() => {});
 await loadFoliageTextures(1024);
 await loadHumanTextures();
 
