@@ -684,11 +684,17 @@ export class Game {
       toP.normalize();
       const right = new THREE.Vector3(toP.z, 0, -toP.x);
       // Über die Schulter des Spielers auf das Gesicht des Gegenübers (der Spieler steht nie in einer Wand)
-      const pos = head.clone().addScaledVector(toP, 0.45).addScaledVector(right, 0.42).add(new THREE.Vector3(0, 0.1, 0));
-      this.cam.focus = { pos, look: h.clone().addScaledVector(right, 0.08) };
+      const shoulder = head.clone().addScaledVector(toP, 0.3).addScaledVector(right, 0.4).add(new THREE.Vector3(0, 0.08, 0));
+      // Näher ans Gesicht, aber auf der freien Strecke zwischen Spieler und Gegenüber (keine Wand)
+      const dist0 = shoulder.distanceTo(h);
+      const pos = shoulder.lerp(h.clone().addScaledVector(right, 0.12), Math.max(0, Math.min(0.55, 1 - 1.15 / Math.max(dist0, 0.01))));
+      // Blickpunkt unter dem Gesicht: das Gesicht sitzt im oberen Bilddrittel, über dem Dialogfenster
+      this.cam.focus = { pos, look: h.clone().addScaledVector(right, 0.08).add(new THREE.Vector3(0, -0.22, 0)) };
+      this.renderer.setCinematic(pos.distanceTo(h), true);
       if (this.playerRig) this.playerRig.lookAt = h;
     } else {
       this.cam.focus = null;
+      this.renderer.setCinematic(null, false);
       if (!this.ui.dialogueOpen) this.talkPartner = null;
       if (this.playerRig) this.playerRig.lookAt = null;
     }

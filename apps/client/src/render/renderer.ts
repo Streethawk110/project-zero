@@ -30,6 +30,7 @@ const GradeShader = {
     uTime: { value: 0 },
     uGrain: { value: 0.018 },
     uAberration: { value: 0.0012 },
+    uLetterbox: { value: 0 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -37,7 +38,7 @@ const GradeShader = {
   `,
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
-    uniform float uVignette, uSaturation, uContrast, uSight, uDamage, uTime, uGrain, uAberration;
+    uniform float uVignette, uSaturation, uContrast, uSight, uDamage, uTime, uGrain, uAberration, uLetterbox;
     uniform vec3 uTint;
     varying vec2 vUv;
     float rand(vec2 co) { return fract(sin(dot(co, vec2(12.9898, 78.233)) + uTime) * 43758.5453); }
@@ -63,6 +64,9 @@ const GradeShader = {
       col = mix(col, col * vec3(1.2, 0.5, 0.45), uDamage * smoothstep(0.25, 0.7, r));
       col *= 1.0 - uVignette * smoothstep(0.3, 0.9, r);
       col += (rand(vUv * 731.0) - 0.5) * uGrain * (0.3 + l);
+      // Kinobalken (Breitbild) in Gesprächen und Zwischensequenzen
+      float bar = uLetterbox * 0.115;
+      if (vUv.y < bar || vUv.y > 1.0 - bar) col = vec3(0.0);
       gl_FragColor = vec4(max(col, 0.0), a);
     }
   `,
@@ -102,6 +106,81 @@ class ScenePass extends Pass {
     this.rt.dispose();
     this.copyMat.dispose();
     this.copy.dispose();
+  }
+}
+
+/**
+ * Tiefenunschärfe wie bei einem Kameraobjektiv (für Gespräche und Zwischensequenzen): Zerstreuungskreis
+ * aus der linearen Tiefe, Sammel-Unschärfe mit 24 Abtastungen auf einer Spirale (Bokeh-artig).
+ */
+class DofPass extends Pass {
+  private mat: THREE.ShaderMaterial;
+  private quad: FullScreenQuad;
+  strength = 0;
+
+  constructor(depth: THREE.DepthTexture, private camera: THREE.PerspectiveCamera) {
+    super();
+    this.mat = new THREE.ShaderMaterial({
+      uniforms: {
+        tDiffuse: { value: null }, tDepth: { value: depth }, uNear: { value: 0.1 }, uFar: { value: 1000 },
+        uFocus: { value: 2 }, uRange: { value: 0.35 }, uStrength: { value: 0 }, uTexel: { value: new THREE.Vector2(1, 1) }, uMaxR: { value: 9 },
+      },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      fragmentShader: /* glsl */ `
+        uniform sampler2D tDiffuse, tDepth;
+        uniform float uNear, uFar, uFocus, uRange, uStrength, uMaxR;
+        uniform vec2 uTexel;
+        varying vec2 vUv;
+        float lin(float z) { float ndc = z * 2.0 - 1.0; return 2.0 * uNear * uFar / (uFar + uNear - ndc * (uFar - uNear)); }
+        float coc(vec2 uv) {
+          float d = lin(texture2D(tDepth, uv).r);
+          return clamp((abs(d - uFocus) - uRange) / (uFocus * 0.6 + 0.5), 0.0, 1.0);
+        }
+        void main() {
+          vec4 base = texture2D(tDiffuse, vUv);
+          float c0 = coc(vUv) * uStrength;
+          if (c0 < 0.02) { gl_FragColor = base; return; }
+          vec3 acc = base.rgb; float wsum = 1.0;
+          const float GA = 2.39996;
+          for (int i = 1; i < 24; i++) {
+            float fi = float(i);
+            float rr = sqrt(fi / 24.0) * c0 * uMaxR;
+            vec2 o = vec2(cos(fi * GA), sin(fi * GA)) * rr * uTexel;
+            vec2 uv = vUv + o;
+            // Scharfe Vordergrund-Pixel nicht in den unscharfen Hintergrund ziehen
+            float cs = coc(uv) * uStrength;
+            float w = smoothstep(0.0, 0.25, cs + 0.05);
+            acc += texture2D(tDiffuse, uv).rgb * w; wsum += w;
+          }
+          gl_FragColor = vec4(acc / wsum, base.a);
+        }`,
+      depthTest: false, depthWrite: false,
+    });
+    this.quad = new FullScreenQuad(this.mat);
+  }
+
+  override setSize(w: number, h: number) {
+    (this.mat.uniforms['uTexel']!.value as THREE.Vector2).set(1 / w, 1 / h);
+    this.mat.uniforms['uMaxR']!.value = Math.max(4, h / 90);
+  }
+
+  setFocus(dist: number) {
+    this.mat.uniforms['uFocus']!.value = dist;
+  }
+
+  override render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget) {
+    const u = this.mat.uniforms;
+    u['tDiffuse']!.value = readBuffer.texture;
+    u['uNear']!.value = this.camera.near;
+    u['uFar']!.value = this.camera.far;
+    u['uStrength']!.value = this.strength;
+    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+    this.quad.render(renderer);
+  }
+
+  override dispose() {
+    this.mat.dispose();
+    this.quad.dispose();
   }
 }
 
@@ -388,6 +467,9 @@ export class Renderer {
   readonly renderer: THREE.WebGLRenderer;
   composer: EffectComposer | null = null;
   private bloom: UnrealBloomPass | null = null;
+  private dof: DofPass | null = null;
+  /** Filmische Einstellung: Fokusabstand (null = aus) und Kinobalken, weich überblendet */
+  private cine = { focus: null as number | null, k: 0, bars: 0, barsWant: 0 };
   grade: ShaderPass | null = null;
   private scenePass: ScenePass | null = null;
   private atmosphere: AtmospherePass | null = null;
@@ -441,6 +523,7 @@ export class Renderer {
     this.composer = null;
     this.bloom = null;
     this.grade = null;
+    this.dof = null;
     this.scenePass = null;
     this.atmosphere = null;
     this.exposure = null;
@@ -464,6 +547,10 @@ export class Renderer {
     c.addPass(this.atmosphere);
     this.exposure = new ExposurePass();
     c.addPass(this.exposure);
+    if (settings.graphics !== 'niedrig') {
+      this.dof = new DofPass(depthTex, camera as THREE.PerspectiveCamera);
+      c.addPass(this.dof);
+    }
     if (settings.bloom) {
       this.bloom = new UnrealBloomPass(new THREE.Vector2(4, 4), 0.28, 0.6, 0.9);
       c.addPass(this.bloom);
@@ -548,8 +635,24 @@ export class Renderer {
     }
   }
 
+  /** Gesprächs-/Kinoeinstellung: Fokus auf ein Gesicht (Abstand in m) und Breitbildbalken. */
+  setCinematic(focus: number | null, bars: boolean) {
+    this.cine.focus = focus;
+    this.cine.barsWant = bars ? 1 : 0;
+  }
+
   render(scene: THREE.Scene, camera: THREE.PerspectiveCamera, dt: number) {
     if (this.grade) this.grade.uniforms['uTime']!.value += dt;
+    const cn = this.cine;
+    const kk = 1 - Math.exp(-dt * 3);
+    cn.k += ((cn.focus !== null ? 1 : 0) - cn.k) * kk;
+    cn.bars += (cn.barsWant - cn.bars) * kk;
+    if (this.dof) {
+      this.dof.enabled = cn.k > 0.01;
+      this.dof.strength = cn.k;
+      if (cn.focus !== null) this.dof.setFocus(cn.focus);
+    }
+    if (this.grade) this.grade.uniforms['uLetterbox']!.value = cn.bars;
     if (this.exposure) this.exposure.dt = dt;
     if (this.composer) {
       camera.updateMatrixWorld();

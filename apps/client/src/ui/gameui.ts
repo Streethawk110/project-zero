@@ -492,6 +492,8 @@ export class GameUI {
 
   frame(dt: number, g: Game) {
     this.hud.frame(dt, g);
+    // Filmische Gesprächseinstellung: Spielanzeigen ausblenden
+    this.hud.root.classList.toggle('cinematic', this.dialogueOpen);
     this.tutorial?.frame(dt);
     const it = g.interactTarget;
     const label = it && !this.blocksGameInput() ? it.label : '';
