@@ -71,6 +71,10 @@ Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
 - README komplett (Start, Steuerung, Modi, Tests, Modelle, Apps,
   Veröffentlichung, Konfiguration, ehrliche Grenzen).
 
+- Neue Tests: `content.test.ts` (alle Verweise/Flags auflösbar, keine
+  Quest-Sackgassen; per Mutation geprüft) und `boss.test.ts` (3 Phasen,
+  Säulen, Nullpuls, Skalierung, Zurücksetzen). Jetzt 28 Unit-Tests + 3 E2E.
+
 **Offen**
 - Nutzer nach Serverdaten fragen (Hosting-Art, Node verfügbar?, Domain,
   Zugang, bestehende Webseite/Webserver) und dann veröffentlichen.

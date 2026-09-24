@@ -113,11 +113,13 @@ docs/DESIGN.md    Entscheidungen, Welt, Geschichte, Fraktionen, Figuren, Kreatur
 
 ```bash
 npm run typecheck      # TypeScript in allen Paketen
-npm test               # 19 Vitest-Tests: Simulation (10) und Server-Integration (9)
+npm test               # 28 Vitest-Tests: Simulation (10), Inhaltsprüfung (6), Boss (3), Server (9)
 npm run build && npm run test:e2e   # 3 Playwright-Tests im Browser
 ```
 
-Die E2E-Tests starten einen echten Spielserver mit frischer Datenbank, der auch den gebauten Client
+Die Inhaltsprüfung löst jeden Verweis in Aufträgen, Dialogen, Objekten, Beute, Rezepten und Händlern
+auf und stellt sicher, dass jedes abgefragte Flag irgendwo gesetzt wird – so fallen Sackgassen in Aufträgen
+sofort auf. Die E2E-Tests starten einen echten Spielserver mit frischer Datenbank, der auch den gebauten Client
 ausliefert. Geprüft werden: neues Einzelspiel, Pause stoppt die Welt, Speichern/Export/Laden; Offline-Start
 über den Service Worker; zwei echte Online-Spieler sehen sich und chatten. Gegen eine laufende Installation,
 z. B. hinter nginx: `PZ_E2E_BASE_URL=https://example.de/spiel/ npx playwright test`.
