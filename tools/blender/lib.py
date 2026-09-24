@@ -296,8 +296,9 @@ def box_uv(o, scale=0.5):
     bm.free()
 
 
-def export(name, objs=None, lod_ratio=None, uv_scale=None):
-    """Exportiert die Szene (oder gegebene Objekte) als GLB; optional mit LOD1-Datei."""
+def export(name, objs=None, lod_ratio=None, uv_scale=None, lod1_objs=None):
+    """Exportiert die Szene (oder gegebene Objekte) als GLB; optional mit LOD1-Datei
+    (automatisch vereinfacht über lod_ratio oder eigens gebaut über lod1_objs)."""
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, f"{name}.glb")
     bpy.ops.object.select_all(action="DESELECT")
@@ -313,7 +314,18 @@ def export(name, objs=None, lod_ratio=None, uv_scale=None):
                               export_texcoords=True, export_normals=True, export_materials="EXPORT", export_extras=False,
                               export_animations=False, export_skins=False, export_vertex_color="ACTIVE")
     entry = {"file": f"{name}.glb"}
-    if lod_ratio:
+    if lod1_objs:
+        bpy.ops.object.select_all(action="DESELECT")
+        for o in lod1_objs:
+            o.select_set(True)
+        lpath = os.path.join(OUT_DIR, f"{name}_lod1.glb")
+        bpy.ops.export_scene.gltf(filepath=lpath, export_format="GLB", use_selection=True, export_apply=True, export_yup=True,
+                                  export_texcoords=True, export_normals=True, export_materials="EXPORT", export_extras=False,
+                                  export_animations=False, export_skins=False, export_vertex_color="ACTIVE")
+        entry["lod1"] = f"{name}_lod1.glb"
+        tris1 = sum(len(p.vertices) - 2 for o in lod1_objs for p in o.data.polygons)
+        print(f"[blender] {name}_lod1: {tris1} Dreiecke")
+    elif lod_ratio:
         lods = []
         for o in targets:
             lods.append(decimate(o, lod_ratio))

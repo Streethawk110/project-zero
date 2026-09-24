@@ -20,9 +20,10 @@ import nature  # noqa: E402
 import characters  # noqa: E402
 import creatures  # noqa: E402
 import character  # noqa: E402
+import trees  # noqa: E402
 
 REGISTRY = {}
-for mod in (buildings, props, nature, characters, creatures, character):
+for mod in (buildings, props, nature, characters, creatures, character, trees):
     REGISTRY.update(mod.ASSETS)
 
 
@@ -42,6 +43,9 @@ def main():
         fn, lod = REGISTRY[name]
         lib.reset()
         result = fn()
+        if isinstance(result, dict):
+            manifest[name] = lib.export(name, result["lod0"], None, lod1_objs=result["lod1"])
+            continue
         objs = result if isinstance(result, list) else None
         manifest[name] = lib.export(name, objs, lod)
     manifest = {k: manifest[k] for k in sorted(manifest)}

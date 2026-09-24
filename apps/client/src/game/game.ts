@@ -11,6 +11,8 @@ import { Terrain } from '../render/terrain.ts';
 import { Water } from '../render/water.ts';
 import { Grass } from '../render/grass.ts';
 import { WorldView } from '../render/worldview.ts';
+import { setFoliageSun } from '../render/foliage.ts';
+import { setImpostorLight } from '../render/impostor.ts';
 import { FX } from '../render/fx.ts';
 import { EntityManager, type EntityView } from '../render/entities.ts';
 import { HumanoidRig } from '../render/rig.ts';
@@ -96,12 +98,16 @@ export class Game {
     this.scene.add(this.water.group);
     this.grass = new Grass(this.terrain.heightTex, this.terrain.splatTex);
     if (this.grass.mesh) this.scene.add(this.grass.mesh);
-    this.world = new WorldView();
+    this.world = new WorldView(this.renderer.renderer);
     this.scene.add(this.world.group);
     this.fx = new FX();
     this.scene.add(this.fx.group);
     this.ents = new EntityManager(this.fx);
     this.scene.add(this.ents.group);
+    // Namen für Messungen (tools/dev/profile.mjs)
+    this.terrain.group.name = 'Gelände'; this.water.group.name = 'Wasser'; this.world.group.name = 'Welt';
+    this.fx.group.name = 'Effekte'; this.ents.group.name = 'Figuren';
+    if (this.grass.mesh) this.grass.mesh.name = 'Gras';
     lightManager.attach(this.scene, lightPoolSize(settings.graphics));
     this.renderer.setup(this.scene, this.camera);
     this.fx.setViewportHeight(window.innerHeight * this.renderer.renderer.getPixelRatio());
@@ -378,6 +384,7 @@ export class Game {
     this.water.update(this.time, this.env.sunDir, this.env.sun.color, this.env.fog.color, this.env.nightFactor, 0, this.env.skyTop, this.env.skyHorizon);
     this.grass.update(this.camera.position, new THREE.Vector3(9999, 0, 9999), this.time, 1, this.env.sun.color, this.env.sun.intensity, this.env.hemi.color.clone().multiplyScalar(this.env.hemi.intensity), true);
     this.world.update(this.camera.position, this.env.nightFactor, dt, this.time, false);
+    this.updateVegetationLight();
     lightManager.update(this.camera.position, dt);
     this.fx.ambient(dt, this.camera.position, 'haldenbruck', false, false, 'clear', 0);
     this.fx.update(dt);
@@ -410,6 +417,7 @@ export class Game {
       const t0 = performance.now();
       this.frame(dt);
       this.frameMs = this.frameMs * 0.95 + (performance.now() - t0) * 0.05;
+      this.dynamicResolution(dt * 1000);
       fpsFrames++;
       fpsT += dt;
       if (fpsT >= 0.5) {
@@ -419,6 +427,50 @@ export class Game {
       }
     };
     loop();
+  }
+
+  // Dynamische Auflösung: feste Stufen (wenige Neuanlagen der Renderziele), schnell nach unten,
+  // vorsichtig nach oben. Schlägt ein Hochschalten fehl, wartet der nächste Versuch länger.
+  private drs = { level: 0, t: 0, sum: 0, n: 0, calm: 0, fails: 0, lastUp: -1e9, clock: 0, warm: 3000 };
+  private dynamicResolution(ms: number) {
+    const STEPS = [1, 0.87, 0.75, 0.65, 0.56];
+    const d = this.drs;
+    d.clock += ms;
+    if (!settings.dynamicRes || !this.conn) {
+      if (d.level !== 0) { d.level = 0; this.renderer.setDynamicScale(1); }
+      return;
+    }
+    if (d.warm > 0) { d.warm -= ms; return; } // Shader-Aufwärmphase nicht werten
+    const target = 1000 / (settings.fpsCap > 0 ? settings.fpsCap : 60);
+    d.sum += ms; d.n++; d.t += ms;
+    if (d.t < 750) return;
+    const avg = d.sum / d.n;
+    d.t = 0; d.sum = 0; d.n = 0;
+    if (avg > target * 1.22 && d.level < STEPS.length - 1) {
+      if (d.clock - d.lastUp < 3000) d.fails = Math.min(5, d.fails + 1);
+      d.level++;
+      d.calm = 0;
+      this.renderer.setDynamicScale(STEPS[d.level]!);
+      d.warm = 400;
+    } else if (avg < target * 1.04 && d.level > 0) {
+      d.calm += 750;
+      if (d.calm >= 4000 * 2 ** d.fails) {
+        d.level--;
+        d.calm = 0;
+        d.lastUp = d.clock;
+        this.renderer.setDynamicScale(STEPS[d.level]!);
+        d.warm = 400;
+      }
+    } else d.calm = 0;
+  }
+
+  /** Sonne/Himmel für Laub (Durchscheinen) und Fernbäume (Impostor). */
+  private updateVegetationLight() {
+    const e = this.env;
+    this.camera.updateMatrixWorld();
+    setFoliageSun(e.sunDir, e.sun.color, e.sun.intensity * (1 - e.nightFactor), this.camera);
+    // Nachts leuchtet der Mond aus der Gegenrichtung (wie die Schattenkamera)
+    setImpostorLight(e.atmosphere().sunDir, e.sun.color, e.sun.intensity, e.hemi, this.scene.environmentIntensity);
   }
 
   private fpsEl: HTMLElement | null = null;
@@ -500,6 +552,7 @@ export class Game {
     this.terrain.group.visible = !this.inDungeon;
     this.grass.update(this.camera.position, ppos, this.time, this.weather === 'rain' || this.weather === 'nullstorm' ? 2.2 : 1, this.env.sun.color, this.env.sun.intensity * (this.inDungeon ? 0 : 1), this.env.hemi.color.clone().multiplyScalar(this.env.hemi.intensity), !this.inDungeon);
     this.world.update(this.camera.position, this.env.nightFactor, dt, this.time, this.inDungeon);
+    this.updateVegetationLight();
     lightManager.update(this.camera.position, dt);
     this.updateDynamicObjects();
     this.fx.ambient(dt, this.camera.position, zoneAt(ppos.x, ppos.z)?.id ?? null, this.isNight, this.inDungeon, this.weather, this.snap?.wInt ?? 0);

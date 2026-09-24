@@ -1,7 +1,8 @@
 // Render-Pipeline.
 //
 // Niedrig:  direktes Rendern mit einfachem Nebel.
-// Sonst:    Szene (HDR, optional MSAA) → Umgebungsverdeckung (GTAO) → Atmosphäre (Höhennebel,
+// Sonst:    Szene (HDR, optional MSAA) → Umgebungsverdeckung (aus der Tiefe, halbe Auflösung)
+//           → Atmosphäre (Höhennebel,
 //           Lichtstreuung zur Sonne, volumetrische Wolken, Wolkenschatten, Lichtstrahlen)
 //           → Bloom → Farbabstimmung → Tonemapping → SMAA.
 
@@ -12,9 +13,9 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
-import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { settings } from '../settings.ts';
 import { CloudRenderer, CLOUD_GLSL, cloudNoise, cloudUniforms } from './clouds.ts';
+import { AOPass } from './ao.ts';
 
 /** Farbkorrektur (filmisch), Vignette, Nullsicht-Tönung, Treffer-Aufblitzen, leichte Farbsäume am Rand. */
 const GradeShader = {
@@ -138,6 +139,9 @@ const atmosphereFrag = /* glsl */ `
   uniform float uCloudShadow;
   uniform int uRaySamples;
   uniform float uRayStrength;
+  uniform sampler2D tAO;
+  uniform float uAOOn;
+  uniform vec2 uAOTexel;
   varying vec2 vUv;
   ${CLOUD_GLSL}
 
@@ -148,6 +152,23 @@ const atmosphereFrag = /* glsl */ `
     return (uCamWorld * vp).xyz;
   }
   float ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
+
+  // Halbauflösende Verdeckung tiefenbewusst hochskalieren (keine Halos an Silhouetten)
+  float sampleAO(float viewZ) {
+    vec2 f = vUv / uAOTexel - 0.5;
+    vec2 i0 = floor(f);
+    vec2 fr = f - i0;
+    float sum = 0.0, wsum = 0.0;
+    for (int k = 0; k < 4; k++) {
+      vec2 o = vec2(float(k - (k / 2) * 2), float(k / 2));
+      vec2 s = texture2D(tAO, (i0 + o + 0.5) * uAOTexel).xy;
+      float bw = (o.x > 0.5 ? fr.x : 1.0 - fr.x) * (o.y > 0.5 ? fr.y : 1.0 - fr.y);
+      float w = (bw + 1e-3) / (1e-3 + abs(s.y - viewZ) / viewZ * 20.0);
+      sum += s.x * w;
+      wsum += w;
+    }
+    return sum / max(wsum, 1e-5);
+  }
 
   void main() {
     vec4 src = texture2D(tDiffuse, vUv);
@@ -166,6 +187,10 @@ const atmosphereFrag = /* glsl */ `
         col = col * (1.0 - c.a) + c.rgb;
       }
     } else {
+      if (uAOOn > 0.5) {
+        vec4 vp4 = uInvProj * vec4(vUv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+        col *= sampleAO(-vp4.z / vp4.w);
+      }
       // Wolkenschatten: Sonnenstrahl bis in die Wolkenschicht verfolgen
       if (uCloudsOn > 0.5 && uSunDir.y > 0.05) {
         vec3 pc = wp + uSunDir * ((CLOUD_BOTTOM + 250.0 - wp.y) / uSunDir.y);
@@ -214,7 +239,7 @@ class AtmospherePass extends Pass {
   material: THREE.ShaderMaterial;
   private quad: FullScreenQuad;
 
-  constructor(depth: THREE.Texture, clouds: CloudRenderer | null, raySamples: number) {
+  constructor(depth: THREE.Texture, clouds: CloudRenderer | null, raySamples: number, private ao: AOPass | null, private camera: THREE.PerspectiveCamera) {
     super();
     this.material = new THREE.ShaderMaterial({
       uniforms: {
@@ -237,6 +262,9 @@ class AtmospherePass extends Pass {
         uCloudShadow: { value: 0.55 },
         uRaySamples: { value: raySamples },
         uRayStrength: { value: 0.1 },
+        tAO: { value: ao?.target.texture ?? null },
+        uAOOn: { value: ao ? 1 : 0 },
+        uAOTexel: { value: new THREE.Vector2(1, 1) },
       },
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
       fragmentShader: atmosphereFrag,
@@ -248,13 +276,23 @@ class AtmospherePass extends Pass {
 
   override render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget) {
     this.material.uniforms['tDiffuse']!.value = readBuffer.texture;
+    if (this.ao) {
+      this.ao.render(renderer, this.camera);
+      const t = this.ao.target;
+      this.material.uniforms['uAOTexel']!.value.set(1 / t.width, 1 / t.height);
+    }
     renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
     this.quad.render(renderer);
+  }
+
+  override setSize(w: number, h: number) {
+    this.ao?.setSize(w, h);
   }
 
   override dispose() {
     this.material.dispose();
     this.quad.dispose();
+    this.ao?.dispose();
   }
 }
 
@@ -264,7 +302,6 @@ export class Renderer {
   private bloom: UnrealBloomPass | null = null;
   grade: ShaderPass | null = null;
   private scenePass: ScenePass | null = null;
-  private gtao: GTAOPass | null = null;
   private atmosphere: AtmospherePass | null = null;
   clouds: CloudRenderer | null = null;
   private scene: THREE.Scene | null = null;
@@ -272,6 +309,8 @@ export class Renderer {
   private sceneFog: THREE.Fog | THREE.FogExp2 | null = null;
   width = 1;
   height = 1;
+  /** Faktor der dynamischen Auflösung (1 = volle gewählte Auflösung). */
+  dynScale = 1;
   private windOffset = new THREE.Vector3();
 
   constructor(readonly canvas: HTMLCanvasElement) {
@@ -308,13 +347,11 @@ export class Renderer {
     this.composer?.dispose();
     this.scenePass?.dispose();
     this.atmosphere?.dispose();
-    this.gtao?.dispose();
     this.clouds?.dispose();
     this.composer = null;
     this.bloom = null;
     this.grade = null;
     this.scenePass = null;
-    this.gtao = null;
     this.atmosphere = null;
     this.clouds = null;
     if (settings.graphics === 'niedrig' && !settings.bloom) {
@@ -328,17 +365,11 @@ export class Renderer {
     const c = new EffectComposer(r, new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType }));
     this.scenePass = new ScenePass(scene, camera, settings.antialias === 'msaa' ? 4 : 0);
     c.addPass(this.scenePass);
-    if (settings.ao) {
-      // Eigener Normalen-/Tiefendurchgang (three r180 stürzt mit fremder Tiefentextur ohne Normalen ab)
-      this.gtao = new GTAOPass(scene, camera, 4, 4);
-      this.gtao.updateGtaoMaterial({ radius: 1.4, distanceExponent: 1.5, thickness: 2.0, scale: 1.15, samples: settings.graphics === 'ultra' ? 16 : 12 });
-      this.gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
-      this.gtao.blendIntensity = 0.9;
-      c.addPass(this.gtao);
-    }
     if (settings.clouds !== 'aus') this.clouds = new CloudRenderer(settings.clouds);
     const rays = !settings.godRays ? 0 : settings.graphics === 'ultra' ? 64 : 40;
-    this.atmosphere = new AtmospherePass(this.scenePass.rt.depthTexture!, this.clouds, rays);
+    const depthTex = this.scenePass.rt.depthTexture!;
+    const ao = settings.ao ? new AOPass(depthTex, settings.graphics === 'ultra' ? 16 : 10) : null;
+    this.atmosphere = new AtmospherePass(depthTex, this.clouds, rays, ao, camera);
     c.addPass(this.atmosphere);
     if (settings.bloom) {
       this.bloom = new UnrealBloomPass(new THREE.Vector2(4, 4), 0.28, 0.6, 0.9);
@@ -356,7 +387,7 @@ export class Renderer {
   pixelRatio() {
     const h = Math.max(1, window.innerHeight);
     const base = settings.resolution === 'nativ' ? Math.min(window.devicePixelRatio || 1, 2) : Number(settings.resolution) / h;
-    let pr = base * settings.renderScale;
+    let pr = base * settings.renderScale * this.dynScale;
     const maxEdge = Math.min(this.maxSize, 8192);
     pr = Math.min(pr, maxEdge / Math.max(window.innerWidth, h));
     return Math.max(0.25, pr);
@@ -380,6 +411,12 @@ export class Renderer {
     this.clouds?.setSize(Math.round(w * pr), Math.round(h * pr));
     // Bloom in halber Auflösung genügt
     this.bloom?.setSize(Math.round(w * pr / 2), Math.round(h * pr / 2));
+  }
+
+  setDynamicScale(s: number) {
+    if (Math.abs(s - this.dynScale) < 1e-3) return;
+    this.dynScale = s;
+    this.resize();
   }
 
   /** Überträgt Sonne, Nebel, Himmel und Wetter an Wolken und Atmosphäre. */

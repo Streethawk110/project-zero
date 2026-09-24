@@ -7,12 +7,28 @@ import { flattenMeshes, getModel, namedMaterial } from './models.ts';
 import { TEX } from './textures.ts';
 import { settings } from '../settings.ts';
 import { VLight } from './lights.ts';
-import { buildCards, cardCount, foliageKindFor, foliageMaterial, windUniforms } from './foliage.ts';
+import { foliageKindOf, foliageMaterial, treeBarkMaterial, windUniforms } from './foliage.ts';
+import { bakeImpostor } from './impostor.ts';
 
 const CHUNKED = new Set(['tree_pine', 'tree_oak', 'tree_dead', 'bush', 'rock_small', 'rock_large', 'palisade', 'cliff_rock']);
+/** Bäume und Büsche: Wind, Blattwerk; Bäume zusätzlich mit Impostor in der Ferne. */
+const TREES = new Set(['tree_pine', 'tree_oak', 'tree_dead', 'bush']);
+const IMPOSTOR = new Set(['tree_pine', 'tree_oak', 'tree_dead']);
 const CHUNK = 80;
+/** Bäume in kleineren Feldern: Detailstufen wechseln feiner abgestuft. */
+const TREE_CHUNK = 48;
 
-interface ChunkSet { cx: number; cz: number; lod0: THREE.InstancedMesh[]; lod1: THREE.InstancedMesh[] }
+interface ChunkSet { cx: number; cz: number; size: number; tree: boolean; lod0: THREE.InstancedMesh[]; lod1: THREE.InstancedMesh[]; lod2: THREE.InstancedMesh[] }
+
+/** Entfernungen der Detailstufen je Grafikprofil: [voll, mittel] – dahinter Impostor. */
+function treeLodRanges(): [number, number] {
+  switch (settings.graphics) {
+    case 'ultra': return [70, 180];
+    case 'hoch': return [55, 140];
+    case 'mittel': return [40, 105];
+    default: return [28, 75];
+  }
+}
 
 export interface DynObject {
   obj: PlacedObject;
@@ -58,7 +74,7 @@ export class WorldView {
   tideStones: THREE.Object3D[] = [];
   dungeonGroup = new THREE.Group();
 
-  constructor() {
+  constructor(private renderer: THREE.WebGLRenderer) {
     const layout = getWorldLayout();
     const byType = new Map<string, PlacedObject[]>();
     for (const o of layout.objects) {
@@ -94,24 +110,29 @@ export class WorldView {
 
   private buildInstanced(type: string, list: PlacedObject[]) {
     const tpl = getModel(PROPS[type]?.model ?? type);
-    let parts0 = flattenMeshes(tpl.lod0);
-    let parts1 = tpl.lod1 ? flattenMeshes(tpl.lod1) : null;
-    // Baumkronen durch Blattkarten mit Wind ersetzen (nur echte Blender-Modelle)
-    const fk = tpl.fromFile ? foliageKindFor(type) : null;
-    if (fk) {
-      const swap = (parts: ReturnType<typeof flattenMeshes>, lod: 0 | 1) => parts.map((p, i) => {
-        const m = p.material as THREE.Material;
-        if (!m.name?.startsWith('leaves')) return p;
-        const f = foliageMaterial(fk);
-        return { ...p, geometry: buildCards(p.geometry, fk, cardCount(fk, lod), i + 1, p.matrix), matrix: new THREE.Matrix4(), material: f.mat, depth: f.depth, castShadow: true };
-      });
-      parts0 = swap(parts0, 0);
-      if (parts1) parts1 = swap(parts1, 1);
-    }
+    const isTree = TREES.has(type) && tpl.fromFile;
+    // Zweigkarten und Rinde der Bäume: Materialien mit Wind, Durchscheinen und passendem Schatten
+    const prep = (parts: ReturnType<typeof flattenMeshes>) => parts.map((p) => {
+      const name = (p.material as THREE.Material).name ?? '';
+      const kind = foliageKindOf(name);
+      if (kind) {
+        const f = foliageMaterial(kind);
+        return { ...p, material: f.mat, depth: f.depth, castShadow: true };
+      }
+      if (isTree && name.startsWith('bark')) {
+        const b = treeBarkMaterial(p.material as THREE.MeshStandardMaterial);
+        return { ...p, material: b.mat, depth: b.depth };
+      }
+      return p;
+    });
+    const parts0 = prep(flattenMeshes(tpl.lod0));
+    const parts1 = tpl.lod1 ? prep(flattenMeshes(tpl.lod1)) : null;
+    const imp = IMPOSTOR.has(type) && tpl.fromFile ? bakeImpostor(this.renderer, parts0) : null;
+    const size = isTree ? TREE_CHUNK : CHUNK;
     const groups = new Map<string, PlacedObject[]>();
     if (CHUNKED.has(type)) {
       for (const o of list) {
-        const k = `${Math.floor(o.x / CHUNK)},${Math.floor(o.z / CHUNK)}`;
+        const k = `${Math.floor(o.x / size)},${Math.floor(o.z / size)}`;
         let a = groups.get(k);
         if (!a) groups.set(k, (a = []));
         a.push(o);
@@ -123,7 +144,7 @@ export class WorldView {
         const im = new THREE.InstancedMesh(p.geometry, p.material, objs.length);
         objs.forEach((o, i) => im.setMatrixAt(i, tmp.multiplyMatrices(this.matrixFor(o), p.matrix)));
         im.instanceMatrix.needsUpdate = true;
-        im.castShadow = p.castShadow && type !== 'bush';
+        im.castShadow = p.castShadow;
         const depth = (p as { depth?: THREE.Material }).depth;
         if (depth) im.customDepthMaterial = depth;
         im.receiveShadow = true;
@@ -133,11 +154,22 @@ export class WorldView {
       });
       const lod0 = mk(parts0);
       const lod1 = parts1 ? mk(parts1) : [];
+      const lod2: THREE.InstancedMesh[] = [];
+      if (imp) {
+        const im = new THREE.InstancedMesh(imp.geometry, imp.material, objs.length);
+        objs.forEach((o, i) => im.setMatrixAt(i, this.matrixFor(o)));
+        im.instanceMatrix.needsUpdate = true;
+        im.castShadow = false;
+        im.receiveShadow = false;
+        im.computeBoundingSphere();
+        this.group.add(im);
+        lod2.push(im);
+      }
       if (k !== 'all') {
         const [cx, cz] = k.split(',').map(Number) as [number, number];
-        this.chunks.push({ cx: (cx + 0.5) * CHUNK, cz: (cz + 0.5) * CHUNK, lod0, lod1 });
+        this.chunks.push({ cx: (cx + 0.5) * size, cz: (cz + 0.5) * size, size, tree: isTree, lod0, lod1, lod2 });
       } else {
-        this.chunks.push({ cx: NaN, cz: NaN, lod0, lod1 });
+        this.chunks.push({ cx: NaN, cz: NaN, size, tree: isTree, lod0, lod1, lod2 });
       }
     }
   }
@@ -303,7 +335,7 @@ export class WorldView {
   showAllForWarmup() {
     const prev: [THREE.Object3D, boolean][] = [];
     const show = (o: THREE.Object3D) => { prev.push([o, o.visible]); o.visible = true; };
-    for (const c of this.chunks) { c.lod0.forEach(show); c.lod1.forEach(show); }
+    for (const c of this.chunks) { c.lod0.forEach(show); c.lod1.forEach(show); c.lod2.forEach(show); }
     show(this.dungeonGroup);
     return () => { for (const [o, v] of prev) o.visible = v; };
   }
@@ -312,13 +344,17 @@ export class WorldView {
   update(cam: THREE.Vector3, night: number, dt: number, time: number, inDungeon: boolean) {
     const vd = settings.viewDistance;
     const near = settings.graphics === 'niedrig' ? 60 : settings.graphics === 'mittel' ? 90 : 130;
+    const [treeNear, treeMid] = treeLodRanges();
     for (const c of this.chunks) {
       if (Number.isNaN(c.cx)) continue;
-      const d = Math.hypot(c.cx - cam.x, c.cz - cam.z) - CHUNK * 0.7;
+      const d = Math.hypot(c.cx - cam.x, c.cz - cam.z) - c.size * 0.7;
       const show = d < vd && !inDungeon;
-      const hi = d < near || c.lod1.length === 0;
-      for (const m of c.lod0) m.visible = show && hi;
-      for (const m of c.lod1) m.visible = show && !hi;
+      // Büsche ohne Impostor verschwinden in der Ferne (klein, kaum sichtbar)
+      const bushFar = c.tree && c.lod2.length === 0 && d > treeMid;
+      const lvl = c.tree ? (d < treeNear ? 0 : d < treeMid || c.lod2.length === 0 ? 1 : 2) : (d < near || c.lod1.length === 0 ? 0 : 1);
+      for (const m of c.lod0) m.visible = show && lvl === 0;
+      for (const m of c.lod1) m.visible = show && lvl === 1 && !bushFar;
+      for (const m of c.lod2) m.visible = show && lvl === 2;
     }
     this.dungeonGroup.visible = inDungeon || cam.x > 900;
     windUniforms.uWindTime.value = time;

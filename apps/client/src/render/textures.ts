@@ -119,6 +119,33 @@ export async function loadBakedTextures(size: number, onProgress?: (p: number) =
   return baked.size;
 }
 
+// ---------- Blattwerk-Atlanten (tools/blender/foliage_bake.py) ----------
+
+export const FOLIAGE_NAMES = ['oak', 'bush', 'spruce', 'pine', 'grass', 'dry'] as const;
+const foliage = new Map<string, { map: THREE.Texture; normalMap: THREE.Texture }>();
+
+/** Lädt die Zweig-/Grasbilder (Farbe mit Deckung, Normalen). */
+export async function loadFoliageTextures(size: number, base = './assets/textures/') {
+  await Promise.all(FOLIAGE_NAMES.map(async (name) => {
+    try {
+      const [c, n] = await Promise.all(['color', 'normal'].map((k) => bitmap(`${base}foliage_${name}_${k}.webp`, size)));
+      const map = bitmapTex(c!, true);
+      map.wrapS = map.wrapT = THREE.ClampToEdgeWrapping;
+      const normalMap = bitmapTex(n!, false);
+      normalMap.wrapS = normalMap.wrapT = THREE.ClampToEdgeWrapping;
+      foliage.set(name, { map, normalMap });
+    } catch (e) {
+      console.warn('Blattwerk fehlt:', name, e);
+      diag.errors.push(`Blattwerk ${name}: ${(e as Error).message}`.slice(0, 120));
+    }
+  }));
+  return foliage.size;
+}
+
+export function foliageSet(name: string) {
+  return foliage.get(name);
+}
+
 /** Gebackene Textur, falls vorhanden. */
 export function bakedSet(name: string) {
   return baked.get(name);

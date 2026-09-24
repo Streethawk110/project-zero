@@ -90,6 +90,8 @@ export interface Settings {
   renderScale: number;
   /** Bildraten-Begrenzung (0 = unbegrenzt / Bildschirmfrequenz) */
   fpsCap: number;
+  /** Senkt die Renderauflösung kurzzeitig, wenn die Grafikkarte die Bildrate nicht hält. */
+  dynamicRes: boolean;
   showFps: boolean;
   clouds: Quality;
   shadowQuality: Quality;
@@ -148,6 +150,7 @@ function defaults(): Settings {
     ...profileDefaults(g),
     fov: 62,
     fpsCap: 0,
+    dynamicRes: true,
     showFps: false,
     volMaster: 0.8,
     volMusic: 0.55,

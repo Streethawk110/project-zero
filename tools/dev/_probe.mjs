@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const p = await b.newPage({ viewport: { width: 800, height: 450 } });
+p.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') console.log('[' + m.type() + ']', m.text().slice(0, 300)); });
+p.on('pageerror', (e) => console.log('[pageerror]', e.message));
+await p.addInitScript(() => localStorage.setItem('pz.settings.v1', '{"graphics":"mittel","fpsCap":3,"firstRun":false}'));
+const t0 = Date.now();
+await p.goto('http://localhost:5173/');
+await p.waitForSelector('.menu-foot', { timeout: 240000 }).catch(() => console.log('kein Menü'));
+console.log('Menü nach', Date.now() - t0, 'ms:', await p.textContent('.menu-foot').catch(() => ''));
+await b.close();

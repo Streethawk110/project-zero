@@ -2,6 +2,38 @@
 
 Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
 
+## 2026-09-24 – Cloud-Sitzung: Realismus + Leistung („wie KCD2“)
+
+**Wunsch**: Grafik viel realistischer (Ziel Kingdom Come Deliverance 2), weniger
+Stottern auch auf schwächerer Grafik, „sehr ausführlich, nicht schnell“. Spielzeit-
+Frage beantwortet: geschätzt 3–5 h alle Geschichten (nicht gemessen).
+
+**Gemessen** (`tools/dev/profile.mjs`, zählt Zeichenaufrufe/Dreiecke je Durchgang):
+Ultra vorher ~2600 Aufrufe / 8,5 Mio. Dreiecke pro Bild; GTAO renderte die Szene
+ein zweites Mal; alte Blattkarten ~880k Dreiecke im Bild; Gras ~1 Mio. (wurde im
+Profiler nicht mitgezählt – behoben).
+
+**Erledigt**
+- `render/ao.ts`: AO aus dem Tiefenbild (halbe Auflösung, kantenerhaltend),
+  in der Atmosphären-Stufe tiefenbewusst hochskaliert → GTAOPass entfernt
+  (Aufrufe/Dreiecke halbiert).
+- `tools/blender/foliage_bake.py`: modellierte Zweige (Eiche, Hasel, Fichte,
+  Kiefer) und Grasbüschel (grün, trocken) → `foliage_<art>_{color,normal}.webp`.
+  Vorschau: `preview_foliage.py`. Achtung: Blender-Pixel sind linear → vor dem
+  Speichern nach sRGB wandeln.
+- `tools/blender/trees.py`: verzweigte Bäume (Fichte = tree_pine, Eiche, Hasel =
+  bush, toter Baum) mit Zweigkarten, Punktfarbe R=Wind G=Verdeckung B=Tönung,
+  gebogene Normalen; eigenes LOD1 (`lib.export(..., lod1_objs=)`). Vorschau:
+  `preview_tree.py`. Alte Bäume aus `nature.py` entfernt.
+- Client: `foliage.ts` (Blattmaterial: Wind, Durchscheinen, keine Rückseiten-
+  Normalenumkehr, Alpha-Mip-Ausgleich), `impostor.ts` (8 Ansichten je Baumtyp
+  zur Laufzeit gebacken, ferne Bäume = 1 Viereck), Baum-Chunks 48 m mit 3
+  Stufen (`treeLodRanges`), dynamische Auflösung (Einstellung, Stufen 100–56 %),
+  Umgebungs-Spiegelung auf 7 Bilder verteilt, neues Gras (`grass.ts`: Lambert →
+  bekommt Schatten, 2 Ringe, trockene Flecken, Durchscheinen).
+- Tests ohne GPU: gegen statischen Build testen (Vite-Dev-Server lädt bei
+  Codeänderungen neu → Screenshots brechen ab).
+
 ## 2026-09-24 – Cloud-Sitzung: Grafik-Offensive (Fortsetzung)
 
 **Wünsche des Nutzers**

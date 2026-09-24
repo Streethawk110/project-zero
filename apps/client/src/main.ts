@@ -1,9 +1,10 @@
 import './style.css';
+import * as THREE from 'three';
 import { createCharacter, getWorldLayout, type Appearance, type OriginId } from '@pz/shared';
 import { applyUiScale, settings } from './settings.ts';
 import { loadRuntimeConfig } from './config.ts';
 import { loadManifest, preloadModels } from './render/models.ts';
-import { BAKED_NAMES, loadBakedTextures, setTextureSize, TEX } from './render/textures.ts';
+import { BAKED_NAMES, FOLIAGE_NAMES, loadBakedTextures, loadFoliageTextures, setTextureSize, TEX } from './render/textures.ts';
 import { hasCharacterModel } from './render/skinned.ts';
 import { diag, gpuName } from './diag.ts';
 import { loadCloudNoise } from './render/clouds.ts';
@@ -56,6 +57,8 @@ async function boot() {
   // Gebackene Blender-Texturen (fehlende werden prozedural ersetzt)
   const tex = await loadBakedTextures(settings.textureQuality, (p) => { fill.style.transform = `scaleX(${0.5 + p * 0.2})`; });
   diag.textures = `${tex}/${BAKED_NAMES.length}`;
+  const fol = await loadFoliageTextures(settings.graphics === 'niedrig' ? 512 : 1024);
+  diag.textures += ` + Laub ${fol}/${FOLIAGE_NAMES.length}`;
   for (const k of Object.keys(TEX) as (keyof typeof TEX)[]) { TEX[k](); }
   await progress(0.75, 'Wolken …');
   await loadCloudNoise();
@@ -153,7 +156,7 @@ async function boot() {
   // Beim Verlassen der Seite sichern
   window.addEventListener('pagehide', () => save(false));
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(false); });
-  (window as unknown as { __pz: unknown }).__pz = { game, gameUi, get local() { return local; } };
+  (window as unknown as { __pz: unknown }).__pz = { game, gameUi, THREE, get local() { return local; } };
 }
 
 function findSlotFor(charId: string) {

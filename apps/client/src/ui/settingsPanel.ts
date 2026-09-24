@@ -41,6 +41,7 @@ export function settingsPanel(onClose: () => void, capture: (fn: (code: string) 
         ...row('Kantenglättung', select<Settings['antialias']>([['aus', 'Aus'], ['smaa', 'SMAA'], ['msaa', 'MSAA 4× + SMAA']], () => settings.antialias, (v) => (settings.antialias = v))),
         ...row('FPS-Limit', select<number>(FPS_CAPS.map((f) => [f, f === 0 ? 'Unbegrenzt (Bildschirmfrequenz)' : `${f} FPS`]), () => settings.fpsCap, (v) => (settings.fpsCap = v))),
         ...row('FPS anzeigen', toggle(() => settings.showFps, (v) => (settings.showFps = v))),
+        ...row('Dynamische Auflösung', toggle(() => settings.dynamicRes, (v) => (settings.dynamicRes = v)), 'Hält die Bildrate: Wird es knapp, rendert das Spiel kurz mit geringerer Auflösung statt zu stocken.'),
         ...row('Sichtfeld (FOV)', range(() => settings.fov, (v) => (settings.fov = v), 50, 100, 1, (v) => `${v}°`)),
         h('h3', { style: { gridColumn: '1 / -1', margin: '0.8em 0 0' } }, 'Welt'),
         ...row('Sichtweite', range(() => settings.viewDistance, (v) => (settings.viewDistance = v), 150, 1000, 10, (v) => `${v} m`)),

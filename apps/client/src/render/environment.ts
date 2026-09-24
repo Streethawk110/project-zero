@@ -31,7 +31,7 @@ export class Environment {
   private envSky: Sky;
   private envRT: THREE.WebGLRenderTarget | null = null;
   // Feste Würfelkarte + wiederverwendetes PMREM-Ziel: keine Speicherreservierung beim Aktualisieren
-  private cubeRT = new THREE.WebGLCubeRenderTarget(128, { type: THREE.HalfFloatType });
+  private cubeRT = new THREE.WebGLCubeRenderTarget(128, { type: THREE.HalfFloatType, generateMipmaps: false });
   private cubeCam = new THREE.CubeCamera(0.1, 200, this.cubeRT);
   private lastEnvKey = '';
   sunDir = new THREE.Vector3();
@@ -230,20 +230,50 @@ export class Environment {
       this.renderer.toneMappingExposure = THREE.MathUtils.lerp(0.62, 0.95, day) + flash * 0.4;
     }
 
-    // Umgebungsreflexionen gelegentlich neu erzeugen
+    // Umgebungsreflexionen gelegentlich neu erzeugen – verteilt auf 7 Bilder (je eine Würfelseite,
+    // dann die Filterung), damit kein einzelnes Bild die ganze Arbeit trägt (sonst Ruckler).
     const envKey = `${Math.round(dayTime * 60)}-${weather}-${Math.round(wInt * 4)}-${inDungeon}`;
-    if (envKey !== this.lastEnvKey && settings.graphics !== 'niedrig') {
+    if (envKey !== this.lastEnvKey && settings.graphics !== 'niedrig' && this.envStage < 0) {
       this.lastEnvKey = envKey;
       const eu = this.envSky.material.uniforms;
       eu['sunPosition']!.value.copy(this.sunDir);
       eu['turbidity']!.value = u['turbidity']!.value;
       eu['rayleigh']!.value = u['rayleigh']!.value;
       eu['mieCoefficient']!.value = 0.004;
-      this.cubeCam.update(this.renderer, this.envScene);
-      this.envRT = this.pmrem.fromCubemap(this.cubeRT.texture, this.envRT);
-      this.scene.environment = inDungeon ? null : this.envRT.texture;
-      this.scene.environmentIntensity = THREE.MathUtils.lerp(0.15, 0.7, day) * (1 - overcast * 0.4);
+      this.envTarget = { dungeon: inDungeon, intensity: THREE.MathUtils.lerp(0.15, 0.7, day) * (1 - overcast * 0.4) };
+      if (!this.envRT) {
+        // Erstes Mal sofort (sonst startet die Szene ohne Umgebungslicht)
+        this.cubeCam.update(this.renderer, this.envScene);
+        this.envStage = 6;
+      } else this.envStage = 0;
     }
+    this.stepEnvironment();
+  }
+
+  private envStage = -1;
+  private envTarget = { dungeon: false, intensity: 0.5 };
+
+  private stepEnvironment() {
+    if (this.envStage < 0) return;
+    const r = this.renderer;
+    if (this.envStage < 6) {
+      const cc = this.cubeCam;
+      if (cc.parent === null) cc.updateMatrixWorld();
+      if (cc.coordinateSystem !== r.coordinateSystem) {
+        cc.coordinateSystem = r.coordinateSystem;
+        cc.updateCoordinateSystem();
+      }
+      const prev = r.getRenderTarget();
+      r.setRenderTarget(this.cubeRT, this.envStage);
+      r.render(this.envScene, cc.children[this.envStage] as THREE.Camera);
+      r.setRenderTarget(prev);
+      this.envStage++;
+      return;
+    }
+    this.envRT = this.pmrem.fromCubemap(this.cubeRT.texture, this.envRT);
+    this.scene.environment = this.envTarget.dungeon ? null : this.envRT.texture;
+    this.scene.environmentIntensity = this.envTarget.intensity;
+    this.envStage = -1;
   }
 }
 
