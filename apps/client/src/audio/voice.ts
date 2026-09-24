@@ -11,6 +11,8 @@ export interface VoiceSpeaker {
   female: boolean;
   /** 0 (jung) … 1 (alt) */
   age?: number;
+  /** Klangfarbe: -1 (dunkel, tief) … 1 (hell) */
+  tone?: number;
 }
 
 type Listener = (speaking: boolean, secs: number) => void;
@@ -52,8 +54,8 @@ class Voice {
     const fem = /(female|frau|anna|katja|hedda|petra|marlene|vicki|helena|sabine|amala|seraphina|elke|gisela|klara|louisa)/i;
     const mal = /(male|mann|conrad|stefan|hans|markus|yannick|killian|florian|bernd|christoph|ralf|jonas|daniel)/i;
     const pref = de.filter((v) => (sp.female ? fem : mal).test(v.name));
-    const list = pref.length ? pref : de;
-    return list[Math.floor(hash(sp.id) * list.length) % list.length]!;
+    const list = (pref.length ? pref : de).slice().sort((a, b) => a.name.localeCompare(b.name));
+    return list[Math.floor(hash(sp.id + 'v') * list.length) % list.length]!;
   }
 
   /** Spricht eine Zeile. Gibt die (geschätzte) Dauer zurück; listener meldet Beginn/Ende. */
@@ -61,9 +63,11 @@ class Voice {
     const clean = speakable(text);
     const h = hash(sp.id);
     // Stimmlage: Frauen höher, ältere Figuren tiefer und langsamer, dazu individuelle Streuung
-    const age = sp.age ?? 0.4;
-    const pitch = Math.min(2, Math.max(0.1, (sp.female ? 1.12 : 0.82) + (h - 0.5) * 0.28 - age * 0.12));
-    const rate = Math.min(1.25, Math.max(0.75, 1.0 + (hash(sp.id + 'r') - 0.5) * 0.18 - age * 0.1));
+    const age = sp.age ?? 0.35;
+    const tone = Math.max(-1, Math.min(1, sp.tone ?? (h - 0.5) * 1.2));
+    // Grundlage: Männer deutlich tiefer als Frauen; Klangfarbe verschiebt hell/dunkel; Alter senkt und verlangsamt
+    const pitch = Math.min(2, Math.max(0.1, (sp.female ? 1.18 : 0.72) + tone * 0.22 + (h - 0.5) * 0.08 - age * 0.14));
+    const rate = Math.min(1.25, Math.max(0.72, 0.98 + (hash(sp.id + 'r') - 0.5) * 0.16 - age * 0.14 + tone * 0.04));
     const secs = speechSeconds(clean, rate);
     if (!clean) return 0;
     const vol = settings.volMaster * settings.volVoice * (opts.volume ?? 1);
@@ -100,3 +104,14 @@ class Voice {
 }
 
 export const voice = new Voice();
+
+/** Stimmprofil einer Figur aus ihrem Aussehen (Körpergröße, Statur, Haarfarbe als Altershinweis). */
+export function voiceProfile(id: string, ap?: { sex?: number; height?: number; body?: number; hairColor?: number }): VoiceSpeaker {
+  const female = ap?.sex === 1;
+  const hgt = ap?.height ?? 1, body = ap?.body ?? 0.5;
+  // Groß und kräftig → dunkler; klein und zierlich → heller; dazu individuelle Streuung
+  const tone = Math.max(-1, Math.min(1, (1 - hgt) * 6 + (0.5 - body) * 0.9 + (hash(id + 't') - 0.5) * 0.8));
+  const grey = ap?.hairColor === 5 || ap?.hairColor === 7;
+  const age = grey ? 0.8 : 0.2 + hash(id + 'a') * 0.35;
+  return { id, female, tone, age };
+}

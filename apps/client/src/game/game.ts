@@ -6,7 +6,7 @@ import {
   type CharacterData, type CollisionContext, type GameEvent, type MoveInput, type MoveState, type Snapshot, type SnapshotMe, type Collider, rank,
 } from '@pz/shared';
 import { Renderer } from '../render/renderer.ts';
-import { voice } from '../audio/voice.ts';
+import { voice, voiceProfile } from '../audio/voice.ts';
 import { Environment } from '../render/environment.ts';
 import { Terrain } from '../render/terrain.ts';
 import { Water } from '../render/water.ts';
@@ -318,7 +318,18 @@ export class Game {
           const fromMe = e.src === this.conn.eid;
           if (!e.heal) this.fx.hitSpark(e.x, e.y, e.z, e.dt, e.crit);
           const v = this.ents.views.get(e.tgt);
-          if (v && !e.heal && e.n > 0) { v.rig?.hit(); v.creature?.hit(); }
+          if (v && !e.heal && e.n > 0) {
+            v.rig?.hit(); v.creature?.hit();
+            // Schmerzlaut (Menschen): nicht bei jedem Kratzer
+            if (v.rig && (e.n > 8 || e.crit) && Math.random() < 0.6) {
+              const vp = voiceProfile(v.def || v.name, v.rig.appearance);
+              this.audio.vocal('pain', vp.female, vp.tone ?? 0, v.pos.clone().setY(v.pos.y + 1.6));
+            }
+          }
+          if (isMe && !e.heal && e.n > 0 && this.playerRig && (e.n > 8 || e.crit) && Math.random() < 0.6) {
+            const vp = voiceProfile(this.char?.name ?? 'me', this.char?.appearance);
+            this.audio.vocal('pain', vp.female, vp.tone ?? 0);
+          }
           if (isMe && !e.heal && e.n > 0) { this.cam.addShake(Math.min(0.6, e.n / 60)); this.playerRig?.hit(); this.ui.damageFlash(); }
           if (fromMe && e.crit) this.cam.addShake(0.12);
           this.audio.hit(e.dt, e.crit, e.blocked ?? false, e.perfect ?? false, new THREE.Vector3(e.x, e.y, e.z), isMe);
@@ -332,6 +343,7 @@ export class Game {
         case 'death': {
           const v = this.ents.views.get(e.eid);
           if (v) this.audio.death(v.def, v.pos);
+          if (v?.rig) { const vp = voiceProfile(v.def || v.name, v.rig.appearance); this.audio.vocal('death', vp.female, vp.tone ?? 0, v.pos.clone().setY(v.pos.y + 1.2)); }
           break;
         }
         case 'sfx': this.audio.sfx(e.id, e.x !== undefined ? new THREE.Vector3(e.x, e.y, e.z) : undefined); break;
@@ -644,8 +656,7 @@ export class Game {
     const v = this.viewForSpeaker(e.speaker, e.npc);
     const partner = this.viewForSpeaker('npc', e.npc) ?? v;
     this.talkPartner = partner;
-    const female = v?.rig?.appearance.sex === 1;
-    voice.say({ id: v?.def || e.speaker, female }, e.text, (on, secs) => { if (v?.rig) v.rig.talking = on ? secs + 0.2 : 0; });
+    voice.say(voiceProfile(v?.def || e.speaker, v?.rig?.appearance), e.text, (on, secs) => { if (v?.rig) v.rig.talking = on ? secs + 0.2 : 0; });
   }
 
   private speakBark(e: Extract<GameEvent, { e: 'bark' }>) {
@@ -653,8 +664,7 @@ export class Game {
     if (!v) return;
     const d = v.pos.distanceTo(this.camera.position);
     if (d > 28 || this.ui.dialogueOpen) { if (v.rig) v.rig.talking = 2; return; }
-    const female = v.rig?.appearance.sex === 1;
-    voice.say({ id: v.def || v.name, female }, e.text, (on, secs) => { if (v.rig) v.rig.talking = on ? secs + 0.2 : 0; }, { interrupt: false, volume: Math.max(0.15, 1 - d / 28) });
+    voice.say(voiceProfile(v.def || v.name, v.rig?.appearance), e.text, (on, secs) => { if (v.rig) v.rig.talking = on ? secs + 0.2 : 0; }, { interrupt: false, volume: Math.max(0.15, 1 - d / 28) });
   }
 
   /** NSCs und Begleiterin schauen den Spieler an, wenn er nahe ist; im Gespräch Nahaufnahme. */
@@ -739,6 +749,11 @@ export class Game {
       else if (sp > 0.3) anim = 'walk';
     }
     if (me?.act && ['wave', 'bow', 'cheer', 'sit', 'dance', 'point'].includes(me.act)) anim = `emote_${me.act}`;
+    if ((anim === 'heavy' || anim === 'atk3') && rig.anim !== anim) {
+      // Kraftlaut beim schweren Schlag
+      const vp = voiceProfile(this.char?.name ?? 'me', this.char?.appearance);
+      this.audio.vocal('effort', vp.female, vp.tone ?? 0);
+    }
     rig.play(anim, anim.startsWith('atk') ? 0.55 : anim === 'heavy' ? 1.0 : anim === 'bow' || anim === 'cast' ? 0.8 : undefined);
     const y = this.pred.yaw;
     const gl = this.groundAt(p.x - Math.cos(y) * 0.12, p.z + Math.sin(y) * 0.12) - p.y;

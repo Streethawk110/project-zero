@@ -170,6 +170,53 @@ export class AudioEngine {
     o.stop(t + dur + 0.05);
   }
 
+  /**
+   * Stimmlaute im Kampf (Formant-Synthese): Anstrengung beim Schlag, Schmerz bei Treffern, Sterben.
+   * Männer tief (Grundton ~95–130 Hz), Frauen hoch (~190–250 Hz); tone -1 … 1 verschiebt dunkel/hell.
+   */
+  vocal(kind: 'effort' | 'pain' | 'death', female: boolean, tone: number, pos?: THREE.Vector3) {
+    if (!this.ready) return;
+    const c = this.ctx!;
+    const t = c.currentTime;
+    const o = this.out(pos, this.busVoice, 5);
+    if (!o) return;
+    const f0 = (female ? 215 : 112) * Math.pow(1.18, tone) * (kind === 'pain' ? 1.15 : kind === 'death' ? 0.95 : 1);
+    const dur = kind === 'effort' ? 0.22 : kind === 'pain' ? 0.32 : 0.9;
+    const src = c.createOscillator();
+    src.type = 'sawtooth';
+    src.frequency.setValueAtTime(f0 * (kind === 'pain' ? 1.25 : 1.05), t);
+    src.frequency.exponentialRampToValueAtTime(f0 * (kind === 'death' ? 0.7 : 0.85), t + dur);
+    // Vibrato/Rauheit
+    const vib = c.createOscillator();
+    vib.frequency.value = 22 + Math.random() * 8;
+    const vg = c.createGain();
+    vg.gain.value = f0 * 0.03;
+    vib.connect(vg).connect(src.frequency);
+    // Formanten eines offenen Vokals („a/ä“), bei Frauen etwas höher, helle Stimmen etwas heller
+    const k = (female ? 1.17 : 1.0) * (1 + tone * 0.06);
+    const mix = c.createGain();
+    for (const [f, q, g] of [[750 * k, 6, 1], [1200 * k, 8, 0.55], [2550 * k, 10, 0.25]] as const) {
+      const bp = c.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = f;
+      bp.Q.value = q;
+      const gg = c.createGain();
+      gg.gain.value = g;
+      src.connect(bp).connect(gg).connect(mix);
+    }
+    const env = c.createGain();
+    const peak = kind === 'death' ? 0.5 : 0.42;
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(peak, t + 0.025);
+    env.gain.exponentialRampToValueAtTime(peak * 0.6, t + dur * 0.5);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    mix.connect(env).connect(o);
+    // Atem/Hauch
+    this.noiseBurst(o, t, dur * 0.8, 'bandpass', 1800 * k, 900 * k, 1.5, 0.12, 0.01);
+    src.start(t); vib.start(t);
+    src.stop(t + dur + 0.05); vib.stop(t + dur + 0.05);
+  }
+
   /** Karplus-Strong-Zupfklang (Bogen, Harfe) als gecachter Puffer. */
   private pluckBuffer(freq: number, dur = 1.2, bright = 0.5) {
     const key = `pluck${Math.round(freq)}-${bright}`;
