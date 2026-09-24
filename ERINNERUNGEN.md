@@ -116,6 +116,15 @@ Profiler nicht mitgezählt – behoben).
   noch als Ersatz ohne Modell. Im Spiel geprüft.
 - E2E: Einzelspieler-Test braucht im Gesamtlauf ohne GPU länger (Timeout
   auf 180 s erhöht); einzeln 54 s grün, MP und Offline grün.
+- Begehbare Häuser: `house_a`, `house_b`, `inn` haben im Erdgeschoss echte
+  Wände mit Tür-/Fensteröffnungen, offene Tür, Dielen, Decke/Balken und
+  Einrichtung (`_furnish_home`/`_furnish_inn` in `tools/blender/buildings.py`).
+  Kollision: `walkIn()` in `packages/shared/src/world/props.ts` (Sockel als
+  begehbarer Boden, Stufe, Wände mit Türlücke, Möbel). `PropDef.interior`
+  (Rechteck + Deckenhöhe) → Kamera-Decke und gedämpftes Himmelslicht drinnen
+  (`Game.interiorAt`, `env.indoor`); Herdlichter per `light` (jetzt auch
+  Liste mit ox/oz). Gras wird in Innenräumen ausgeblendet (`uRooms`).
+  Im Spiel geprüft (Gasthaus, Wohnhaus). Vorschau: `preview_interior.py`.
 
 ## 2026-09-24 – Cloud-Sitzung: Start „Project Zero“
 

@@ -18,19 +18,68 @@ export interface PropDef {
   model: string;
   colliders: PropCollider[];
   /** Leuchtet (Punktlicht im Client) */
-  light?: { color: number; intensity: number; dist: number; y: number };
+  light?: PropLight | PropLight[];
+  /** Begehbarer Innenraum (lokales Rechteck + Deckenhöhe) – Kamera und Licht passen sich an */
+  interior?: { hw: number; hd: number; ceil: number; ox?: number; oz?: number };
   /** Blockiert die Baumplatzierung in diesem Radius */
   clear?: number;
 }
 
+export interface PropLight { color: number; intensity: number; dist: number; y: number; ox?: number; oz?: number }
+
 const box = (hw: number, hd: number, h: number, ox = 0, oz = 0, extra: Partial<PropCollider> = {}): PropCollider => ({ kind: 'box', hw, hd, h, ox, oz, ...extra });
 const circ = (r: number, h: number, ox = 0, oz = 0): PropCollider => ({ kind: 'circle', r, h, ox, oz });
 
+/** Begehbares Haus (Maße wie in tools/blender/buildings.py timber_house; Blender +Y = Spiel -Z).
+ *  Sockel als begehbarer Boden, Stufe vor der Tür, Wände mit Türlücke, dazu die Möbel. */
+const WALL_T = 0.24, DOOR_W = 1.25;
+function walkIn(w: number, d: number, height: number, doorX: number, furniture: PropCollider[]): PropCollider[] {
+  const t = WALL_T / 2, fz = -(d / 2 - t);
+  const l0 = -w / 2, l1 = doorX - DOOR_W / 2, r0 = doorX + DOOR_W / 2, r1 = w / 2;
+  return [
+    box(w / 2 + 0.15, d / 2 + 0.15, 0.65, 0, 0, { walkable: true }),
+    box(0.95, 0.35, 0.3, doorX, -(d / 2 + 0.35), { walkable: true }),
+    box(w / 2, t, height, 0, d / 2 - t),
+    box(t, d / 2, height, -(w / 2 - t), 0),
+    box(t, d / 2, height, w / 2 - t, 0),
+    box((l1 - l0) / 2, t, height, (l0 + l1) / 2, fz),
+    box((r1 - r0) / 2, t, height, (r0 + r1) / 2, fz),
+    // offen stehender Türflügel innen links
+    box(0.06, 0.62, 2.9, doorX - DOOR_W / 2 + 0.1, -(d / 2 - 0.75)),
+    ...furniture,
+  ];
+}
+function homeFurniture(w: number, d: number): PropCollider[] {
+  const t = WALL_T;
+  return [
+    box(0.8, 0.5, 1.6, w * 0.28, d / 2 - t / 2 - 0.5),        // Herd
+    box(0.88, 0.9, 1.4, -w * 0.18, -0.2),                      // Tisch mit Bänken
+    box(0.52, 1.02, 1.2, w / 2 - t - 0.55, d / 2 - t - 1.15),  // Bett
+    box(0.47, 0.3, 1.15, w * 0.08, d / 2 - t - 0.4),           // Truhe
+    circ(0.32, 1.45, -w / 2 + t + 0.45, -(d / 2 - t - 0.5)),   // Fass
+  ];
+}
+function innFurniture(w: number, d: number): PropCollider[] {
+  const t = WALL_T, cx = w / 2 - t - 1.4;
+  const x0 = cx - 0.45, x1 = w / 2 - t;
+  const tables: [number, number][] = [[-w * 0.28, -1.4], [-w * 0.28, 1.2], [0.8, 1.6]];
+  return [
+    box(1.05, 0.55, 1.7, w * 0.28, d / 2 - t / 2 - 0.55),        // Kamin
+    box((x1 - x0) / 2, 2.25, 1.7, (x0 + x1) / 2, 0.6),           // Theke mit Zapffässern
+    ...tables.map(([x, z]) => box(0.92, 0.92, 1.4, x, z)),
+  ];
+}
+const hearthLight = (w: number, d: number, y: number, ox = w * 0.28): PropLight =>
+  ({ color: 0xff9a48, intensity: 14, dist: Math.max(w, d) * 1.1, y, ox, oz: d / 2 - 1.3 });
+
 export const PROPS: Record<string, PropDef> = {
   // Dorf
-  house_a: { model: 'house_a', colliders: [box(4, 3, 7)], clear: 7 },
-  house_b: { model: 'house_b', colliders: [box(5, 3.5, 9)], clear: 8 },
-  inn: { model: 'inn', colliders: [box(6, 4.5, 10)], clear: 9, light: { color: 0xffa050, intensity: 18, dist: 14, y: 2.5 } },
+  house_a: { model: 'house_a', colliders: walkIn(8, 6, 7, 0, homeFurniture(8, 6)), clear: 7, light: hearthLight(8, 6, 1.9), interior: { hw: 3.76, hd: 2.76, ceil: 3.65 } },
+  house_b: { model: 'house_b', colliders: walkIn(10, 7, 9, -1.5, homeFurniture(10, 7)), clear: 8, light: hearthLight(10, 7, 1.9), interior: { hw: 4.76, hd: 3.26, ceil: 3.05 } },
+  inn: {
+    model: 'inn', colliders: walkIn(12, 9, 10, 0, innFurniture(12, 9)), clear: 9, interior: { hw: 5.76, hd: 4.26, ceil: 3.25 },
+    light: [hearthLight(12, 9, 2.0), { color: 0xffb060, intensity: 10, dist: 10, y: 2.1, ox: -3.4, oz: 0 }, { color: 0xffa050, intensity: 8, dist: 10, y: 2.6, oz: -5.3 }],
+  },
   smithy: { model: 'smithy', colliders: [box(4, 2.2, 6, 0, 1.3), circ(0.6, 1.2, -1.5, -2.2)], clear: 7, light: { color: 0xff6a20, intensity: 30, dist: 12, y: 1.4 } },
   chapel: { model: 'chapel', colliders: [box(3.5, 6, 12), box(1.6, 1.6, 16, 0, 5)], clear: 9 },
   vogthaus: { model: 'vogthaus', colliders: [box(5.5, 4, 10)], clear: 9 },

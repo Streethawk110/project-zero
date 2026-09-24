@@ -5,12 +5,27 @@
 // Spieler, trockene und saftige Flecken, dunklere Halmansätze und Durchscheinen im Gegenlicht.
 
 import * as THREE from 'three';
-import { WORLD_HALF } from '@pz/shared';
+import { getWorldLayout, PROPS, WORLD_HALF } from '@pz/shared';
 import { foliageSet, leafTexture } from './textures.ts';
 import { windUniforms } from './foliage.ts';
 import { settings } from '../settings.ts';
 
 interface Layer { radius: number; count: number; w: number; h: number }
+
+const MAX_ROOMS = 16;
+/** Grundrisse begehbarer Häuser (Welt-AABB x0,z0,x1,z1): dort wächst kein Gras durch die Dielen */
+function roomRects() {
+  const out: THREE.Vector4[] = [];
+  for (const o of getWorldLayout().objects) {
+    const it = PROPS[o.t]?.interior;
+    if (!it || out.length >= MAX_ROOMS) continue;
+    const c = Math.abs(Math.cos(o.rot)), sn = Math.abs(Math.sin(o.rot));
+    const hw = (it.hw * c + it.hd * sn) * o.s + 0.4, hd = (it.hw * sn + it.hd * c) * o.s + 0.4;
+    out.push(new THREE.Vector4(o.x - hw, o.z - hd, o.x + hw, o.z + hd));
+  }
+  while (out.length < MAX_ROOMS) out.push(new THREE.Vector4(1e6, 1e6, 1e6, 1e6));
+  return out;
+}
 
 function layers(): Layer[] {
   const v = Math.max(0.5, Math.min(2, settings.vegetation));
@@ -35,6 +50,7 @@ const DECL = /* glsl */ `
   uniform sampler2D tHeight;
   uniform sampler2D tSplat;
   uniform float uWorldHalf;
+  uniform vec4 uRooms[${MAX_ROOMS}];
   varying vec3 vGrass; // Höhe im Halm, trocken?, Farbvariation
 `;
 
@@ -47,6 +63,10 @@ const PLACE = /* glsl */ `
   vec4 sp = texture2D(tSplat, tuv);
   float dens = sp.r * 1.1 + sp.g * 0.35 - sp.b * 2.0 - sp.a * 1.5;
   float keep = step(offset.z, dens) * step(0.4, gh);
+  for (int i = 0; i < ${MAX_ROOMS}; i++) {
+    vec4 r = uRooms[i];
+    if (wxz.x > r.x && wxz.x < r.z && wxz.y > r.y && wxz.y < r.w) keep = 0.0;
+  }
   float dist = length(rel);
   // Außen ausblenden, innen dem nahen Ring überlassen (weicher Übergang)
   float fade = (1.0 - smoothstep(uRadius * 0.7, uRadius, dist)) * smoothstep(uInner * 0.75, uInner, dist);
@@ -97,6 +117,7 @@ export class Grass {
     this.mesh = new THREE.Group();
     this.mesh.name = 'Gras';
     let inner = 0;
+    const rooms = roomRects();
     for (const L of layers()) {
       const geo = new THREE.InstancedBufferGeometry();
       const merged = crossedCards(L.w, L.h);
@@ -117,7 +138,7 @@ export class Grass {
       const custom = {
         uCam: { value: new THREE.Vector3() }, uPlayer: { value: new THREE.Vector3() }, uRadius: { value: L.radius }, uInner: { value: inner },
         uTime: { value: 0 }, uWind: { value: 1 }, tHeight: { value: heightTex }, tSplat: { value: splatTex }, uWorldHalf: { value: WORLD_HALF },
-        tDry: { value: dry?.map ?? map }, uAtlasSize: { value: atlasSize },
+        uRooms: { value: rooms }, tDry: { value: dry?.map ?? map }, uAtlasSize: { value: atlasSize },
       };
       mat.onBeforeCompile = (shader) => {
         Object.assign(shader.uniforms, custom, { uSunDirView: windUniforms.uSunDirView, uSunColor: windUniforms.uSunColor });

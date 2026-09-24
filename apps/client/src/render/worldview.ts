@@ -79,7 +79,13 @@ export class WorldView {
     const byType = new Map<string, PlacedObject[]>();
     for (const o of layout.objects) {
       const def = PROPS[o.t];
-      if (def?.light) this.lightSources.push({ x: o.x, y: o.y + def.light.y * o.s, z: o.z, color: def.light.color, intensity: def.light.intensity, dist: def.light.dist, dungeon: o.x > 1000, flicker: def.light.color !== 0x7ff6ff });
+      if (def?.light) {
+        const c = Math.cos(o.rot), sn = Math.sin(o.rot);
+        for (const l of Array.isArray(def.light) ? def.light : [def.light]) {
+          const ox = (l.ox ?? 0) * o.s, oz = (l.oz ?? 0) * o.s;
+          this.lightSources.push({ x: o.x + ox * c + oz * sn, y: o.y + l.y * o.s, z: o.z - ox * sn + oz * c, color: l.color, intensity: l.intensity, dist: l.dist, dungeon: o.x > 1000, flicker: l.color !== 0x7ff6ff });
+        }
+      }
       if (o.t === 'bridge') continue;
       if (o.id || o.requires || o.gate || o.hiddenUntilSight) {
         this.addDynamic(o);

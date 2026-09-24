@@ -2,7 +2,7 @@
 
 import * as THREE from 'three';
 import {
-  copyMoveState, EMPTY_INPUT, getWorldLayout, INTERACTABLES, ITEMS, MOVE, newMoveState, SKILL_BY_ID, stepMovement, TICK_DT, yawDir, yawTo, zoneAt,
+  copyMoveState, EMPTY_INPUT, getWorldLayout, INTERACTABLES, ITEMS, MOVE, PROPS, newMoveState, SKILL_BY_ID, stepMovement, TICK_DT, yawDir, yawTo, zoneAt,
   type CharacterData, type CollisionContext, type GameEvent, type MoveInput, type MoveState, type Snapshot, type SnapshotMe, type Collider, rank,
 } from '@pz/shared';
 import { Renderer } from '../render/renderer.ts';
@@ -548,10 +548,11 @@ export class Game {
     void pv;
 
     // Kamera & Umgebung
-    const ceil = this.inDungeon ? this.dungeonCeil(ppos.x, ppos.z) : null;
+    const room = this.inDungeon ? null : this.interiorAt(ppos.x, ppos.z);
+    const ceil = this.inDungeon ? this.dungeonCeil(ppos.x, ppos.z) : room ? room.ceil : null;
     this.cam.fovBoost = this.me && this.playerRig?.anim === 'sprint' ? 6 : 0;
     this.cam.update(dt, ppos, this.inDungeon, ceil);
-    this.env.update(this.dayTime, this.weather, this.snap?.wInt ?? 0, ppos, this.camera.position, dt, this.inDungeon);
+    this.env.update(this.dayTime, this.weather, this.snap?.wInt ?? 0, ppos, this.camera.position, dt, this.inDungeon, room ? 1 : 0);
     const skyCol = this.env.fog.color;
     this.water.update(this.time, this.env.sunDir, this.env.sun.color, skyCol, this.env.nightFactor, this.weather === 'rain' ? this.snap?.wInt ?? 0 : 0, this.env.skyTop, this.env.skyHorizon);
     this.water.group.visible = !this.inDungeon;
@@ -590,6 +591,27 @@ export class Game {
     this.renderer.render(this.scene, this.camera, dt);
     this.ui.frame(dt, this);
     i.endFrame();
+  }
+
+  private interiors: { x: number; z: number; c: number; s: number; hw: number; hd: number; ceil: number }[] | null = null;
+  /** Begehbarer Innenraum an dieser Stelle (Deckenhöhe in Weltkoordinaten) */
+  private interiorAt(x: number, z: number) {
+    if (!this.interiors) {
+      this.interiors = [];
+      for (const o of getWorldLayout().objects) {
+        const it = PROPS[o.t]?.interior;
+        if (!it) continue;
+        const c = Math.cos(o.rot), s = Math.sin(o.rot), ox = (it.ox ?? 0) * o.s, oz = (it.oz ?? 0) * o.s;
+        this.interiors.push({ x: o.x + ox * c + oz * s, z: o.z - ox * s + oz * c, c, s, hw: it.hw * o.s, hd: it.hd * o.s, ceil: o.y + it.ceil * o.s });
+      }
+    }
+    for (const r of this.interiors) {
+      const dx = x - r.x, dz = z - r.z;
+      // Welt → lokal (Umkehrung von wx = ox·c + oz·s, wz = −ox·s + oz·c)
+      const lx = dx * r.c - dz * r.s, lz = dx * r.s + dz * r.c;
+      if (Math.abs(lx) <= r.hw && Math.abs(lz) <= r.hd) return r;
+    }
+    return null;
   }
 
   private dungeonCeil(x: number, z: number) {

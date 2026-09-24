@@ -53,17 +53,134 @@ def _window(parts, x, y, z, facing=1, w=0.9, h=1.1, axis="y"):
             parts.append(box("shutter", (0.05, w * 0.5, h), (x + off + 0.02 * facing, y + s * (w * 0.75 + 0.05), z), material="wood"))
 
 
-def _door(parts, x, y, w=1.3, h=2.3, facing=1):
+def _door(parts, x, y, w=1.3, h=2.3, facing=1, open_=False):
     off = 0.11 * facing
-    parts.append(box("door", (w, 0.1, h), (x, y + off, 0.6 + h / 2), material="wood_dark", bevel=0.02))
-    for zz in (0.9, 2.2):
-        parts.append(box("hinge", (w * 0.8, 0.04, 0.06), (x - 0.05, y + off + 0.06 * facing, zz), material="metal_dark"))
+    if open_:
+        # Nach innen aufgeschwenkt (Angel links), damit man hindurchgehen kann
+        parts.append(box("door", (0.1, w, h), (x - w / 2 + 0.08, y - w / 2 - 0.1, 0.6 + h / 2), material="wood_dark", bevel=0.02))
+        for zz in (0.9, 2.2):
+            parts.append(box("hinge", (0.04, w * 0.8, 0.06), (x - w / 2 + 0.14, y - w / 2, zz), material="metal_dark"))
+    else:
+        parts.append(box("door", (w, 0.1, h), (x, y + off, 0.6 + h / 2), material="wood_dark", bevel=0.02))
+        for zz in (0.9, 2.2):
+            parts.append(box("hinge", (w * 0.8, 0.04, 0.06), (x - 0.05, y + off + 0.06 * facing, zz), material="metal_dark"))
     parts.append(box("lintel", (w + 0.4, 0.24, 0.24), (x, y + off, 0.6 + h + 0.12), material="wood_dark"))
     parts.append(box("step", (w + 0.6, 0.7, 0.3), (x, y + 0.35 * facing, 0.15), material="stone_block", bevel=0.03))
 
 
+WALL_T = 0.24
+
+
+def _wall_run(parts, axis, fixed, a0, a1, zb, zt, openings, mat):
+    """Wand entlang einer Achse mit Öffnungen [(mitte, breite, unten, oben)]; fixed = Lage der Wand."""
+    ops = sorted(openings)
+    cuts = [a0]
+    for c, w, _, _ in ops:
+        cuts += [c - w / 2, c + w / 2]
+    cuts.append(a1)
+
+    def piece(p0, p1, z0, z1):
+        if p1 - p0 < 0.01 or z1 - z0 < 0.01:
+            return
+        mid, ln = (p0 + p1) / 2, p1 - p0
+        if axis == "x":
+            parts.append(box("wall", (ln, WALL_T, z1 - z0), (mid, fixed, (z0 + z1) / 2), material=mat))
+        else:
+            parts.append(box("wall", (WALL_T, ln, z1 - z0), (fixed, mid, (z0 + z1) / 2), material=mat))
+    # volle Wandstücke zwischen den Öffnungen
+    for i in range(0, len(cuts), 2):
+        piece(cuts[i], cuts[i + 1], zb, zt)
+    # unter/über den Öffnungen
+    for c, w, ob, ot in ops:
+        piece(c - w / 2, c + w / 2, zb, ob)
+        piece(c - w / 2, c + w / 2, ot, zt)
+
+
+def _furnish_home(parts, w, d, z0, hearth_x, rnd):
+    """Wohnstube: Herd mit Rauchfang, Tisch mit Bänken, Bett, Regal, Fass, Truhe, Säcke."""
+    back = -d / 2 + WALL_T / 2
+    # Herd an der Rückwand
+    hx, hy = hearth_x, back + 0.5
+    parts.append(box("hearth", (1.5, 0.9, 0.9), (hx, hy, z0 + 0.45), material="stone_block", bevel=0.04))
+    parts.append(box("embers", (0.8, 0.5, 0.06), (hx, hy + 0.12, z0 + 0.92), material="glow_warm"))
+    for i in range(3):
+        parts.append(beam("log", (hx - 0.3 + i * 0.25, hy + 0.3, z0 + 0.98), (hx - 0.2 + i * 0.2, hy - 0.05, z0 + 1.02), 0.08, material="wood_dark"))
+    parts.append(cyl("cauldron", 0.26, 0.32, (hx + 0.1, hy + 0.12, z0 + 1.15), material="metal_dark", r2=0.2, seg=14))
+    parts.append(cyl("hood", 0.85, 0.9, (hx, hy - 0.05, z0 + 2.2), material="plaster", r2=0.35, seg=4))
+    parts.append(box("flue", (0.6, 0.6, 1.4), (hx, hy - 0.15, z0 + 3.3), material="stone_block"))
+    # Tisch mit zwei Bänken
+    tx, ty = -w * 0.18, 0.2
+    parts.append(box("table", (1.7, 0.85, 0.07), (tx, ty, z0 + 0.76), material="wood", bevel=0.01))
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            parts.append(box("leg", (0.08, 0.08, 0.72), (tx + sx * 0.72, ty + sy * 0.32, z0 + 0.36), material="wood_dark"))
+    for sy in (-1, 1):
+        parts.append(box("bench", (1.5, 0.3, 0.05), (tx, ty + sy * 0.72, z0 + 0.45), material="wood"))
+        for sx in (-1, 1):
+            parts.append(box("benchleg", (0.07, 0.25, 0.43), (tx + sx * 0.6, ty + sy * 0.72, z0 + 0.21), material="wood_dark"))
+    # Dinge auf dem Tisch: Schüssel, Krug, Brot
+    parts.append(cyl("bowl", 0.14, 0.07, (tx - 0.3, ty, z0 + 0.83), material="wood_dark", r2=0.09, seg=12))
+    parts.append(cyl("jug", 0.08, 0.24, (tx + 0.35, ty + 0.1, z0 + 0.92), material="plaster", r2=0.06, seg=10))
+    parts.append(ico("bread", 0.1, (tx + 0.05, ty - 0.15, z0 + 0.84), material="hay", sub=2, scale=(1.4, 0.9, 0.6)))
+    # Bett in der Ecke: Rahmen, Strohsack, Decke, Kissen
+    bx, by = w / 2 - WALL_T - 0.55, -d / 2 + WALL_T + 1.15
+    parts.append(box("bedframe", (1.0, 2.0, 0.32), (bx, by, z0 + 0.2), material="wood_dark", bevel=0.02))
+    parts.append(box("mattress", (0.92, 1.9, 0.14), (bx, by, z0 + 0.42), material="hay", bevel=0.05))
+    parts.append(box("blanket", (0.96, 1.25, 0.06), (bx, by + 0.3, z0 + 0.5), material="cloth_red", bevel=0.03))
+    parts.append(box("pillow", (0.6, 0.35, 0.12), (bx, by - 0.72, z0 + 0.52), material="cloth_white", bevel=0.05))
+    # Wandregal mit Töpfen
+    sx = -w / 2 + WALL_T / 2 + 0.2
+    for zz in (1.2, 1.7):
+        parts.append(box("shelf", (0.3, 1.4, 0.04), (sx, -0.6, z0 + zz), material="wood"))
+        for k in range(3):
+            parts.append(cyl("pot", 0.08 + rnd.random() * 0.03, 0.18, (sx, -1.1 + k * 0.45, z0 + zz + 0.11), material=rnd.choice(("plaster", "wood_dark", "metal_dark")), r2=0.06, seg=10))
+    # Fass, Truhe, Säcke
+    parts.append(cyl("barrel", 0.3, 0.8, (-w / 2 + WALL_T + 0.45, d / 2 - WALL_T - 0.5, z0 + 0.4), material="wood", r2=0.28, seg=14))
+    parts.append(box("chest", (0.9, 0.55, 0.5), (w * 0.08, -d / 2 + WALL_T + 0.4, z0 + 0.25), material="wood_dark", bevel=0.03))
+    for k in range(2):
+        parts.append(ico("sack", 0.28, (-w / 2 + WALL_T + 0.35 + k * 0.45, d / 2 - WALL_T - 1.3, z0 + 0.22), material="cloth", sub=2, scale=(1.0, 0.85, 0.8)))
+    # Kräuterbüschel an einem Balken
+    for k in range(4):
+        parts.append(cone("herbs", 0.07, 0.3, (tx - 0.6 + k * 0.4, ty, z0 + 2.9), rot=(math.pi, 0, 0), material="hay"))
+
+
+def _furnish_inn(parts, w, d, z0, hearth_x, rnd):
+    """Schankstube: Theke, Fässer, Tische mit Bänken, Kamin."""
+    back = -d / 2 + WALL_T / 2
+    hx, hy = hearth_x, back + 0.55
+    parts.append(box("hearth", (2.0, 1.0, 1.1), (hx, hy, z0 + 0.55), material="stone_block", bevel=0.04))
+    parts.append(box("embers", (1.2, 0.55, 0.07), (hx, hy + 0.15, z0 + 1.12), material="glow_warm"))
+    parts.append(box("mantel", (2.4, 0.4, 0.15), (hx, hy + 0.15, z0 + 1.7), material="wood_dark"))
+    # Theke an der rechten Seite
+    cx = w / 2 - WALL_T - 1.4
+    parts.append(box("counter", (0.7, 4.2, 1.05), (cx, -0.6, z0 + 0.52), material="wood_dark", bevel=0.02))
+    parts.append(box("countertop", (0.85, 4.4, 0.07), (cx, -0.6, z0 + 1.08), material="wood"))
+    for k in range(4):
+        parts.append(cyl("tapbarrel", 0.35, 0.85, (w / 2 - WALL_T - 0.45, -2.2 + k * 1.0, z0 + 0.43), rot=(0, math.pi / 2, 0), material="wood", r2=0.33, seg=14))
+    for k in range(5):
+        parts.append(cyl("mug", 0.05, 0.12, (cx, -2.2 + k * 0.7, z0 + 1.18), material="wood_dark", seg=8))
+    # Tische
+    for i, (tx, ty) in enumerate(((-w * 0.28, 1.4), (-w * 0.28, -1.2), (0.8, -1.6))):
+        parts.append(box("table", (1.8, 0.9, 0.07), (tx, ty, z0 + 0.76), material="wood", bevel=0.01))
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                parts.append(box("leg", (0.08, 0.08, 0.72), (tx + sx * 0.75, ty + sy * 0.34, z0 + 0.36), material="wood_dark"))
+        for sy in (-1, 1):
+            parts.append(box("bench", (1.6, 0.3, 0.05), (tx, ty + sy * 0.75, z0 + 0.45), material="wood"))
+            for sx in (-1, 1):
+                parts.append(box("benchleg", (0.07, 0.25, 0.43), (tx + sx * 0.65, ty + sy * 0.75, z0 + 0.21), material="wood_dark"))
+        parts.append(cyl("mug", 0.05, 0.12, (tx + 0.3, ty, z0 + 0.86), material="wood_dark", seg=8))
+        parts.append(cyl("candle", 0.03, 0.12, (tx - 0.2, ty + 0.1, z0 + 0.86), material="plaster", seg=8))
+        parts.append(ico("flame", 0.025, (tx - 0.2, ty + 0.1, z0 + 0.96), material="glow_warm", sub=1, scale=(1, 1, 1.6)))
+
+
+def _interior_height(floors, plinth, wall_h):
+    return (wall_h - plinth) / floors
+
+
 def timber_house(w, d, wall_h, roof_h, *, floors=1, plinth=0.6, roof_mat="roof", seed=0, windows=None, door_x=0.0,
-                 chimney=True, jetty=False, lower_mat="plaster"):
+                 chimney=True, jetty=False, lower_mat="plaster", interior=None):
+    """interior: None (geschlossen) oder "home"/"inn" – Erdgeschoss begehbar mit Einrichtung."""
     parts = []
     # Sockel (reicht unter den Boden, damit Hanglagen nicht schweben)
     parts.append(box("plinth", (w + 0.3, d + 0.3, plinth + 0.8), (0, 0, plinth / 2 - 0.4), material="stone_block", bevel=0.05))
@@ -75,14 +192,38 @@ def timber_house(w, d, wall_h, roof_h, *, floors=1, plinth=0.6, roof_mat="roof",
         grow = 0.25 if (jetty and f > 0) else 0.0
         ww, dd = w + grow * 2, d + grow * 2
         mat = lower_mat if f == 0 else "plaster"
-        parts.append(box("wall", (ww - 0.12, dd - 0.12, floor_h), (0, 0, zb + floor_h / 2), material=mat))
+        nx = windows if windows else max(1, int(ww // 2.6))
+        wz = zb + floor_h * 0.55
+        if interior and f == 0:
+            # Begehbar: Wände mit Tür- und Fensteröffnungen statt eines vollen Blocks
+            front_ops, back_ops = [(door_x, 1.25, zb, zb + 2.35)], []
+            for i in range(nx):
+                x = -ww / 2 + (i + 0.5) * ww / nx
+                if abs(x - door_x) < 1.2:
+                    continue
+                front_ops.append((x, 0.9, wz - 0.55, wz + 0.55))
+                if i % 2 == 0:
+                    back_ops.append((x, 0.9, wz - 0.55, wz + 0.55))
+            half = WALL_T / 2
+            _wall_run(parts, "x", dd / 2 - half, -ww / 2, ww / 2, zb, zt, front_ops, mat)
+            _wall_run(parts, "x", -dd / 2 + half, -ww / 2, ww / 2, zb, zt, back_ops, mat)
+            for s in (-1, 1):
+                _wall_run(parts, "y", s * (ww / 2 - half), -dd / 2 + WALL_T, dd / 2 - WALL_T, zb, zt, [(0.0, 0.9, wz - 0.55, wz + 0.55)], mat)
+            # Dielenboden und Decke (bei mehreren Geschossen) bzw. Zugbalken
+            parts.append(box("floorboards", (ww - WALL_T * 2, dd - WALL_T * 2, 0.05), (0, 0, zb + 0.025), material="wood"))
+            if floors > 1:
+                parts.append(box("ceiling", (ww - WALL_T * 2, dd - WALL_T * 2, 0.12), (0, 0, zt - 0.06), material="wood_dark"))
+            for k in range(max(2, round(ww / 2.0))):
+                bxp = -ww / 2 + (k + 0.5) * ww / max(2, round(ww / 2.0))
+                parts.append(beam("joist", (bxp, -dd / 2 + WALL_T, zt - 0.22), (bxp, dd / 2 - WALL_T, zt - 0.22), 0.2))
+        else:
+            parts.append(box("wall", (ww - 0.12, dd - 0.12, floor_h), (0, 0, zb + floor_h / 2), material=mat))
         if mat == "plaster":
             _frame_side(parts, ww, dd / 2, zb, zt, seed=seed + f)
             _frame_side(parts, ww, -dd / 2, zb, zt, seed=seed + 7 + f)
             _frame_end(parts, dd, ww / 2, zb, zt)
             _frame_end(parts, dd, -ww / 2, zb, zt)
         # Fenster
-        nx = windows if windows else max(1, int(ww // 2.6))
         for i in range(nx):
             x = -ww / 2 + (i + 0.5) * ww / nx
             if f == 0 and abs(x - door_x) < 1.2:
@@ -92,7 +233,10 @@ def timber_house(w, d, wall_h, roof_h, *, floors=1, plinth=0.6, roof_mat="roof",
                 _window(parts, x, -dd / 2, zb + floor_h * 0.55, -1)
         for s in (-1, 1):
             _window(parts, s * ww / 2, 0, zb + floor_h * 0.55, s, axis="x")
-    _door(parts, door_x, d / 2)
+    _door(parts, door_x, d / 2, open_=bool(interior))
+    if interior:
+        rnd = random.Random(seed * 17 + 3)
+        (_furnish_inn if interior == "inn" else _furnish_home)(parts, w, d, z0, w * 0.28, rnd)
     # Dach mit Giebeln
     top = z0 + floors * floor_h
     ww = w + (0.5 if jetty and floors > 1 else 0)
@@ -112,15 +256,15 @@ def timber_house(w, d, wall_h, roof_h, *, floors=1, plinth=0.6, roof_mat="roof",
 
 
 def house_a():
-    return join(timber_house(8, 6, 4.1, 2.9, seed=1, roof_mat="roof_thatch"), "house_a")
+    return join(timber_house(8, 6, 4.1, 2.9, seed=1, roof_mat="roof_thatch", interior="home"), "house_a")
 
 
 def house_b():
-    return join(timber_house(10, 7, 6.2, 2.8, floors=2, seed=2, jetty=True, door_x=-1.5), "house_b")
+    return join(timber_house(10, 7, 6.2, 2.8, floors=2, seed=2, jetty=True, door_x=-1.5, interior="home"), "house_b")
 
 
 def inn():
-    parts = timber_house(12, 9, 6.6, 3.3, floors=2, seed=3, jetty=True, door_x=0, windows=4)
+    parts = timber_house(12, 9, 6.6, 3.3, floors=2, seed=3, jetty=True, door_x=0, windows=4, interior="inn")
     # Wirtshausschild am Ausleger
     parts.append(beam("arm", (2.0, 4.6, 3.6), (2.0, 6.0, 3.6), 0.12))
     parts.append(box("sign", (0.9, 0.06, 0.6), (2.0, 5.7, 3.1), material="wood", bevel=0.02))

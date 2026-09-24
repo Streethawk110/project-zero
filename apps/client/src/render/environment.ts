@@ -140,8 +140,12 @@ export class Environment {
     scene.fog = this.fog;
   }
 
-  update(dayTime: number, weather: string, wInt: number, center: THREE.Vector3, camPos: THREE.Vector3, dt: number, inDungeon: boolean) {
+  /** 0 = draußen, 1 = in einem Gebäude (weich überblendet): weniger Himmels- und Umgebungslicht */
+  indoor = 0;
+
+  update(dayTime: number, weather: string, wInt: number, center: THREE.Vector3, camPos: THREE.Vector3, dt: number, inDungeon: boolean, indoorTarget = 0) {
     this.inDungeon = inDungeon;
+    this.indoor += (indoorTarget - this.indoor) * (1 - Math.exp(-dt * 3));
     this.time += dt;
     this.weather = weather;
     this.wInt = wInt;
@@ -219,8 +223,11 @@ export class Environment {
     } else {
       this.sun.castShadow = settings.shadows;
       this.sun.color.copy(sunCol);
-      this.sun.intensity = sunI + flash * 4;
-      this.hemi.intensity = hemiI + flash * 1.5;
+      // Drinnen fällt Himmelslicht nur durch Tür und Fenster: Streulicht stark dämpfen.
+      // Ohne Schatten dringt die Sonne durch Wände – dann auch sie abschwächen.
+      const ind = this.indoor;
+      this.sun.intensity = (sunI + flash * 4) * (1 - ind * (settings.shadows ? 0 : 0.8));
+      this.hemi.intensity = (hemiI + flash * 1.5) * (1 - ind * 0.72);
       this.hemi.color.copy(fogDay).lerp(tmpC.setHex(0xbcd3ff), 0.4);
       this.hemi.groundColor.setHex(0x3b3226).multiplyScalar(0.4 + day * 0.6);
       this.ambient.intensity = 0.04 + this.nightFactor * 0.1;
@@ -230,6 +237,7 @@ export class Environment {
       // AgX bildet Mittelgrau dunkler ab als ACES (dort ist ein Faktor 1/0,6 eingebaut)
       this.renderer.toneMappingExposure = THREE.MathUtils.lerp(1.15, 1.7, day) + flash * 0.6;
     }
+    if (this.envRT && !inDungeon) this.scene.environmentIntensity = this.envTarget.intensity * (1 - this.indoor * 0.75);
 
     // Umgebungsreflexionen gelegentlich neu erzeugen – verteilt auf 7 Bilder (je eine Würfelseite,
     // dann die Filterung), damit kein einzelnes Bild die ganze Arbeit trägt (sonst Ruckler).
@@ -273,7 +281,7 @@ export class Environment {
     }
     this.envRT = this.pmrem.fromCubemap(this.cubeRT.texture, this.envRT);
     this.scene.environment = this.envTarget.dungeon ? null : this.envRT.texture;
-    this.scene.environmentIntensity = this.envTarget.intensity;
+    this.scene.environmentIntensity = this.envTarget.intensity * (1 - this.indoor * 0.75);
     this.envStage = -1;
   }
 }
