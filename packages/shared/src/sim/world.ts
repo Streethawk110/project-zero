@@ -77,7 +77,9 @@ export class World {
     for (const g of SPAWNS) this.spawnState.set(g.id, { alive: [], respawnAt: 0, active: false });
     for (const n of NPCS) {
       if (this.opts.area === 'dungeon') continue;
-      const e: NpcEnt = { id: this.newId(), kind: 'npc', def: n, m: newMoveState(n.x, this.layout.hf.height(n.x, n.z), n.z, n.rot), statuses: [], area: 'overworld', anim: 'idle', wanderT: 0, wanderTo: null, talkT: 0 };
+      // Auf begehbaren Böden (Dielen in Häusern) stehen, nicht auf dem Gelände darunter
+      const gy = groundHeight(this.moveEnv(null), n.x, n.z, this.layout.hf.height(n.x, n.z) + 1);
+      const e: NpcEnt = { id: this.newId(), kind: 'npc', def: n, m: newMoveState(n.x, gy, n.z, n.rot), statuses: [], area: 'overworld', anim: 'idle', wanderT: 0, wanderTo: null, talkT: 0 };
       this.ents.set(e.id, e);
     }
   }

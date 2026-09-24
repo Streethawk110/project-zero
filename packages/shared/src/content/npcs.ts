@@ -17,7 +17,7 @@ export const NPCS: NpcDef[] = [
     bark: ['Tränke! Salben! Brot, das nicht leuchtet!', 'Frische Ware aus Vardenfall – na ja, fast frisch.'],
   },
   {
-    id: 'hedda', name: 'Hedda', title: 'Wirtin der „Letzten Laterne“', x: 44, z: 24, rot: Math.PI, dialogue: 'hedda_root',
+    id: 'hedda', name: 'Hedda', title: 'Wirtin der „Letzten Laterne“', x: 40.75, z: 17.4, rot: -2.4, dialogue: 'hedda_root',
     appearance: { sex: 1, outfit: 'villager', skin: 1, hair: 2, hairColor: 6, beard: 0, height: 0.97, body: 0.6 },
     bark: ['Die Suppe ist warm, die Betten sind kalt.', 'Nachts kratzt etwas an meiner Kellertür.'],
   },
@@ -77,13 +77,13 @@ export const NPCS: NpcDef[] = [
     bark: ['Die Rüben leuchten. RÜBEN!', 'Früher hatten wir nur Angst vor Wölfen.'],
   },
   {
-    id: 'ute', name: 'Ute', title: 'Wäscherin', x: 12, z: 60, rot: -1, dialogue: 'ute_root', wander: 6,
+    id: 'ute', name: 'Ute', title: 'Wäscherin', x: 13.5, z: 57.5, rot: -1, dialogue: 'ute_root', wander: 6,
     appearance: { sex: 1, outfit: 'villager', skin: 1, hair: 1, hairColor: 3, beard: 0, height: 0.96, body: 0.5 },
     bark: ['Lina! LINA! Wo steckt das Kind wieder?', 'Der Fluss ist so kalt wie das Herz des Kontormeisters.'],
   },
   // Wachen, die je nach Entscheidung erscheinen
   {
-    id: 'order_guard', name: 'Ordenswache', title: 'Stille Flamme', faction: 'order', x: -40, z: 42, rot: Math.PI / 2, dialogue: 'order_guard', cond: 'flag:choice_order',
+    id: 'order_guard', name: 'Ordenswache', title: 'Stille Flamme', faction: 'order', x: -37.5, z: 41, rot: Math.PI / 2, dialogue: 'order_guard', cond: 'flag:choice_order',
     appearance: { outfit: 'priest', skin: 1, hair: 3, hairColor: 1, beard: 1, height: 1.02, body: 0.8 },
     bark: ['Berührte werden am Tor kontrolliert.'],
   },

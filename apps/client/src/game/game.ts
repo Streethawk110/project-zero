@@ -666,7 +666,8 @@ export class Game {
       if (toP.lengthSq() < 1e-4) toP.set(0, 0, 1);
       toP.normalize();
       const right = new THREE.Vector3(toP.z, 0, -toP.x);
-      const pos = h.clone().addScaledVector(toP, 1.35).addScaledVector(right, 0.42).add(new THREE.Vector3(0, 0.06, 0));
+      // Über die Schulter des Spielers auf das Gesicht des Gegenübers (der Spieler steht nie in einer Wand)
+      const pos = head.clone().addScaledVector(toP, 0.45).addScaledVector(right, 0.42).add(new THREE.Vector3(0, 0.1, 0));
       this.cam.focus = { pos, look: h.clone().addScaledVector(right, 0.08) };
       if (this.playerRig) this.playerRig.lookAt = h;
     } else {
