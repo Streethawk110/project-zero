@@ -142,6 +142,9 @@ Profiler nicht mitgezählt – behoben).
   gkjohnson/3d-demo-data, Figuren im Spiel prüfen), Web-Artifact aktualisieren.
   Nutzer lässt die Cloud-Sitzung laufen und hat um Fortsetzung um 1:30 Uhr
   (dt. Zeit) gebeten.
+- NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
+  Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
+  unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.
 - E2E: Einzelspieler + Offline grün; Mehrspieler im Gesamtlauf einmal im Menü
   hängen geblieben (Last), einzeln grün (4 min).
 - Test-Hinweis: Grafik „hoch“ ist ohne GPU hier so langsam (0,8 s Spielzeit
