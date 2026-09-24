@@ -54,6 +54,7 @@ list.forEach((s, i) => {
   rig.play(s.anim, 0.8);
   // Pose bis zum gewünschten Zeitpunkt vorspulen
   for (let k = 0; k < 40; k++) rig.update(s.t / 40 + (k < 20 ? 0.02 : 0), s.speed);
+  if (params.get('lod') === '1') rig.setLod(1);
   scene.add(rig.root);
   rigs.push(rig);
 });

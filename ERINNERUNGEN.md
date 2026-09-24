@@ -64,6 +64,8 @@ Profiler nicht mitgezählt – behoben).
   klarer/grünlich, Schaum nur bei < 30 cm Tiefe.
 - Automatische Belichtung (`ExposurePass` in renderer.ts, GPU, ohne Zurücklesen):
   gemessen Wald ≈ 0,045 / Strand ≈ 0,14 → Ausgleich (0,05/L)^0,65, 0,45–1,7.
+- Menschen-LOD: `human_*_lod1.glb` (Netze ~25 %, Haare nur Kappe, keine Bärte),
+  Umschaltung ab 16 m (`rig.setLod`, EntityManager.camPos).
 - Offen (Nutzerliste): begehbare Häuser, Gebäude/Requisiten/Berge realistischer, ALLE Texturen
   gründlich überarbeiten; Menschen: LOD für Leistung, Waffenhaltung prüfen.
 - Tests ohne GPU: gegen statischen Build testen (Vite-Dev-Server lädt bei

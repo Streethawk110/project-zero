@@ -261,6 +261,9 @@ export class EntityManager {
     for (const id of gone) this.remove(id);
   }
 
+  /** Kameraposition (für Detailstufen der Figuren), von Game gesetzt. */
+  camPos = new THREE.Vector3();
+
   update(dt: number, renderTime: number, groundAt: (x: number, z: number) => number, time: number) {
     for (const v of this.views.values()) {
       if (!v.local) v.sampleAt(renderTime);
@@ -277,6 +280,7 @@ export class EntityManager {
         const gl = groundAt(v.pos.x + Math.cos(v.yaw) * 0.12, v.pos.z - Math.sin(v.yaw) * 0.12) - v.pos.y;
         const gr = groundAt(v.pos.x - Math.cos(v.yaw) * 0.12, v.pos.z + Math.sin(v.yaw) * 0.12) - v.pos.y;
         v.rig.update(dt, hSpeed, clampG(gl), clampG(gr));
+        v.rig.setLod(v.pos.distanceToSquared(this.camPos) > 16 * 16 ? 1 : 0);
         if (v.shieldBubble) {
           v.shieldBubble.visible = v.status.includes('shielded') || v.anim === 'shielded';
           v.shieldBubble.rotation.y += dt;

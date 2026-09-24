@@ -22,12 +22,14 @@ export function hasHumanModel(sex: Sex = 'male') {
 
 interface PieceGeo { geometry: THREE.BufferGeometry; material: string }
 interface Template { joints: Map<string, THREE.Vector3>; pieces: Map<string, PieceGeo[]> }
-const templates = new Map<Sex, Template>();
+const templates = new Map<string, Template>();
 
-function template(sex: Sex, order: string[]): Template {
-  const hit = templates.get(sex);
+function template(sex: Sex, order: string[], lod: 0 | 1 = 0): Template {
+  const key = `${sex}@${lod}`;
+  const hit = templates.get(key);
   if (hit) return hit;
-  const root = getModel(`human_${sex}`).lod0;
+  const model = getModel(`human_${sex}`);
+  const root = lod === 1 && model.lod1 ? model.lod1 : model.lod0;
   root.updateMatrixWorld(true);
   const joints = new Map<string, THREE.Vector3>();
   const pieces = new Map<string, PieceGeo[]>();
@@ -89,13 +91,13 @@ function template(sex: Sex, order: string[]): Template {
     console.log('human joints', JSON.stringify([...joints].map(([k, v]) => [k, v.toArray().map((x) => x.toFixed(2))])));
     for (const [k, list] of pieces) { const bb = new THREE.Box3(); for (const pg of list) { pg.geometry.computeBoundingBox(); bb.union(pg.geometry.boundingBox!); } console.log('piece', k, bb.min.toArray().map((x) => x.toFixed(2)), bb.max.toArray().map((x) => x.toFixed(2))); }
   }
-  templates.set(sex, t);
+  templates.set(key, t);
   return t;
 }
 
 /** Knotenname aus dem GLB → Teilname (Blender hängt bei mehreren Primitiven Nummern an). */
 function pieceName(n: string) {
-  const s = n.replace(/\.\d+$/, '');
+  const s = n.replace(/\.\d+$/, '').replace(/_lod1$/, '');
   const m = /^(hair_\d(_cap)?|beard_\d|[a-z_]+?)(_\d+)?$/.exec(s);
   return m ? m[1]! : s;
 }
@@ -116,8 +118,9 @@ export interface HumanMaterials {
 }
 
 /** Bindet alle Teile an die Gelenke. Rückgabe: Teilname → Gruppe (zum Ein-/Ausblenden). */
-export function buildHuman(sex: Sex, joints: Record<string, THREE.Object3D>, order: string[], body: THREE.Object3D, bw: number, mats: HumanMaterials) {
-  const t = template(sex, order);
+export function buildHuman(sex: Sex, joints: Record<string, THREE.Object3D>, order: string[], body: THREE.Object3D, bw: number, mats: HumanMaterials, lod: 0 | 1 = 0) {
+  const t = template(sex, order, lod);
+  if (lod === 1 && !getModel(`human_${sex}`).lod1) return new Map<string, THREE.Group>();
   const skeleton = new THREE.Skeleton(order.map((n) => joints[n]! as THREE.Bone));
   const parts = new Map<string, THREE.Group>();
   const neckY = t.joints.get('neck')?.y ?? 1.5;

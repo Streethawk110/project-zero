@@ -83,10 +83,12 @@
   "lod1": "house_b_lod1.glb"
  },
  "human_female": {
-  "file": "human_female.glb"
+  "file": "human_female.glb",
+  "lod1": "human_female_lod1.glb"
  },
  "human_male": {
-  "file": "human_male.glb"
+  "file": "human_male.glb",
+  "lod1": "human_male_lod1.glb"
  },
  "humanoid": {
   "file": "humanoid.glb"

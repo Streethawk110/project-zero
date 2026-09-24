@@ -543,6 +543,7 @@ export class Game {
 
     // Entitäten
     const renderTime = performance.now() / 1000 - (this.serverTimeOffset ?? 0) - this.interpDelay;
+    this.ents.camPos.copy(this.camera.position);
     if (!this.paused) this.ents.update(dt, renderTime, this.groundAt, this.time);
     void pv;
 

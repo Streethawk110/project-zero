@@ -784,7 +784,39 @@ def human(kind):
     return objs
 
 
+def lod1(objs):
+    """Vereinfachte Figur für die Entfernung: Netze auf ~25 %, Haare nur als Grundkappe, keine Bärte."""
+    import lib
+    rig = objs[0]
+    out = [rig]
+    for o in objs[1:]:
+        n = o.name.split(".")[0]
+        if (n.startswith("hair_") and not n.endswith("_cap")) or n.startswith("beard_"):
+            continue
+        c = o.copy()
+        c.data = o.data.copy()
+        bpy.context.scene.collection.objects.link(c)
+        # Armatur-Modifikator bleibt, davor vereinfachen
+        arm = [m for m in c.modifiers if m.type == "ARMATURE"]
+        for m in arm:
+            c.modifiers.remove(m)
+        d = c.modifiers.new("lod", "DECIMATE")
+        d.ratio = 0.3 if n in ("skin", "eyes") else 0.22
+        lib.apply_mods(c)
+        mod = c.modifiers.new("rig", "ARMATURE")
+        mod.object = rig
+        c.parent = rig
+        c.name = n + "_lod1"
+        out.append(c)
+    return out
+
+
+def build(kind):
+    objs = human(kind)
+    return {"lod0": objs, "lod1": lod1(objs)}
+
+
 ASSETS = {
-    "human_male": (lambda: human("male"), None),
-    "human_female": (lambda: human("female"), None),
+    "human_male": (lambda: build("male"), None),
+    "human_female": (lambda: build("female"), None),
 }

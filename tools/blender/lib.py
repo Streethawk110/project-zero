@@ -321,11 +321,12 @@ def export(name, objs=None, lod_ratio=None, uv_scale=None, lod1_objs=None):
         for o in lod1_objs:
             o.select_set(True)
         lpath = os.path.join(OUT_DIR, f"{name}_lod1.glb")
-        bpy.ops.export_scene.gltf(filepath=lpath, export_format="GLB", use_selection=True, export_apply=True, export_yup=True,
+        skinned1 = any(o.type == "ARMATURE" for o in lod1_objs)
+        bpy.ops.export_scene.gltf(filepath=lpath, export_format="GLB", use_selection=True, export_apply=not skinned1, export_yup=True,
                                   export_texcoords=True, export_normals=True, export_materials="EXPORT", export_extras=False,
-                                  export_animations=False, export_skins=False, export_vertex_color="ACTIVE")
+                                  export_animations=False, export_skins=skinned1, export_vertex_color="ACTIVE")
         entry["lod1"] = f"{name}_lod1.glb"
-        tris1 = sum(len(p.vertices) - 2 for o in lod1_objs for p in o.data.polygons)
+        tris1 = sum(len(p.vertices) - 2 for o in lod1_objs if o.type == "MESH" for p in o.data.polygons)
         print(f"[blender] {name}_lod1: {tris1} Dreiecke")
     elif lod_ratio:
         lods = []

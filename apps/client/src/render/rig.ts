@@ -92,6 +92,9 @@ export class HumanoidRig {
   private human = false;
   private sex: Sex = 'male';
   private humanParts = new Map<string, THREE.Group>();
+  private humanPartsLod1 = new Map<string, THREE.Group>();
+  private humanWant = new Map<string, boolean>();
+  private lodLevel: 0 | 1 = 0;
   private humanHair: THREE.MeshStandardMaterial[] = [];
   private humanCap: THREE.MeshStandardMaterial | null = null;
   private outfitCur: (typeof OUTFITS)[string] | null = null;
@@ -292,7 +295,9 @@ export class HumanoidRig {
       const eye = eyeMaterial(new THREE.Color(EYE_COLORS[a.eyes] ?? '#4b3621'));
       this.eyeMat = eye;
       const cloth = (n: string): THREE.Material => n.startsWith('legs') ? this.legMat : n.startsWith('accent') ? this.accentMat : this.bodyMat;
-      this.humanParts = buildHuman(this.sex, this.j, JOINTS, this.body, this.humanBw(0.85 + a.body * 0.3), { skin: this.skinMat, eye, hair, hairCurly: curly, hairCap: this.humanCap, cloth });
+      const hm = { skin: this.skinMat, eye, hair, hairCurly: curly, hairCap: this.humanCap, cloth };
+      this.humanParts = buildHuman(this.sex, this.j, JOINTS, this.body, this.humanBw(0.85 + a.body * 0.3), hm);
+      this.humanPartsLod1 = buildHuman(this.sex, this.j, JOINTS, this.body, this.humanBw(0.85 + a.body * 0.3), hm, 1);
       this.applyOutfitPieces(outfit);
       return;
     }
@@ -320,8 +325,9 @@ export class HumanoidRig {
     this.outfitCur = o;
     if (this.human) {
       const a = this.appearance;
-      const vis = (n: string, v: boolean) => { const p = this.humanParts.get(n); if (p) p.visible = v; };
-      for (const n of this.humanParts.keys()) vis(n, false);
+      const want = this.humanWant;
+      want.clear();
+      const vis = (n: string, v: boolean) => { want.set(n, v); };
       for (const n of ['skin', 'eyes', 'tunic', 'trousers', 'boots']) vis(n, true);
       vis('tunic_skirt', !o.robe);
       vis('belt', !o.robe);
@@ -332,6 +338,7 @@ export class HumanoidRig {
       vis('pauldrons', !!o.metal);
       if (!o.hood) { vis(`hair_${a.hair}`, true); vis(`hair_${a.hair}_cap`, true); }
       if (this.sex === 'male' && a.beard) vis(`beard_${a.beard}`, true);
+      this.applyLod();
       return;
     }
     if (!this.useSkin) return;
@@ -346,6 +353,18 @@ export class HumanoidRig {
     show('plates', !!o.metal);
     // Unter der Kapuze keine langen Haare
     this.hairNode.visible = !o.hood;
+  }
+
+  /** Detailstufe: 0 = volle Figur, 1 = vereinfacht (Entfernung). */
+  setLod(level: 0 | 1) {
+    if (!this.human || level === this.lodLevel || this.humanPartsLod1.size === 0) return;
+    this.lodLevel = level;
+    this.applyLod();
+  }
+
+  private applyLod() {
+    for (const [n, g] of this.humanParts) g.visible = this.lodLevel === 0 && !!this.humanWant.get(n);
+    for (const [n, g] of this.humanPartsLod1) g.visible = this.lodLevel === 1 && !!this.humanWant.get(n);
   }
 
   setAppearance(a: Appearance) {
