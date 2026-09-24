@@ -688,6 +688,45 @@ def mat_skin(g):
     g.finish(col, g.lerp(0.62, 0.45, fine), height, bump=0.25, bump_dist=0.003)
 
 
+def mat_chain(g):
+    # Kettenhemd: versetzte Reihen gebogener Ringe, dunkle Zwischenräume, Rost/Fett in den Lücken
+    nu, nv = 14, 20
+    lu, lv, cid, row = g.grid(nu, nv, shift=0.5)
+    rnd = g.white(cid, row, 3.0)
+    cu = g.sub(lu, 0.5)
+    cv = g.mul(g.sub(lv, 0.5), 1.25)
+    d = g.m("SQRT", g.add(g.mul(cu, cu), g.mul(cv, cv)))
+    band = g.m("ABSOLUTE", g.sub(d, 0.42))
+    ring = g.smooth(0.16, 0.08, band)
+    # Ringquerschnitt: rund gewölbt
+    prof = g.m("SQRT", g.m("MAXIMUM", g.sub(1.0, g.mul(g.mul(band, band), 30.0)), 0.0))
+    # obere Ringhälfte liegt über dem Nachbarn (Verschränkung)
+    over = g.smooth(-0.05, 0.1, cv)
+    rust = g.mul(g.smooth(0.6, 0.72, g.noise(4, detail=6, off=2.2)), g.sub(1.0, ring))
+    col_ring = g.ramp(g.add(g.mul(rnd, 0.5), g.mul(g.noise(40, detail=4, off=1.3), 0.5)), [(0.0, "#7e8187"), (0.5, "#9a9da3"), (1.0, "#b6b9bf")])
+    col = g.mixc("#16151a", col_ring, ring)
+    col = g.mixc(col, "#4a2a16", g.mul(rust, 0.7))
+    height = g.mul(ring, g.add(g.mul(prof, 0.7), g.mul(over, 0.3)))
+    rough = g.lerp(0.95, g.lerp(0.35, 0.55, rnd), ring)
+    g.finish(col, rough, height, bump=1.0, bump_dist=0.01, metal=1.0)
+    g.cavity = 0.4
+
+
+def mat_plate(g):
+    # Geschmiedeter Plattenstahl: Schleifspuren in einer Richtung, Hammerdellen, Kratzer, Anlauf
+    brushed = g.noise(3, 180, detail=3, rough=0.45, off=0.2)
+    dents = g.voronoi(9, feature="F1", off=1.1)
+    scratches = g.smooth(0.92, 1.0, g.noise_diag(160, 3, 1.0, detail=2, kind="RIDGED_MULTIFRACTAL", off=2.6))
+    tarnish = g.st(g.noise(3, detail=6, off=4.1))
+    col = g.ramp(g.st(brushed, 0.3, 0.7), [(0.0, "#979aa0"), (0.5, "#a4a7ad"), (1.0, "#b0b3b9")])
+    col = g.mixc(col, "#8a7e6a", g.mul(tarnish, 0.25))
+    col = g.mixc(col, "#d0d3d8", g.mul(scratches, 0.5))
+    height = g.add(g.mul(dents, 0.25), g.mul(brushed, 0.05))
+    rough = g.lerp(g.lerp(0.28, 0.4, brushed), 0.2, scratches)
+    g.finish(col, rough, height, bump=0.4, bump_dist=0.01, metal=1.0)
+    g.cavity = 0.25
+
+
 MATERIALS = {
     # Gelände (Reihenfolge wie im Splat-Array des Clients)
     "grass": mat_grass, "dirt": mat_dirt, "rock": mat_rock, "sand": mat_sand,
@@ -695,8 +734,9 @@ MATERIALS = {
     # Modelle
     "wood": mat_wood, "plaster": mat_plaster, "thatch": mat_thatch, "roof": mat_roof, "stone": mat_stone,
     "bark": mat_bark, "metal": mat_metal, "cloth": mat_cloth, "leather": mat_leather, "skin": mat_skin,
+    "chain": mat_chain, "plate": mat_plate,
 }
-SMALL = {"cloth", "leather", "skin", "metal"}
+SMALL = {"cloth", "leather", "skin", "metal", "chain", "plate"}
 
 
 # ---------------------------------------------------------------------------

@@ -16,6 +16,13 @@ renderer.shadowMap.enabled = true;
 const scene = new THREE.Scene();
 (window as unknown as { __scene: THREE.Scene }).__scene = scene;
 scene.background = new THREE.Color(0x8fa3b8);
+// Umgebung für Spiegelungen (wie im Spiel: Metall braucht etwas zu spiegeln)
+{
+  const { RoomEnvironment } = await import('three/examples/jsm/environments/RoomEnvironment.js');
+  const pm = new THREE.PMREMGenerator(renderer);
+  scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.45;
+}
 const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
 scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x4a3f2c, 1.2));
 const sun = new THREE.DirectionalLight(0xfff0d8, 3);
@@ -65,7 +72,9 @@ function size() {
   const w = innerWidth, h = innerHeight;
   renderer.setSize(w, h, false);
   cam.aspect = w / h;
-  if (close) { cam.fov = 18; cam.position.set(0.5, 1.72, 2.2); cam.lookAt(0, 1.62, 0); }
+  const chest = params.get('chest');
+  if (chest) { cam.fov = 22; cam.position.set(0.6, 1.45, 2.6); cam.lookAt(0, 1.3, 0); }
+  else if (close) { cam.fov = 18; cam.position.set(0.5, 1.72, 2.2); cam.lookAt(0, 1.62, 0); }
   else { cam.fov = 30; cam.position.set(0, 1.3, 9.5 * Math.max(1, 1.6 / cam.aspect) * (list.length > 1 ? 1 : 0.45)); cam.lookAt(0, 0.95, 0); }
   cam.updateProjectionMatrix();
 }

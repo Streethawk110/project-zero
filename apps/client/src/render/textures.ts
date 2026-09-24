@@ -64,7 +64,7 @@ export interface PBRSet {
 
 // ---------- Gebackene Blender-Texturen (tools/blender/textures.py) ----------
 
-export const BAKED_NAMES = ['grass', 'dirt', 'rock', 'sand', 'forest', 'glass', 'snow', 'cobble', 'wood', 'plaster', 'thatch', 'roof', 'stone', 'bark', 'metal', 'cloth', 'leather', 'skin'] as const;
+export const BAKED_NAMES = ['grass', 'dirt', 'rock', 'sand', 'forest', 'glass', 'snow', 'cobble', 'wood', 'plaster', 'thatch', 'roof', 'stone', 'bark', 'metal', 'cloth', 'leather', 'skin', 'chain', 'plate'] as const;
 const baked = new Map<string, PBRSet>();
 
 async function bitmap(url: string, size: number) {
@@ -105,7 +105,7 @@ export async function loadBakedTextures(size: number, onProgress?: (p: number) =
   let done = 0;
   await Promise.all(BAKED_NAMES.map(async (name) => {
     try {
-      const sz = ['cloth', 'leather', 'skin', 'metal'].includes(name) ? Math.min(size, 1024) : size;
+      const sz = ['cloth', 'leather', 'skin', 'metal', 'chain', 'plate'].includes(name) ? Math.min(size, 1024) : size;
       const [c, n, a] = await Promise.all(['color', 'normal', 'arm'].map((k) => bitmap(`${base}${name}_${k}.webp`, sz)));
       const arm = bitmapTex(a!, false);
       baked.set(name, { map: bitmapTex(c!, true), normalMap: bitmapTex(n!, false), roughnessMap: arm, aoMap: arm, bitmaps: { size: sz, color: c!, normal: n!, arm: a! } });
@@ -332,6 +332,17 @@ export const TEX = withBaked({
     const k = 0.45 + n * 0.2;
     return { r: k, g: k * 0.98, b: k * 0.95, h: n * 0.3, rough: 0.35 + n * 0.25 };
   }, 1),
+  chain: () => build('chain', (u, v) => {
+    const cu = (u * 14) % 1 - 0.5, cv = ((v * 20) % 1 - 0.5) * 1.25;
+    const ring = Math.max(0, 1 - Math.abs(Math.hypot(cu, cv) - 0.42) / 0.12);
+    const k = 0.1 + ring * 0.55;
+    return { r: k, g: k, b: k * 1.02, h: ring, rough: 0.5 };
+  }, 1),
+  plate: () => build('plate', (u, v) => {
+    const n = tfbm(u * 0.2, v * 8, 20, 3, 181);
+    const k = 0.62 + n * 0.08;
+    return { r: k, g: k, b: k * 1.02, h: n * 0.2, rough: 0.3 };
+  }, 0.5),
   cloth: () => build('cloth', (u, v) => {
     const weave = (Math.sin(u * 200) * Math.sin(v * 200)) * 0.5 + 0.5;
     const n = tfbm(u, v, 6, 3, 151);

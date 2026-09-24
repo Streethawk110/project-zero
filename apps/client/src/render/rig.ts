@@ -21,17 +21,17 @@ const JOINTS: JointName[] = ['hips', 'spine', 'chest', 'neck', 'head', 'shoulder
 
 type Pose = Partial<Record<JointName, [number, number, number]>> & { root?: [number, number, number]; rootRot?: [number, number, number] };
 
-export const OUTFITS: Record<string, { body: number; legs: number; accent: number; robe?: boolean; metal?: boolean; hood?: boolean }> = {
+export const OUTFITS: Record<string, { body: number; legs: number; accent: number; robe?: boolean; metal?: boolean; hood?: boolean; plate?: boolean }> = {
   armor_rags: { body: 0x6a6456, legs: 0x3f3a33, accent: 0x5a4a3a },
   armor_gambeson: { body: 0x8c7a5a, legs: 0x4a4034, accent: 0x5c3f28 },
   armor_leather: { body: 0x5a3f2a, legs: 0x3a2c20, accent: 0x2c4a2a, hood: true },
   armor_chain: { body: 0x8a8e94, legs: 0x3e3a36, accent: 0x6a2a24, metal: true },
   armor_robe: { body: 0x2d4468, legs: 0x22324c, accent: 0xc9a14a, robe: true },
-  armor_scale: { body: 0x4f8a94, legs: 0x2e3a40, accent: 0x9ff8ff, metal: true },
+  armor_scale: { body: 0x4f8a94, legs: 0x2e3a40, accent: 0x9ff8ff, metal: true, plate: true },
   armor_rooted: { body: 0x3e4a2a, legs: 0x2e3620, accent: 0x6a8a3a, hood: true },
-  armor_order: { body: 0xd8d2c2, legs: 0x6a6258, accent: 0xc9a14a, metal: true },
+  armor_order: { body: 0xd8d2c2, legs: 0x6a6258, accent: 0xc9a14a, metal: true, plate: true },
   // NSC-Kleidung
-  guard: { body: 0x6a2a24, legs: 0x3a3430, accent: 0x9a9ea5, metal: true },
+  guard: { body: 0x6a2a24, legs: 0x3a3430, accent: 0x9a9ea5, metal: true, plate: true },
   noble: { body: 0x3c2a4a, legs: 0x2a2230, accent: 0xc9a14a },
   priest: { body: 0xd8d2c2, legs: 0xb8b0a0, accent: 0xc9a14a, robe: true },
   merchant: { body: 0x7a5a2a, legs: 0x4a3a26, accent: 0x2a5a4a },
@@ -44,8 +44,63 @@ export const OUTFITS: Record<string, { body: number; legs: number; accent: numbe
   scholar: { body: 0x3a5a6a, legs: 0x2e3a40, accent: 0xc9a14a },
   bandit: { body: 0x4a3a2a, legs: 0x2a2620, accent: 0x6a2a24, hood: true },
   echo: { body: 0x1a2030, legs: 0x141824, accent: 0x7ff6ff },
-  boss: { body: 0x3a4a5a, legs: 0x2a3440, accent: 0x7ff6ff, metal: true },
+  boss: { body: 0x3a4a5a, legs: 0x2a3440, accent: 0x7ff6ff, metal: true, plate: true },
 };
+
+/**
+ * Kleidung der realistischen Figur: Stoff mit Schimmer (Sheen) und feiner Webung, Leder mit leichtem
+ * Glanz, Kettenhemd und Plattenstahl. Texturen wiederholt (sonst liegt eine Kachel über dem ganzen
+ * Körper und die Webung verschwimmt), dazu großflächige Abnutzung und Flecken.
+ */
+export function garment(kind: 'cloth' | 'leather' | 'chain' | 'plate', color: number) {
+  const t = kind === 'leather' ? TEX.leather() : kind === 'chain' ? TEX.chain() : kind === 'plate' ? TEX.plate() : TEX.cloth();
+  const rep = kind === 'cloth' ? 12 : kind === 'leather' ? 4 : kind === 'chain' ? 42 : 2;
+  const c = (x?: THREE.Texture | null) => {
+    if (!x) return null;
+    const y = x.clone();
+    y.wrapS = y.wrapT = THREE.RepeatWrapping;
+    y.repeat.set(rep, rep);
+    y.needsUpdate = true;
+    return y;
+  };
+  const metal = kind === 'chain' || kind === 'plate';
+  const m = new THREE.MeshPhysicalMaterial({
+    color: metal ? new THREE.Color(color).lerp(new THREE.Color(0xd6d9de), 0.75) : color,
+    map: c(t.map), normalMap: c(t.normalMap), roughnessMap: c(t.roughnessMap),
+    roughness: 1, metalness: metal ? 1 : 0,
+  });
+  if (kind === 'cloth') {
+    m.sheen = 1;
+    m.sheenRoughness = 0.65;
+    m.sheenColor = new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.35);
+    m.normalScale.set(0.9, 0.9);
+  } else if (kind === 'leather') {
+    m.clearcoat = 0.18;
+    m.clearcoatRoughness = 0.55;
+    m.normalScale.set(0.8, 0.8);
+  }
+  const u = { uRep: { value: rep }, uWear: { value: kind === 'plate' ? 0.35 : kind === 'chain' ? 0.25 : 1 } };
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, u);
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+        uniform float uRep; uniform float uWear;
+        float gHash(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+        float gNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(gHash(i), gHash(i + vec2(1, 0)), f.x), mix(gHash(i + vec2(0, 1)), gHash(i + vec2(1, 1)), f.x), f.y); }`)
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        #ifdef USE_MAP
+          // Großflächig: ausgeblichene Stellen, Schmutz und Flecken (im ursprünglichen UV-Raum)
+          vec2 guv = vMapUv / uRep;
+          float gw = gNoise(guv * 7.0) * 0.6 + gNoise(guv * 19.0) * 0.4;
+          float stain = smoothstep(0.62, 0.8, gNoise(guv * 13.0 + 3.7));
+          diffuseColor.rgb *= mix(1.0, mix(0.82, 1.1, gw), uWear);
+          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.62, 0.56, 0.48), stain * 0.45 * uWear);
+        #endif`);
+  };
+  m.customProgramCacheKey = () => `garment-${kind}`;
+  return m;
+}
 
 function mat(color: number, opts: THREE.MeshStandardMaterialParameters = {}, kind: 'cloth' | 'leather' | 'metal' = 'cloth') {
   const t = kind === 'leather' ? TEX.leather() : kind === 'metal' ? TEX.metal() : TEX.cloth();
@@ -87,6 +142,10 @@ export class HumanoidRig {
   bodyMat: THREE.MeshStandardMaterial;
   legMat: THREE.MeshStandardMaterial;
   accentMat: THREE.MeshStandardMaterial;
+  /** Rüstung der realistischen Figur */
+  chainMat: THREE.MeshStandardMaterial | null = null;
+  plateMat: THREE.MeshStandardMaterial | null = null;
+  hoodMat: THREE.MeshStandardMaterial | null = null;
   hairMat: THREE.MeshStandardMaterial;
   /** Durchgehende, gebundene Figur aus dem Blender-Modell „character“ (sonst Einzelteile). */
   private useSkin = hasCharacterModel();
@@ -143,9 +202,18 @@ export class HumanoidRig {
       ? skinMaterial(this.sex, new THREE.Color(SKIN_COLORS[a.skin] ?? SKIN_COLORS[1]!), new THREE.Color(HAIR_COLORS[a.hairColor] ?? '#3b2718'))
       : new THREE.MeshStandardMaterial({ color: new THREE.Color(SKIN_COLORS[a.skin] ?? SKIN_COLORS[1]), roughness: 0.6, map: TEX.skin().map });
     const outfit = OUTFITS[opts.outfit ?? 'armor_gambeson'] ?? OUTFITS['armor_gambeson']!;
-    this.bodyMat = mat(outfit.body, outfit.metal ? { metalness: 0.7, roughness: 0.55 } : {}, outfit.metal ? 'metal' : 'cloth');
-    this.legMat = mat(outfit.legs);
-    this.accentMat = mat(outfit.accent, { roughness: 0.75 }, 'leather');
+    if (this.human) {
+      this.bodyMat = garment('cloth', outfit.body);
+      this.legMat = garment('cloth', outfit.legs);
+      this.accentMat = garment('leather', outfit.accent);
+      this.chainMat = garment('chain', outfit.body);
+      this.plateMat = garment('plate', outfit.body);
+      this.hoodMat = garment('cloth', outfit.accent);
+    } else {
+      this.bodyMat = mat(outfit.body, outfit.metal ? { metalness: 0.7, roughness: 0.55 } : {}, outfit.metal ? 'metal' : 'cloth');
+      this.legMat = mat(outfit.legs);
+      this.accentMat = mat(outfit.accent, { roughness: 0.75 }, 'leather');
+    }
     this.hairMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(HAIR_COLORS[a.hairColor] ?? '#3b2718'), roughness: 0.75 });
     if (echo) {
       for (const m of [this.skinMat, this.bodyMat, this.legMat, this.accentMat, this.hairMat]) {
@@ -354,10 +422,20 @@ export class HumanoidRig {
       vis('robe', !!o.robe);
       vis('hood', !!o.hood);
       vis('hood_cowl', !!o.hood);
-      vis('plates', !!o.metal);
-      vis('pauldrons', !!o.metal);
+      vis('plates', !!o.plate);
+      vis('pauldrons', !!o.plate);
       if (!o.hood) { vis(`hair_${a.hair}`, true); vis(`hair_${a.hair}_cap`, true); }
       if (this.sex === 'male' && a.beard) vis(`beard_${a.beard}`, true);
+      // Rüstung: Kettenhemd statt Hemd, Brust- und Schulterplatten aus Stahl
+      const setMat = (piece: string, m: THREE.Material | null) => {
+        if (!m) return;
+        for (const map of [this.humanParts, this.humanPartsLod1]) map.get(piece)?.traverse((x) => { const me = x as THREE.Mesh; if (me.isMesh) me.material = m; });
+      };
+      setMat('tunic', o.metal ? this.chainMat : this.bodyMat);
+      setMat('hood', this.hoodMat);
+      setMat('hood_cowl', this.hoodMat);
+      setMat('plates', this.plateMat);
+      setMat('pauldrons', this.plateMat);
       this.applyLod();
       return;
     }
@@ -494,8 +572,15 @@ export class HumanoidRig {
       const o = OUTFITS[armorId];
       if (o) {
         this.bodyMat.color.setHex(o.body);
-        this.bodyMat.metalness = o.metal ? 0.7 : 0;
-        this.bodyMat.roughness = o.metal ? 0.4 : 0.85;
+        if (this.human) {
+          (this.bodyMat as THREE.MeshPhysicalMaterial).sheenColor?.setHex(o.body).lerp(new THREE.Color(0xffffff), 0.35);
+          this.chainMat?.color.setHex(o.body).lerp(new THREE.Color(0xd6d9de), 0.75);
+          this.plateMat?.color.setHex(o.body).lerp(new THREE.Color(0xd6d9de), 0.75);
+          this.hoodMat?.color.setHex(o.accent);
+        } else {
+          this.bodyMat.metalness = o.metal ? 0.7 : 0;
+          this.bodyMat.roughness = o.metal ? 0.4 : 0.85;
+        }
         this.legMat.color.setHex(o.legs);
         this.accentMat.color.setHex(o.accent);
         this.robeNode.visible = !!o.robe;

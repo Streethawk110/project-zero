@@ -484,46 +484,84 @@ def transfer_weights(o, base, v, W, group="body"):
 
 
 def hood_shell(base, v, W, J, eye_y):
-    """Kapuze: gewölbte Stoffschale um den Kopf, hinten leicht spitz, Gesichtsöffnung, bis in den Nacken."""
+    """Kapuze aus Wollstoff: weit fallende Schale um den Kopf mit rundem Gesichtsausschnitt und
+    eingerolltem Saum, hinten zu einem Zipfel ausgezogen, weiche Längsfalten, bis in den Nacken.
+    UV kugelförmig (u = Umfang, v = Höhe), damit die Stoffwebung sichtbar wird."""
     import bmesh
     head_idx = [i for i in base.groups["body"] if v[i, 1] > J["neck"][1]]
     hv = v[head_idx]
     lo, hi = hv.min(axis=0), hv.max(axis=0)
     c = (lo + hi) / 2
-    r = (hi - lo) / 2 * np.array([1.22, 1.12, 1.18]) + 0.015
+    r = (hi - lo) / 2 * np.array([1.26, 1.14, 1.2]) + 0.018
+    face_y = eye_y - 0.035  # Mitte des Gesichtsausschnitts
     bm = bmesh.new()
-    bmesh.ops.create_uvsphere(bm, u_segments=40, v_segments=28, radius=1.0)
+    bmesh.ops.create_uvsphere(bm, u_segments=48, v_segments=32, radius=1.0)
+
+    def rig_dir(co):
+        return np.array([co.x, co.z, -co.y])
+
     kill = []
     for f in bm.faces:
-        fc = f.calc_center_median()
-        # Blender-Einheitskugel → Rig-Richtung (x, y oben, z vorn)
-        d = np.array([fc.x, fc.z, -fc.y])
+        d = rig_dir(f.calc_center_median())
         p = c + d * r
-        if d[2] > 0.25 and p[1] < eye_y + 0.06 and abs(d[0]) < 0.62:
-            kill.append(f)  # Gesicht frei
-        elif p[1] < J["neck"][1] - 0.06:
+        # runder (elliptischer) Gesichtsausschnitt vorn
+        ex = d[0] / 0.6
+        ey = (p[1] - face_y) / 0.098
+        if d[2] > 0.1 and ex * ex + ey * ey < 1.0:
+            kill.append(f)
+        elif p[1] < J["neck"][1] - 0.07:
             kill.append(f)
     bmesh.ops.delete(bm, geom=kill, context="FACES")
+    bm.verts.ensure_lookup_table()
+    rim = {vv for vv in bm.verts if vv.is_boundary}
     for vert in bm.verts:
-        d = np.array([vert.co.x, vert.co.z, -vert.co.y])
+        d = rig_dir(vert.co)
+        if vert in rim and d[2] > 0.05:
+            # Randpunkt genau auf die Ausschnitt-Ellipse legen (sonst treppiger Rand)
+            py = c[1] + d[1] * r[1]
+            ex, ey = d[0] / 0.6, (py - face_y) / 0.098
+            k = 1.0 / max(math.hypot(ex, ey), 1e-6)
+            d0 = ex * k * 0.6
+            d1 = (face_y + ey * k * 0.098 - c[1]) / r[1]
+            d = np.array([d0, d1, math.sqrt(max(0.0, 1.0 - d0 * d0 - d1 * d1))])
         p = c + d * r
-        # hinten oben etwas spitz auslaufend, unten weiter fallend
-        if d[1] > 0 and d[2] < 0:
-            p[2] -= 0.035 * d[1] * (-d[2])
+        lon = math.atan2(d[0], d[2])
+        lat = d[1]
+        # Zipfel hinten oben
+        if d[1] > -0.2 and d[2] < 0:
+            p[2] -= 0.06 * max(0.0, d[1] + 0.2) * (-d[2]) ** 1.5
+            p[1] += 0.015 * max(0.0, d[1]) * (-d[2])
+        # unten weiter (fällt auf die Schultern)
         if d[1] < -0.3:
-            p[0] *= 1.0 + (-d[1] - 0.3) * 0.25
+            k = (-d[1] - 0.3)
+            p[0] = c[0] + (p[0] - c[0]) * (1.0 + k * 0.35)
+            p[2] = c[2] + (p[2] - c[2]) * (1.0 + k * 0.2)
+        # weiche Längsfalten, nach unten stärker, vorn am Gesicht schwächer
+        fold = math.sin(lon * 9 + lat * 2.5) * 0.6 + math.sin(lon * 17 - lat * 4) * 0.4
+        amp = 0.0045 * (0.4 + max(0.0, -lat) * 1.2) * (1.0 - 0.7 * max(0.0, d[2]))
+        nrm = d / max(np.linalg.norm(d), 1e-9)
+        p = p + nrm * fold * amp
+        # Saum am Gesicht eingerollt: etwas nach außen und vorn
+        if vert in rim and d[2] > 0:
+            p = p + nrm * 0.012 + np.array([0, 0, 0.006])
         vert.co = B(p)
     me = bpy.data.meshes.new("hood")
     bm.to_mesh(me)
     bm.free()
     o = bpy.data.objects.new("hood", me)
     bpy.context.scene.collection.objects.link(o)
-    me.uv_layers.new(name="UVMap")
-    for p in me.polygons:
-        p.use_smooth = True
+    uv = me.uv_layers.new(name="UVMap")
+    for poly in me.polygons:
+        for li in poly.loop_indices:
+            co = me.vertices[me.loops[li].vertex_index].co
+            d = np.array([co.x, co.z, -co.y]) - c
+            lon = math.atan2(d[0], d[2])
+            uv.data[li].uv = (lon / math.tau + 0.5, (d[1] + 0.2) * 2.5)
+    for poly in me.polygons:
+        poly.use_smooth = True
     me.materials.append(bpy.data.materials.get("accent") or bpy.data.materials.new("accent"))
     sol = o.modifiers.new("dicke", "SOLIDIFY")
-    sol.thickness = 0.008
+    sol.thickness = 0.01
     import lib
     lib.apply_mods(o)
     transfer_weights(o, base, v, W)
