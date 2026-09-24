@@ -66,10 +66,33 @@ Profiler nicht mitgezählt – behoben).
   gemessen Wald ≈ 0,045 / Strand ≈ 0,14 → Ausgleich (0,05/L)^0,65, 0,45–1,7.
 - Menschen-LOD: `human_*_lod1.glb` (Netze ~25 %, Haare nur Kappe, keine Bärte),
   Umschaltung ab 16 m (`rig.setLod`, EntityManager.camPos).
-- Offen (Nutzerliste): begehbare Häuser, Gebäude/Requisiten/Berge realistischer, ALLE Texturen
+- Offen (Nutzerliste, Stand vorher): begehbare Häuser, Gebäude/Requisiten/Berge realistischer, ALLE Texturen
   gründlich überarbeiten; Menschen: LOD für Leistung, Waffenhaltung prüfen.
 - Tests ohne GPU: gegen statischen Build testen (Vite-Dev-Server lädt bei
   Codeänderungen neu → Screenshots brechen ab).
+- Begehbare Häuser: `house_a`, `house_b`, `inn` haben im Erdgeschoss echte
+  Wände mit Tür-/Fensteröffnungen, offene Tür, Dielen, Decke/Balken und
+  Einrichtung (`_furnish_home`/`_furnish_inn` in `tools/blender/buildings.py`).
+  Kollision: `walkIn()` in `packages/shared/src/world/props.ts` (Sockel als
+  begehbarer Boden, Stufe, Wände mit Türlücke, Möbel). `PropDef.interior`
+  (Rechteck + Deckenhöhe) → Kamera-Decke und gedämpftes Himmelslicht drinnen
+  (`Game.interiorAt`, `env.indoor`); Herdlichter per `light` (jetzt auch
+  Liste mit ox/oz). Gras wird in Innenräumen ausgeblendet (`uRooms`).
+  Im Spiel geprüft (Gasthaus, Wohnhaus). Vorschau: `preview_interior.py`.
+- Gebirge neu (`mountains()` in `packages/shared/src/world/terrain.ts`):
+  Massive + verzerrtes Grat-Multifraktal + Erosionsrinnen, Gipfel bis
+  ~180 m. Fels/Schnee setzt jetzt der Geländeshader pro Pixel (Neigung,
+  Höhe, Rauschen, Gesteinsschichten); Schneegrenze 96–118 m (`snowAt`).
+- Texturen-Überarbeitung läuft (`tools/blender/textures.py`): Stein als
+  Bruchsteinmauerwerk, Putz, Holz, Ziegel, Stroh, Metall (Farbe ohne Metallic
+  backen, sonst schwarz; PBR-hell), Gelände mit gestreckten Rauschwerten
+  (`g.st`), Hohlraumverschattung in der Grundfarbe (`g.cavity`). Vorschau:
+  `PZ_TEX_SIZE=512 PZ_TEX_OUT=… textures.py` + `preview_tex.py`.
+  2K-Bake dauert ~30–40 min (4 Kerne); Stand beim Commit ggf. teilweise.
+- Gebäude: Dach mit Durchhang, Firstziegel/Strohwulst, behauene Balken
+  (`hewn`), Dach-UVs hangaufwärts (`box_uv`), Hof-Details `_yard` +
+  `homeExtras`-Kollision; Sockelschmutz im Client (`render/weathering.ts`).
+- Offen: Bake abschließen, Metall neu backen, alles im Spiel prüfen.
 
 ## 2026-09-24 – Cloud-Sitzung: Grafik-Offensive (Fortsetzung)
 
@@ -116,29 +139,6 @@ Profiler nicht mitgezählt – behoben).
   noch als Ersatz ohne Modell. Im Spiel geprüft.
 - E2E: Einzelspieler-Test braucht im Gesamtlauf ohne GPU länger (Timeout
   auf 180 s erhöht); einzeln 54 s grün, MP und Offline grün.
-- Begehbare Häuser: `house_a`, `house_b`, `inn` haben im Erdgeschoss echte
-  Wände mit Tür-/Fensteröffnungen, offene Tür, Dielen, Decke/Balken und
-  Einrichtung (`_furnish_home`/`_furnish_inn` in `tools/blender/buildings.py`).
-  Kollision: `walkIn()` in `packages/shared/src/world/props.ts` (Sockel als
-  begehbarer Boden, Stufe, Wände mit Türlücke, Möbel). `PropDef.interior`
-  (Rechteck + Deckenhöhe) → Kamera-Decke und gedämpftes Himmelslicht drinnen
-  (`Game.interiorAt`, `env.indoor`); Herdlichter per `light` (jetzt auch
-  Liste mit ox/oz). Gras wird in Innenräumen ausgeblendet (`uRooms`).
-  Im Spiel geprüft (Gasthaus, Wohnhaus). Vorschau: `preview_interior.py`.
-- Gebirge neu (`mountains()` in `packages/shared/src/world/terrain.ts`):
-  Massive + verzerrtes Grat-Multifraktal + Erosionsrinnen, Gipfel bis
-  ~180 m. Fels/Schnee setzt jetzt der Geländeshader pro Pixel (Neigung,
-  Höhe, Rauschen, Gesteinsschichten); Schneegrenze 96–118 m (`snowAt`).
-- Texturen-Überarbeitung läuft (`tools/blender/textures.py`): Stein als
-  Bruchsteinmauerwerk, Putz, Holz, Ziegel, Stroh, Metall (Farbe ohne Metallic
-  backen, sonst schwarz; PBR-hell), Gelände mit gestreckten Rauschwerten
-  (`g.st`), Hohlraumverschattung in der Grundfarbe (`g.cavity`). Vorschau:
-  `PZ_TEX_SIZE=512 PZ_TEX_OUT=… textures.py` + `preview_tex.py`.
-  2K-Bake dauert ~30–40 min (4 Kerne); Stand beim Commit ggf. teilweise.
-- Gebäude: Dach mit Durchhang, Firstziegel/Strohwulst, behauene Balken
-  (`hewn`), Dach-UVs hangaufwärts (`box_uv`), Hof-Details `_yard` +
-  `homeExtras`-Kollision; Sockelschmutz im Client (`render/weathering.ts`).
-- Offen: Bake abschließen, Metall neu backen, alles im Spiel prüfen.
 
 ## 2026-09-24 – Cloud-Sitzung: Start „Project Zero“
 
