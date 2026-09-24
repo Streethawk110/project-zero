@@ -57,8 +57,14 @@ Profiler nicht mitgezählt – behoben).
   Gelenkpositionen aus dem Modell, Haut-/Augen-/Haarshader), Rig nutzt es
   automatisch; Aussehen hat jetzt `sex` (0/1), weibliche NSC markiert, Auswahl
   in der Charaktererstellung. Texturen werden vorab geladen (`loadHumanTextures`).
-- Offen (Nutzerliste): Fluss-Streifen (schwarz, wo der Fluss hineingeht),
-  begehbare Häuser, Gebäude/Requisiten/Berge realistischer, ALLE Texturen
+- Fluss-Streifen behoben: Meer lag 140 m vor der Küste unter dem Fluss (dunkle
+  Doppelfläche) → Meer beginnt an `shoreLine`, Fluss endet dort, Flussbett 30 m
+  durch den Strand (terrain.ts); Wasser schreibt Tiefe (AO/Nebel sahen sonst das
+  Flussbett). Erdwege waren fast schwarz → `mat_dirt` heller gebacken. Flusswasser
+  klarer/grünlich, Schaum nur bei < 30 cm Tiefe.
+- Automatische Belichtung (`ExposurePass` in renderer.ts, GPU, ohne Zurücklesen):
+  gemessen Wald ≈ 0,045 / Strand ≈ 0,14 → Ausgleich (0,05/L)^0,65, 0,45–1,7.
+- Offen (Nutzerliste): begehbare Häuser, Gebäude/Requisiten/Berge realistischer, ALLE Texturen
   gründlich überarbeiten; Menschen: LOD für Leistung, Waffenhaltung prüfen.
 - Tests ohne GPU: gegen statischen Build testen (Vite-Dev-Server lädt bei
   Codeänderungen neu → Screenshots brechen ab).

@@ -82,7 +82,8 @@ export function heightRaw(x: number, z: number): number {
 
   // Flussbett
   const rd = riverDistance(x, z);
-  if (z < shoreZ) {
+  // Bis durch den Strand ins Meer (sonst staut ein Sandwall die Mündung)
+  if (z < shoreZ + 30) {
     const bank = 1 - smoothstep(RIVER_WIDTH * 0.5, RIVER_WIDTH * 0.5 + 16, rd);
     const bed = 1 - smoothstep(0, RIVER_WIDTH * 0.5, rd);
     const surface = riverSurfaceAt(z);

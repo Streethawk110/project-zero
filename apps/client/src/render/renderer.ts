@@ -296,6 +296,94 @@ class AtmospherePass extends Pass {
   }
 }
 
+/**
+ * Automatische Belichtung (Augenanpassung): mittlere Log-Helligkeit des Bildes über die Mipmaps
+ * einer kleinen Helligkeitstextur, zeitlich geglättet in 1×1-Zielen (Ping-Pong) – alles auf der
+ * Grafikkarte, kein Zurücklesen. Danach wird das Bild mit dem Belichtungsfaktor skaliert.
+ */
+class ExposurePass extends Pass {
+  private lumRT = new THREE.WebGLRenderTarget(128, 64, { type: THREE.HalfFloatType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false });
+  private adapt = [0, 1].map(() => new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false }));
+  private cur = 0;
+  private lumQuad: FullScreenQuad;
+  private adaptQuad: FullScreenQuad;
+  private applyQuad: FullScreenQuad;
+  private adaptMat: THREE.ShaderMaterial;
+  applyMat: THREE.ShaderMaterial;
+  private lumMat: THREE.ShaderMaterial;
+  private first = true;
+  dt = 0.016;
+
+  constructor() {
+    super();
+    const vert = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+    this.lumMat = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: null } },
+      vertexShader: vert,
+      fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+        void main(){ vec3 c = texture2D(tDiffuse, vUv).rgb; float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+          // Bildmitte stärker gewichten (dort schaut der Spieler hin)
+          float w = 1.0 - 0.5 * length(vUv - 0.5);
+          gl_FragColor = vec4(log(max(l, 1e-4)) * w, w, 0.0, 1.0); }`,
+      depthTest: false, depthWrite: false,
+    });
+    this.adaptMat = new THREE.ShaderMaterial({
+      uniforms: { tLum: { value: this.lumRT.texture }, tPrev: { value: null }, uBlend: { value: 1 } },
+      vertexShader: vert,
+      fragmentShader: `uniform sampler2D tLum; uniform sampler2D tPrev; uniform float uBlend; varying vec2 vUv;
+        void main(){ vec2 s = textureLod(tLum, vec2(0.5), 7.0).rg; float avg = exp(s.r / max(s.g, 1e-3));
+          float prev = texture2D(tPrev, vec2(0.5)).r;
+          gl_FragColor = vec4(mix(prev, avg, uBlend), 0.0, 0.0, 1.0); }`,
+      depthTest: false, depthWrite: false,
+    });
+    this.applyMat = new THREE.ShaderMaterial({
+      // Kalibriert: Waldlicht ≈ 0,045, Strand in der Sonne ≈ 0,14 (gemessen) → nur teilweise ausgleichen
+      uniforms: { tDiffuse: { value: null }, tAdapt: { value: null }, uKey: { value: 0.05 }, uStrength: { value: 0.65 }, uMin: { value: 0.45 }, uMax: { value: 1.7 }, uOn: { value: 1 } },
+      vertexShader: vert,
+      fragmentShader: `uniform sampler2D tDiffuse; uniform sampler2D tAdapt; uniform float uKey, uStrength, uMin, uMax, uOn; varying vec2 vUv;
+        void main(){ vec4 c = texture2D(tDiffuse, vUv); float lum = texture2D(tAdapt, vec2(0.5)).r;
+          float e = clamp(pow(uKey / max(lum, 1e-4), uStrength), uMin, uMax);
+          gl_FragColor = vec4(c.rgb * mix(1.0, e, uOn), c.a); }`,
+      depthTest: false, depthWrite: false,
+    });
+    this.lumQuad = new FullScreenQuad(this.lumMat);
+    this.adaptQuad = new FullScreenQuad(this.adaptMat);
+    this.applyQuad = new FullScreenQuad(this.applyMat);
+  }
+
+  override render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget) {
+    this.lumMat.uniforms['tDiffuse']!.value = readBuffer.texture;
+    renderer.setRenderTarget(this.lumRT);
+    this.lumQuad.render(renderer);
+    const prev = this.adapt[this.cur]!, next = this.adapt[1 - this.cur]!;
+    this.adaptMat.uniforms['tPrev']!.value = prev.texture;
+    // Anpassung: heller werden langsam (~1,5 s), dunkler werden schneller (~0,6 s) – wie das Auge
+    this.adaptMat.uniforms['uBlend']!.value = this.first ? 1 : 1 - Math.exp(-this.dt * 1.6);
+    this.first = false;
+    renderer.setRenderTarget(next);
+    this.adaptQuad.render(renderer);
+    this.cur = 1 - this.cur;
+    this.applyMat.uniforms['tDiffuse']!.value = readBuffer.texture;
+    this.applyMat.uniforms['tAdapt']!.value = next.texture;
+    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+    this.applyQuad.render(renderer);
+  }
+
+  /** Gemessene (angepasste) mittlere Helligkeit – nur zur Kalibrierung/Diagnose. */
+  readAdapted(renderer: THREE.WebGLRenderer) {
+    const buf = new Uint16Array(4);
+    renderer.readRenderTargetPixels(this.adapt[this.cur]!, 0, 0, 1, 1, buf);
+    return THREE.DataUtils.fromHalfFloat(buf[0]!);
+  }
+
+  override dispose() {
+    this.lumRT.dispose();
+    for (const a of this.adapt) a.dispose();
+    this.lumMat.dispose(); this.adaptMat.dispose(); this.applyMat.dispose();
+    this.lumQuad.dispose(); this.adaptQuad.dispose(); this.applyQuad.dispose();
+  }
+}
+
 export class Renderer {
   readonly renderer: THREE.WebGLRenderer;
   composer: EffectComposer | null = null;
@@ -303,6 +391,7 @@ export class Renderer {
   grade: ShaderPass | null = null;
   private scenePass: ScenePass | null = null;
   private atmosphere: AtmospherePass | null = null;
+  exposure: ExposurePass | null = null;
   clouds: CloudRenderer | null = null;
   private scene: THREE.Scene | null = null;
   private camera: THREE.PerspectiveCamera | null = null;
@@ -354,6 +443,7 @@ export class Renderer {
     this.grade = null;
     this.scenePass = null;
     this.atmosphere = null;
+    this.exposure = null;
     this.clouds = null;
     if (settings.graphics === 'niedrig' && !settings.bloom) {
       // Direktes Rendern ohne Nachbearbeitung für schwache Geräte
@@ -372,6 +462,8 @@ export class Renderer {
     const ao = settings.ao ? new AOPass(depthTex, settings.graphics === 'ultra' ? 16 : 10) : null;
     this.atmosphere = new AtmospherePass(depthTex, this.clouds, rays, ao, camera);
     c.addPass(this.atmosphere);
+    this.exposure = new ExposurePass();
+    c.addPass(this.exposure);
     if (settings.bloom) {
       this.bloom = new UnrealBloomPass(new THREE.Vector2(4, 4), 0.28, 0.6, 0.9);
       c.addPass(this.bloom);
@@ -458,6 +550,7 @@ export class Renderer {
 
   render(scene: THREE.Scene, camera: THREE.PerspectiveCamera, dt: number) {
     if (this.grade) this.grade.uniforms['uTime']!.value += dt;
+    if (this.exposure) this.exposure.dt = dt;
     if (this.composer) {
       camera.updateMatrixWorld();
       if (this.clouds && (this.atmosphere?.material.uniforms['uCloudsOn']!.value ?? 0) > 0) this.clouds.render(this.renderer, camera);

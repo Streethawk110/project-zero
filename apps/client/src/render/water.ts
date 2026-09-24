@@ -57,18 +57,23 @@ const frag = /* glsl */ `
     vec3 R = reflect(-V, n);
     R.y = abs(R.y);
     vec3 sky = mix(uSkyHorizon, uSkyTop, pow(smoothstep(0.0, 0.8, R.y), 0.6));
-    vec3 water = mix(uShallow, uDeep, smoothstep(0.0, 7.0, depth));
+    // Flusswasser (vFlow ≠ 0) klarer und grünlich-braun, Meer blaugrün
+    float isRiver = step(0.5, length(vFlow));
+    vec3 shallow = mix(uShallow, vec3(0.05, 0.075, 0.05), isRiver);
+    vec3 deep = mix(uDeep, vec3(0.012, 0.025, 0.022), isRiver);
+    vec3 water = mix(shallow, deep, smoothstep(0.0, isRiver > 0.5 ? 2.5 : 7.0, depth));
     // Durchleuchten der Wellenkämme gegen die Sonne
     float sss = pow(max(dot(V, -uSunDir), 0.0), 3.0) * max(n3.z * 0.5 + 0.5, 0.0) * (1.0 - uNight);
     water += vec3(0.05, 0.22, 0.18) * sss * 0.8;
-    vec3 col = mix(water, sky, fres);
+    vec3 col = mix(water, sky, fres * mix(1.0, 0.75, isRiver));
     float spec = pow(max(dot(R, uSunDir), 0.0), 400.0) * 6.0 + pow(max(dot(R, uSunDir), 0.0), 40.0) * 0.25;
     col += uSunColor * spec * (1.0 - uNight * 0.7);
     // Uferschaum
-    float foam = smoothstep(0.9, 0.0, depth) * (0.55 + 0.45 * sin(uTime * 1.8 + vWPos.x * 0.6 + vWPos.z * 0.4));
+    // Schaum nur an sehr flachen Stellen (Ufersaum), im Fluss schwächer
+    float foam = smoothstep(0.3, 0.0, depth) * (0.55 + 0.45 * sin(uTime * 1.8 + vWPos.x * 0.6 + vWPos.z * 0.4)) * mix(1.0, 0.5, isRiver);
     foam *= smoothstep(0.35, 0.65, texture2D(tNormal, vWPos.xz * 0.2 + uTime * 0.03).b);
     col = mix(col, vec3(0.9, 0.94, 0.95), foam * 0.6);
-    float alpha = clamp(0.55 + depth * 0.22 + fres * 0.3, 0.0, 0.96);
+    float alpha = clamp(mix(0.55, 0.35, isRiver) + depth * 0.25 + fres * 0.3, 0.0, 0.96);
     gl_FragColor = vec4(col, alpha);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -154,12 +159,21 @@ export class Water {
     ]);
     uniforms['tHeight']!.value = heightTex;
     uniforms['tNormal']!.value = waveNormalTexture();
-    this.material = new THREE.ShaderMaterial({ uniforms, vertexShader: vert, fragmentShader: frag, transparent: true, fog: true, depthWrite: false });
+    // Tiefe schreiben: Umgebungsverdeckung und Nebel sollen die Wasseroberfläche sehen, nicht das
+    // Flussbett darunter (sonst dunkle Streifen an steilen Ufern)
+    this.material = new THREE.ShaderMaterial({ uniforms, vertexShader: vert, fragmentShader: frag, transparent: true, fog: true, depthWrite: true });
 
-    // Meer: fein unterteilt nahe der Küste
+    // Meer: beginnt genau an der Küstenlinie (kein Meer unter dem Fluss), nahe der Küste fein unterteilt
     const sea = new THREE.PlaneGeometry(2400, 1400, 200, 80);
     sea.rotateX(-Math.PI / 2);
-    sea.translate(0, 0, shoreLine(0) + 560);
+    {
+      const p = sea.attributes['position']!;
+      for (let i = 0; i < p.count; i++) {
+        const f = (p.getZ(i) + 700) / 1400;
+        p.setZ(i, shoreLine(p.getX(i)) - 3 + Math.pow(f, 1.6) * 1300);
+      }
+      sea.computeBoundingSphere();
+    }
     sea.setAttribute('flow', new THREE.BufferAttribute(new Float32Array(sea.attributes['position']!.count * 2), 2));
     const seaMesh = new THREE.Mesh(sea, this.material);
     seaMesh.renderOrder = 2;
@@ -180,6 +194,8 @@ export class Water {
       for (let s = 0; s <= steps; s++) {
         if (i > 0 && s === 0) continue;
         const p = a.clone().addScaledVector(dir, (len * s) / steps);
+        // Der Fluss endet an der Küste, dort übernimmt das Meer (keine doppelten Wasserflächen)
+        if (p.y > shoreLine(p.x) - 1) break;
         const y = riverSurfaceAt(p.y);
         const w = RIVER_WIDTH * 0.5 + 2.5;
         pos.push(p.x + nrm.x * w, y, p.y + nrm.y * w, p.x - nrm.x * w, y, p.y - nrm.y * w);
