@@ -311,7 +311,7 @@ def export(name, objs=None, lod_ratio=None, uv_scale=None):
         o.select_set(True)
     bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True, export_apply=True, export_yup=True,
                               export_texcoords=True, export_normals=True, export_materials="EXPORT", export_extras=False,
-                              export_animations=False, export_skins=False)
+                              export_animations=False, export_skins=False, export_vertex_color="ACTIVE")
     entry = {"file": f"{name}.glb"}
     if lod_ratio:
         lods = []

@@ -3,8 +3,8 @@
 // verformen so den ganzen Körper weich, statt einzelne Teile zu drehen.
 //
 // Gewichte: pro Punkt Abstand zu den Knochenstrecken (Gelenk → Kindgelenk); die nächsten
-// Knochen teilen sich den Punkt mit 1/d⁴-Gewichtung. Kopf, Hände und Füße sind starr, linke und
-// rechte Gliedmaßen werden nie vermischt. Ergebnis wird je Körperbreite zwischengespeichert.
+// Knochen teilen sich den Punkt mit 1/d⁴-Gewichtung. Welche Knochen infrage kommen, legt die
+// Körperzone aus Blender fest; Kopf, Hände und Füße sind starr. Ergebnis je Körperbreite gecacht.
 
 import * as THREE from 'three';
 import { getModel, hasModel } from './models.ts';
@@ -50,7 +50,22 @@ export function boneSegments(joints: Record<string, THREE.Object3D>, order: stri
   });
 }
 
-function computeWeights(pos: THREE.BufferAttribute | THREE.InterleavedBufferAttribute, segs: Seg[]) {
+// Körperzonen aus Blender (Rotkanal der Vertexfarbe = Code / 10 + 0,05) → erlaubte Knochen.
+// So hängen Ärmel nur am Arm, Rocksäume nur an Becken/Oberschenkeln, Schulterstücke nur an der
+// Schulter – statt über den Abstand am falschen Knochen zu landen.
+const ZONE_BONES: Record<number, string[]> = {
+  0: ['hips', 'spine', 'chest', 'neck', 'head'],
+  1: ['chest', 'shoulderL', 'upperArmL', 'foreArmL', 'handL'],
+  2: ['chest', 'shoulderR', 'upperArmR', 'foreArmR', 'handR'],
+  3: ['hips', 'thighL', 'shinL', 'footL'],
+  4: ['hips', 'thighR', 'shinR', 'footR'],
+  5: ['head'],
+  7: ['hips', 'spine', 'thighL', 'thighR'],
+  8: ['chest', 'shoulderL', 'upperArmL'],
+  9: ['chest', 'shoulderR', 'upperArmR'],
+};
+
+function computeWeights(pos: THREE.BufferAttribute | THREE.InterleavedBufferAttribute, segs: Seg[], zones: Int8Array | null) {
   const n = pos.count;
   const idx = new Uint16Array(n * 4);
   const wts = new Float32Array(n * 4);
@@ -60,20 +75,39 @@ function computeWeights(pos: THREE.BufferAttribute | THREE.InterleavedBufferAttr
   const cand: { j: number; d: number }[] = [];
   for (let i = 0; i < n; i++) {
     p.fromBufferAttribute(pos, i);
-    const side = p.x > 0.06 ? 1 : p.x < -0.06 ? -1 : 0;
-    // Starre Bereiche
-    if (p.y > 1.745) { rigid(i, 'head'); continue; }
-    if (Math.abs(p.x) > 0.17 && p.y < 1.02) { rigid(i, p.x > 0 ? 'handL' : 'handR'); continue; }
-    if (p.y < 0.075) { rigid(i, p.x > 0 ? 'footL' : 'footR'); continue; }
-    cand.length = 0;
-    for (const s of segs) {
-      // Links/rechts nie vermischen; Arme nur seitlich des Rumpfes, Beine nur unterhalb der Hüfte
-      if (s.side !== 0 && side !== 0 && s.side !== side) continue;
-      if (s.side !== 0 && side === 0 && !s.name.startsWith('thigh')) continue;
-      if ((s.name.startsWith('upperArm') || s.name.startsWith('foreArm')) && Math.abs(p.x) < 0.16) continue;
-      if ((s.name.startsWith('thigh') || s.name.startsWith('shin')) && p.y > 0.97) continue;
-      if (s.name === 'head' || s.name.startsWith('hand') || s.name.startsWith('foot')) { if (s.name !== 'head' || p.y < 1.66) continue; }
-      cand.push({ j: s.j, d: segDist(p, s.a, s.b) });
+    const zone = zones ? zones[i]! : -1;
+    const allowed = ZONE_BONES[zone];
+    if (allowed) {
+      // Starre Bereiche innerhalb der Zone: Kopf, Hand unterhalb des Handgelenks, Fußsohle
+      if (zone === 5) { rigid(i, 'head'); continue; }
+      if ((zone === 1 || zone === 2) && p.y < 0.985) { rigid(i, zone === 1 ? 'handL' : 'handR'); continue; }
+      if ((zone === 3 || zone === 4) && p.y < 0.075) { rigid(i, zone === 3 ? 'footL' : 'footR'); continue; }
+      cand.length = 0;
+      for (const name of allowed) {
+        const s = byName.get(name);
+        if (!s) continue;
+        if (name === 'head' && p.y < 1.66) continue;
+        if (name === 'chest' && (zone === 1 || zone === 2) && Math.abs(p.x) > 0.2) continue;
+        // Hand übernimmt erst ab dem Handgelenk
+        if (name.startsWith('hand') && p.y > 1.03) continue;
+        cand.push({ j: s.j, d: segDist(p, s.a, s.b) });
+      }
+    } else {
+      const side = p.x > 0.06 ? 1 : p.x < -0.06 ? -1 : 0;
+      // Ohne Zone (ältere Modelle): Abstandsregeln
+      if (p.y > 1.712) { rigid(i, 'head'); continue; }
+      if (Math.abs(p.x) > 0.17 && p.y < 1.02) { rigid(i, p.x > 0 ? 'handL' : 'handR'); continue; }
+      if (p.y < 0.075) { rigid(i, p.x > 0 ? 'footL' : 'footR'); continue; }
+      cand.length = 0;
+      for (const s of segs) {
+        // Links/rechts nie vermischen; Arme nur seitlich des Rumpfes, Beine nur unterhalb der Hüfte
+        if (s.side !== 0 && side !== 0 && s.side !== side) continue;
+        if (s.side !== 0 && side === 0 && !s.name.startsWith('thigh')) continue;
+        if ((s.name.startsWith('upperArm') || s.name.startsWith('foreArm')) && Math.abs(p.x) < 0.16) continue;
+        if ((s.name.startsWith('thigh') || s.name.startsWith('shin')) && p.y > 0.97) continue;
+        if (s.name === 'head' || s.name.startsWith('hand') || s.name.startsWith('foot')) { if (s.name !== 'head' || p.y < 1.66) continue; }
+        cand.push({ j: s.j, d: segDist(p, s.a, s.b) });
+      }
     }
     cand.sort((a, b) => a.d - b.d);
     const dmin = Math.max(0.012, cand[0]?.d ?? 1);
@@ -91,6 +125,14 @@ function computeWeights(pos: THREE.BufferAttribute | THREE.InterleavedBufferAttr
     for (let c = 0; c < 4; c++) wts[i * 4 + c]! /= sum;
   }
   return { idx, wts };
+}
+
+function zonesOf(g: THREE.BufferGeometry): Int8Array | null {
+  const col = g.attributes['color'];
+  if (!col) return null;
+  const out = new Int8Array(col.count);
+  for (let i = 0; i < col.count; i++) out[i] = Math.round((col.getX(i) - 0.05) * 10);
+  return out;
 }
 
 interface PartGeo { geometry: THREE.BufferGeometry; material: string }
@@ -153,7 +195,7 @@ export function buildSkinnedParts(
           if (v.y < 1.72) { v.x *= bw; v.z *= 0.9 + bw * 0.1; }
           pos[i * 3] = v.x; pos[i * 3 + 1] = v.y; pos[i * 3 + 2] = v.z;
         }
-        const w = computeWeights(new THREE.BufferAttribute(pos, 3), segs);
+        const w = computeWeights(new THREE.BufferAttribute(pos, 3), segs, zonesOf(pg.geometry));
         return { ...w, pos };
       });
       weightCache.set(key, cached);

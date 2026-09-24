@@ -35,7 +35,7 @@ def R(v):
     return (v[0], v[2], -v[1])
 
 
-HEAD_C = (0.0, 1.835, 0.0)  # Mittelpunkt des Schädels (Kopfgelenk bei 1.73)
+HEAD_C = (0.0, 1.808, 0.008)  # Mittelpunkt des Schädels (Kopfgelenk bei 1.73, Kinn ~1.69)
 
 
 def skin_graph(name, verts, edges, radii, material, subsurf=2, root=0):
@@ -66,6 +66,26 @@ def rig_vertices(o, fn):
     o.data.update()
 
 
+# Körperzonen (werden als Vertexfarbe exportiert; der Client wählt danach die Knochen)
+ZONE = {"torso": 0, "armL": 1, "armR": 2, "legL": 3, "legR": 4, "head": 5, "skirt": 7, "padL": 8, "padR": 9}
+
+
+def zone(o, name):
+    """Markiert alle Punkte eines Objekts mit einer Körperzone (Rotkanal = Code / 10)."""
+    me = o.data
+    attr = me.color_attributes.get("zone") or me.color_attributes.new("zone", "FLOAT_COLOR", "POINT")
+    code = ZONE[name] / 10.0 + 0.05
+    for d in attr.data:
+        d.color = (code, 0.0, 0.0, 1.0)
+    me.color_attributes.active_color = attr
+    me.color_attributes.render_color_index = me.color_attributes.find("zone")
+    return o
+
+
+def side_zone(x, left, right):
+    return left if x > 0 else right
+
+
 def gauss(d2, s):
     return math.exp(-d2 / (2 * s * s))
 
@@ -81,19 +101,22 @@ def head():
 
     def shape(x, y, z):
         # Einheitskugel → Schädel
-        x, y, z = x * 0.101, y * 0.118, z * 0.114
+        x, y, z = x * 0.106, y * 0.123, z * 0.118
         # Hinterkopf voller, Stirn etwas flacher
         if z < 0 and y > -0.02:
             z *= 1.08
         # Kiefer und Kinn: unten schmaler und nach vorn
         if y < -0.015:
             k = min(1.0, (-y - 0.015) / 0.09)
-            x *= 1.0 - 0.34 * k
-            z += 0.012 * k * (1 if z > 0 else -0.4)
+            x *= 1.0 - 0.2 * k * k
+            z += 0.006 * k * (1 if z > 0 else -0.4)
             if z < 0:
                 z *= 1.0 - 0.35 * k
         # Kinn betont
-        z += 0.012 * gauss(x * x + (y + 0.098) ** 2, 0.022) * (1 if z > 0 else 0)
+        z += 0.006 * gauss(x * x + (y + 0.1) ** 2, 0.022) * (1 if z > 0 else 0)
+        # breiterer, runder Unterkiefer
+        if -0.11 < y < -0.03:
+            x *= 1.0 + 0.06 * gauss((y + 0.07) ** 2, 0.02)
         # Wangenknochen
         for s in (-1, 1):
             d2 = (x - s * 0.058) ** 2 + (y + 0.005) ** 2 + (z - 0.07) ** 2
@@ -112,13 +135,13 @@ def head():
             nx = gauss(x * x, 0.0115)
             if -0.05 < y < 0.03:
                 t = (0.03 - y) / 0.08
-                prof = 0.007 + 0.03 * t ** 1.3
+                prof = 0.006 + 0.026 * t ** 1.5
                 if y < -0.035:
                     prof *= max(0.0, 1 - (-0.035 - y) / 0.015)
                 z += prof * nx
             # Nasenflügel
             for s in (-1, 1):
-                z += 0.006 * gauss((x - s * 0.014) ** 2 + (y + 0.038) ** 2, 0.006)
+                z += 0.004 * gauss((x - s * 0.013) ** 2 + (y + 0.038) ** 2, 0.005)
             # Lippen (oben, unten) und Mundspalte
             lx = gauss(x * x, 0.02)
             z += 0.007 * lx * gauss((y + 0.056) ** 2, 0.005)
@@ -172,6 +195,8 @@ def head():
         for bx, by in ((0.016, 0.034), (0.034, 0.04), (0.053, 0.034)):
             pts.append(B(cx + s * bx, cy + by, surf(cx + s * bx, cy + by) + 0.0025))
         brows.append(tube("brow", pts, 0.0038, 5, material="hair", r_end=0.0022))
+    for part in parts + brows:
+        zone(part, "head")
     o = join(parts + brows, "head")
     smooth(o, 60)
     return o
@@ -179,28 +204,28 @@ def head():
 
 def neck_and_hands():
     parts = []
-    neck = skin_graph("neck", [(0, 1.57, -0.008), (0, 1.66, -0.004), (0, 1.76, -0.01)], [(0, 1), (1, 2)], [(0.068, 0.062), (0.06, 0.058), (0.056, 0.054)], "skin")
-    parts.append(neck)
+    neck = skin_graph("neck", [(0, 1.585, -0.012), (0, 1.65, -0.002), (0, 1.72, 0.004)], [(0, 1), (1, 2)], [(0.07, 0.064), (0.064, 0.06), (0.058, 0.056)], "skin")
+    parts.append(zone(neck, "torso"))
     for s in (-1, 1):
-        x = s * 0.23
-        # Handgelenk → Handteller → Fingeransätze → Finger (Handfläche zeigt zum Körper)
-        v = [(x, 1.005, 0.0), (x, 0.965, 0.0), (x, 0.935, 0.0)]
-        e = [(0, 1), (1, 2)]
-        r = [(0.024, 0.02), (0.02, 0.036), (0.016, 0.034)]
-        fz = [-0.018, -0.006, 0.006, 0.018]
-        flen = [0.058, 0.07, 0.075, 0.065]
+        x = s * 0.232
+        # Unterarm-Ende (unter dem Ärmel) → schmales Handgelenk → Handteller → Finger
+        v = [(x, 1.12, 0.004), (x, 1.045, 0.002), (x, 1.0, 0.0), (x, 0.955, 0.0), (x, 0.925, 0.002)]
+        e = [(0, 1), (1, 2), (2, 3), (3, 4)]
+        r = [(0.03, 0.028), (0.022, 0.019), (0.021, 0.034), (0.019, 0.04), (0.016, 0.038)]
+        fz = [-0.021, -0.007, 0.007, 0.021]
+        flen = [0.066, 0.08, 0.086, 0.074]
         for i, (z, L) in enumerate(zip(fz, flen)):
             base = len(v)
-            v += [(x, 0.93, z), (x - s * 0.002, 0.93 - L * 0.45, z + 0.002), (x - s * 0.006, 0.93 - L, z + 0.004)]
-            e += [(2, base), (base, base + 1), (base + 1, base + 2)]
-            r += [0.0095, 0.0085, 0.0072]
-        # Daumen
+            v += [(x, 0.918, z), (x - s * 0.008, 0.918 - L * 0.5, z + 0.004), (x - s * 0.024, 0.918 - L * 0.88, z + 0.008)]
+            e += [(4, base), (base, base + 1), (base + 1, base + 2)]
+            r += [0.0105, 0.0092, 0.0078]
+        # Daumen: vom Handballen schräg nach vorn
         base = len(v)
-        v += [(x - s * 0.006, 0.975, 0.022), (x - s * 0.01, 0.95, 0.04), (x - s * 0.012, 0.925, 0.05)]
-        e += [(1, base), (base, base + 1), (base + 1, base + 2)]
-        r += [0.012, 0.01, 0.0085]
+        v += [(x - s * 0.008, 0.985, 0.026), (x - s * 0.013, 0.955, 0.045), (x - s * 0.015, 0.928, 0.056)]
+        e += [(2, base), (base, base + 1), (base + 1, base + 2)]
+        r += [0.0135, 0.011, 0.009]
         hand = skin_graph("hand", v, e, r, "skin", subsurf=2)
-        parts.append(hand)
+        parts.append(zone(hand, "armL" if s > 0 else "armR"))
     return parts
 
 
@@ -214,48 +239,59 @@ def folds(o, strength=0.006, seed=1):
 
 
 def tunic():
-    # Rumpf mit Ärmeln: Saum → Taille → Brust → Schultern → Ellbogen → Bündchen
+    # Rumpf (Zone Rumpf) und Ärmel (Zonen Arm links/rechts) als getrennte Formen
     v = [
-        (0, 0.82, 0.0), (0, 0.95, 0.0), (0, 1.1, 0.005), (0, 1.3, 0.012), (0, 1.47, 0.0), (0, 1.585, -0.005),
+        (0, 0.82, 0.0), (0, 0.95, 0.0), (0, 1.1, 0.005), (0, 1.3, 0.014), (0, 1.47, 0.004), (0, 1.555, -0.008), (0, 1.625, -0.01),
     ]
-    e = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)]
-    r = [(0.19, 0.15), (0.172, 0.125), (0.162, 0.118), (0.185, 0.128), (0.195, 0.12), (0.085, 0.075)]
+    e = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6)]
+    r = [(0.19, 0.15), (0.172, 0.125), (0.162, 0.118), (0.188, 0.13), (0.2, 0.122), (0.15, 0.1), (0.078, 0.072)]
     for s in (-1, 1):
         base = len(v)
-        v += [(s * 0.16, 1.52, 0.0), (s * 0.225, 1.5, 0.0), (s * 0.235, 1.27, 0.0), (s * 0.232, 1.04, 0.004)]
-        e += [(4, base), (base, base + 1), (base + 1, base + 2), (base + 2, base + 3)]
-        r += [(0.07, 0.07), (0.066, 0.064), (0.054, 0.052), (0.048, 0.046)]
-    o = skin_graph("tunic", v, e, r, "body", subsurf=2)
+        v += [(s * 0.14, 1.54, 0.0)]
+        e += [(4, base)]
+        r += [(0.078, 0.072)]
+    o = skin_graph("tunic_torso", v, e, r, "body", subsurf=2)
+    zone(o, "torso")
+    sleeves = []
+    for s in (-1, 1):
+        sv = [(s * 0.15, 1.535, 0.0), (s * 0.215, 1.515, 0.0), (s * 0.232, 1.41, 0.0), (s * 0.235, 1.28, 0.0), (s * 0.234, 1.18, 0.005), (s * 0.232, 1.085, 0.006)]
+        se = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)]
+        sr = [(0.07, 0.066), (0.072, 0.068), (0.064, 0.062), (0.052, 0.05), (0.052, 0.05), (0.042, 0.04)]
+        sl = skin_graph("sleeve", sv, se, sr, "body", subsurf=2)
+        zone(sl, "armL" if s > 0 else "armR")
+        sleeves.append(sl)
+    o = join([o] + sleeves, "tunic_body")
     # Falten: waagerechte Knitter in der Taille, senkrechte am Saum, Ellbogenfalten
     def crease(x, y, z):
         k = 0.0
         k += 0.004 * math.sin(y * 120 + x * 10) * gauss((y - 1.0) ** 2, 0.05)
         k += 0.005 * math.sin(math.atan2(z, x) * 14) * max(0.0, (0.95 - y) / 0.13)
         for s in (-1, 1):
-            k += 0.003 * math.sin(y * 160) * gauss((x - s * 0.235) ** 2 + (y - 1.27) ** 2, 0.04)
+            k += 0.003 * math.sin(y * 160) * gauss((x - s * 0.235) ** 2 + (y - 1.28) ** 2, 0.04)
         rr = math.hypot(x, z) or 1.0
         return x + x / rr * k, y, z + z / rr * k
     rig_vertices(o, crease)
     folds(o, 0.004, 3)
     # Kragen und Knopfleiste
-    collar = lathe("collar", [(0.09, 1.57), (0.083, 1.615), (0.075, 1.635)], 24, "body")
-    placket = tube("placket", [B(0, 1.56, 0.075), B(0, 1.3, 0.128), B(0, 1.02, 0.12)], 0.006, 5, material="accent")
+    collar = zone(lathe("collar", [(0.088, 1.6), (0.08, 1.64), (0.073, 1.66)], 24, "body"), "torso")
+    placket = zone(tube("placket", [B(0, 1.6, 0.07), B(0, 1.5, 0.11), B(0, 1.3, 0.132), B(0, 1.02, 0.12)], 0.006, 5, material="accent"), "torso")
     o = join([o, collar, placket], "tunic")
     smooth(o, 50)
     return o
 
 
 def trousers():
-    v = [(0, 0.97, 0.0), (0, 0.9, 0.0)]
-    e = [(0, 1)]
-    r = [(0.17, 0.125), (0.16, 0.12)]
+    pelvis = skin_graph("pelvis", [(0, 0.99, 0.0), (0, 0.9, 0.0), (0.06, 0.86, 0.0), (-0.06, 0.86, 0.0)], [(0, 1), (1, 2), (1, 3)],
+                        [(0.168, 0.124), (0.165, 0.122), (0.1, 0.1), (0.1, 0.1)], "legs", subsurf=2)
+    zone(pelvis, "skirt")
+    legs = [pelvis]
     for s in (-1, 1):
-        base = len(v)
-        v += [(s * 0.095, 0.84, 0.0), (s * 0.1, 0.66, 0.004), (s * 0.1, 0.47, 0.012), (s * 0.1, 0.25, 0.0), (s * 0.1, 0.12, 0.0)]
-        e += [(1, base), (base, base + 1), (base + 1, base + 2), (base + 2, base + 3), (base + 3, base + 4)]
-        r += [(0.088, 0.09), (0.078, 0.08), (0.063, 0.065), (0.058, 0.06), (0.052, 0.052)]
-    o = skin_graph("trousers", v, e, r, "legs", subsurf=2)
-
+        v = [(s * 0.095, 0.88, 0.0), (s * 0.1, 0.7, 0.006), (s * 0.1, 0.56, 0.008), (s * 0.1, 0.47, 0.014), (s * 0.1, 0.36, -0.006), (s * 0.1, 0.22, 0.0), (s * 0.1, 0.12, 0.0)]
+        e = [(i, i + 1) for i in range(len(v) - 1)]
+        r = [(0.092, 0.094), (0.082, 0.085), (0.07, 0.072), (0.06, 0.064), (0.064, 0.068), (0.054, 0.056), (0.05, 0.05)]
+        leg = skin_graph("leg", v, e, r, "legs", subsurf=2)
+        legs.append(zone(leg, "legL" if s > 0 else "legR"))
+    o = join(legs, "trousers")
     def knee(x, y, z):
         k = 0.003 * math.sin(y * 140) * gauss((y - 0.47) ** 2, 0.05)
         return x, y, z + k
@@ -278,7 +314,8 @@ def boots():
         rig_vertices(b, lambda px, py, pz: (px, max(py, 0.004), pz))
         cuff = uvsphere("cuff", 1.0, B(x, 0.395, 0.0), material="accent", seg=20, rings=8, scale=(0.078, 0.078, 0.028))
         sole = uvsphere("sole", 1.0, B(x, 0.012, 0.05), material="legs", seg=16, rings=6, scale=(0.052, 0.13, 0.012))
-        parts += [b, cuff, sole]
+        zn = "legL" if s > 0 else "legR"
+        parts += [zone(b, zn), zone(cuff, zn), zone(sole, zn)]
     o = join(parts, "boots")
     smooth(o, 50)
     return o
@@ -290,8 +327,10 @@ def belt():
     parts.append(ring)
     parts.append(uvsphere("buckle", 1.0, B(0, 0.975, 0.135), material="metal", seg=12, rings=6, scale=(0.022, 0.006, 0.02)))
     parts.append(uvsphere("pouch", 1.0, B(0.13, 0.93, 0.08), material="accent", seg=12, rings=8, scale=(0.04, 0.03, 0.05)))
+    for p_ in parts:
+        zone(p_, "torso")
     for s in (-1, 1):
-        parts.append(uvsphere("cuff", 1.0, B(s * 0.232, 1.045, 0.004), material="accent", seg=16, rings=6, scale=(0.05, 0.048, 0.016)))
+        parts.append(zone(uvsphere("cuff", 1.0, B(s * 0.232, 1.085, 0.006), material="accent", seg=16, rings=6, scale=(0.046, 0.044, 0.016)), "armL" if s > 0 else "armR"))
     o = join(parts, "belt")
     smooth(o, 40)
     return o
@@ -311,6 +350,7 @@ def robe():
     # Innenseite sichtbar machen
     o.data.flip_normals() if False else None
     folds(o, 0.004, 7)
+    zone(o, "skirt")
     smooth(o, 50)
     return o
 
@@ -346,12 +386,12 @@ def hood():
     mod = shell.modifiers.new("dicke", "SOLIDIFY")
     mod.thickness = 0.008
     apply_mods(shell)
-    parts.append(shell)
+    parts.append(zone(shell, "head"))
     # Gugel: Schulterkragen mit Falten
-    cape = lathe("cape", [(0.1, 1.68), (0.17, 1.62), (0.24, 1.53), (0.28, 1.42), (0.285, 1.37)], 40, "accent")
+    cape = lathe("cape", [(0.095, 1.67), (0.16, 1.62), (0.235, 1.535), (0.275, 1.43), (0.28, 1.38)], 40, "accent")
     bake(cape)
     rig_vertices(cape, lambda x, y, z: (x * (1 + 0.04 * math.sin(math.atan2(z, x) * 12) * (1.66 - y) * 3), y, z * (1 + 0.04 * math.sin(math.atan2(z, x) * 12) * (1.66 - y) * 3)))
-    parts.append(cape)
+    parts.append(zone(cape, "torso"))
     o = join(parts, "hood")
     folds(o, 0.003, 9)
     smooth(o, 50)
@@ -361,19 +401,20 @@ def hood():
 def plates():
     parts = []
     for s in (-1, 1):
-        p = uvsphere("pauldron", 1.0, B(s * 0.215, 1.54, 0.0), material="body", seg=24, rings=12, scale=(0.078, 0.07, 0.07))
+        p = uvsphere("pauldron", 1.0, B(s * 0.215, 1.52, 0.0), material="body", seg=24, rings=12, scale=(0.08, 0.07, 0.072))
         bake(p)
-        rig_vertices(p, lambda x, y, z: (x, max(y, 1.49), z))
-        parts.append(p)
+        rig_vertices(p, lambda x, y, z: (x, max(y, 1.47), z))
+        zn = "padL" if s > 0 else "padR"
+        parts.append(zone(p, zn))
         for i in range(3):
             band = uvsphere("lame", 1.0, B(s * 0.225, 1.5 - i * 0.035, 0.0), material="body", seg=20, rings=6, scale=(0.078 - i * 0.004, 0.012, 0.07))
-            parts.append(band)
+            parts.append(zone(band, zn))
     cuirass = skin_graph("cuirass", [(0, 1.06, 0.004), (0, 1.2, 0.01), (0, 1.34, 0.018), (0, 1.47, 0.004)], [(0, 1), (1, 2), (2, 3)],
                          [(0.178, 0.132), (0.176, 0.13), (0.198, 0.142), (0.2, 0.13)], "body", subsurf=2)
-    parts.append(cuirass)
-    parts.append(tube("ridge", [B(0, 1.47, 0.132), B(0, 1.32, 0.162), B(0, 1.1, 0.14)], 0.005, 6, material="body"))
+    parts.append(zone(cuirass, "torso"))
+    parts.append(zone(tube("ridge", [B(0, 1.47, 0.132), B(0, 1.32, 0.162), B(0, 1.1, 0.14)], 0.005, 6, material="body"), "torso"))
     for yy in (1.08, 1.13):
-        parts.append(lathe("faulds", [(0.185, yy), (0.2, yy - 0.05)], 32, "body"))
+        parts.append(zone(lathe("faulds", [(0.185, yy), (0.2, yy - 0.05)], 32, "body"), "skirt"))
     o = join(parts, "plates")
     smooth(o, 35)
     return o
@@ -386,7 +427,7 @@ def plates():
 def scalp_point(theta, phi, lift=0.0):
     """Punkt auf der Schädeloberfläche (theta: um die Hochachse, phi: vom Scheitel abwärts)."""
     cx, cy, cz = HEAD_C
-    sx, sy, sz = 0.106, 0.124, 0.122
+    sx, sy, sz = 0.111, 0.129, 0.126
     x = math.sin(phi) * math.sin(theta) * (sx + lift)
     z = math.sin(phi) * math.cos(theta) * (sz + lift)
     y = math.cos(phi) * (sy + lift)

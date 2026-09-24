@@ -127,9 +127,18 @@ Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
 - Nutzer will lokal weiterarbeiten: `claude --teleport` im eigenen Terminal
   (im Projektordner), Sitzung `session_014K5hn531XejJHioneCKYqy`.
 
+- Figuren überarbeitet (Nutzer: „Hals zu lang, kein Handgelenk“): Kopf tiefer
+  (HEAD_C y 1.808), kurzer Hals, Handgelenk + Bündchen, größere gekrümmte
+  Finger, weicheres Kinn, Tunika/Hose mit getrennten Ärmeln/Beinen.
+  Körperzonen als Vertexfarbe („zone“, Rot = Code/10+0,05) → `skinned.ts`
+  wählt je Zone die erlaubten Knochen (Gürtel/Umhang/Schulterstücke fliegen
+  nicht mehr weg). Prüfseite `apps/client/rig-preview.html` +
+  `tools/dev/shot-rigs.mjs` (Parameter `only`, `close`, `turn`).
+
 **Offen**
 - Nutzer nach Serverdaten fragen (Hosting-Art, Node verfügbar?, Domain,
   Zugang, bestehende Webseite/Webserver) und dann veröffentlichen.
+- Figuren weiter verfeinern (Mund/Nase, Schulternaht Ärmel).
 - Längere Spieltests/Balance; Leistung auf echter GPU messen.
   Serverdaten des Nutzers (Hosting, Domain) noch unbekannt.
 
