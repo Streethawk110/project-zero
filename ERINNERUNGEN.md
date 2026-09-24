@@ -135,6 +135,11 @@ Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
   nicht mehr weg). Prüfseite `apps/client/rig-preview.html` +
   `tools/dev/shot-rigs.mjs` (Parameter `only`, `close`, `turn`).
 
+- Web-Artifact (gleicher Link) mit neuer Grafik/Figuren aktualisiert
+  (Version 3). Nutzer sah trotzdem „alte Grafik“ → Menü zeigt jetzt
+  „Version 0.2.0 · Build <Datum> UTC“ zur Kontrolle. Lokal geprüft: die
+  Web-Fassung lädt alle Texturen, die neue Figur und die Wolken.
+
 **Offen**
 - Nutzer nach Serverdaten fragen (Hosting-Art, Node verfügbar?, Domain,
   Zugang, bestehende Webseite/Webserver) und dann veröffentlichen.

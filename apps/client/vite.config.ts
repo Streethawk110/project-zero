@@ -50,6 +50,7 @@ export default defineConfig({
     rollupOptions: { output: { manualChunks: { three: ['three'] } } },
   },
   define: {
-    __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.1.0'),
+    // Version + Bauzeit, damit sich im Menü erkennen lässt, welche Fassung läuft
+    __APP_VERSION__: JSON.stringify(`${process.env.npm_package_version ?? '0.2.0'} · Build ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`),
   },
 });
