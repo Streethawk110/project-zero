@@ -854,7 +854,8 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
             cards.append(([p0, (p0 + p1) / 2, p1], [0.035, 0.035, 0.02], [d, d, d], (0.8, rnd.random(), 0.25)))
     o = hair_mesh(f"hair_{style}", cards, "hair_" + atlas)
     # Grundkappe: eng anliegende, haarfarbene Schicht auf der Kopfhaut (keine helle Haut zwischen Karten)
-    cap_keep = hairline
+    # Kappe etwas hinter dem Haaransatz enden lassen: die Kante verschwindet unter den Strähnen
+    cap_keep = lambda p: hairline(p, front_y=eye_y + 0.075, back_y=y_neck + 0.06)
     cap, _ = make_mesh(f"hair_{style}_cap", base, v, W, {"body"}, "hair_cap", lambda c, vs: c[1] > y_neck - 0.03 and cap_keep(c))
     offset(cap, 0.0025)
     return [o, cap]
@@ -866,7 +867,9 @@ def beard_style(style, base, v, J, W):
     if style < 2:
         return None  # 0 keiner, 1 Stoppeln (Hauttextur)
     sc = Scalp(base, v, J)
-    mouth = base.center(v, "joint-mouth")
+    # Mundlinie zwischen den Zahnreihen (joint-mouth liegt deutlich höher im Kopf)
+    ut, lt = base.center(v, "helper-upper-teeth"), base.center(v, "helper-lower-teeth")
+    mouth = np.array([0.0, (ut[1] + lt[1]) / 2, ut[2] + 0.012])
     jaw = base.center(v, "joint-jaw")
     eye_y = base.center(v, "helper-l-eye")[1]
     cz = sc.c[2]
@@ -876,7 +879,8 @@ def beard_style(style, base, v, J, W):
             return False
         dx = abs(p[0] - mouth[0])
         # Bartlinie: an den Koteletten hoch, über den Wangen bis knapp über den Mundwinkel
-        top = eye_y - 0.035 if dx > 0.058 else mouth[1] + 0.028 + 0.35 * max(0.0, dx - 0.03)
+        side = p[2] < cz + 0.03 and dx > 0.06  # Koteletten: seitlich, Richtung Ohr
+        top = eye_y - 0.025 if side else mouth[1] + 0.026 + 0.3 * max(0.0, dx - 0.03)
         if p[1] > top or p[1] < jaw[1] - 0.07:
             return False
         lip = (dx / 0.028) ** 2 + ((p[1] - mouth[1]) / 0.011) ** 2 < 1
@@ -886,13 +890,13 @@ def beard_style(style, base, v, J, W):
             return dx < 0.035 and (p[1] < mouth[1] - 0.012 or abs(p[1] - (mouth[1] + 0.017)) < 0.007)
         return True
     cards = []
-    for layer, (cnt, lift) in enumerate(((650, 0.0015), (520, 0.0035), (300, 0.006))):
+    for layer, (cnt, lift) in enumerate(((900, 0.0012), (700, 0.0028), (420, 0.0045))):
         for r in sc.sample(rnd, cnt, beard_area):
             mus = r[1] > mouth[1] and abs(r[0] - mouth[0]) < 0.045
             dirv = np.array([(r[0] - mouth[0]) * 2.5, -1.0, 0.25]) if mus else np.array([(r[0] - mouth[0]) * 0.8, -1.0, 0.3])
-            L = (0.02 if mus else 0.038 if style == 2 else 0.03) * rnd.uniform(0.7, 1.25) * (0.8 + 0.25 * layer)
-            pts, ns = grow(sc, r, dirv, L, 3, lift, 0.35, rnd, below=jaw[1] - 0.025)
-            w = 0.007 + 0.002 * layer
+            L = (0.016 if mus else 0.03 if style == 2 else 0.024) * rnd.uniform(0.7, 1.2) * (0.85 + 0.2 * layer)
+            pts, ns = grow(sc, r, dirv, L, 3, lift, 0.25, rnd, below=jaw[1] - 0.035)
+            w = 0.0045 + 0.0015 * layer
             cards.append((pts, [w, w, w * 0.9, w * 0.6], ns, (0.5 + layer * 0.2, rnd.random(), 0.0)))
     o = hair_mesh(f"beard_{style}", cards, "hair_curly")
     beard_follow_jaw(o, base, v)
@@ -1021,8 +1025,9 @@ def mouth_cavity(base, v, J):
     """Dunkle Mundhöhle hinter den Lippen (sonst sieht man bei offenem Mund durch den Kopf).
     Unterer Teil folgt dem Kiefer-Formziel, damit die Höhle mitöffnet."""
     import bmesh
-    c = base.center(v, "joint-mouth")
     teeth = base.center(v, "helper-upper-teeth")
+    lower = base.center(v, "helper-lower-teeth")
+    c = np.array([teeth[0], (teeth[1] + lower[1]) / 2 + 0.012, teeth[2]])
     bm = bmesh.new()
     bmesh.ops.create_uvsphere(bm, u_segments=14, v_segments=10, radius=1.0)
     bmesh.ops.scale(bm, vec=(0.024, 0.026, 0.022), verts=bm.verts)
