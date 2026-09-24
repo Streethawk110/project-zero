@@ -39,6 +39,12 @@ export class ThirdPersonCamera {
     this.targetDist = clamp(this.targetDist + delta * 0.6, 1.8, 9);
   }
 
+  /** Nahaufnahme (Dialog): Kameraposition und Blickpunkt; null = normale Verfolgerkamera */
+  focus: { pos: THREE.Vector3; look: THREE.Vector3 } | null = null;
+  private focusK = 0;
+  private focusPos = new THREE.Vector3();
+  private focusLook = new THREE.Vector3();
+
   update(dt: number, player: THREE.Vector3, inDungeon: boolean, ceil: number | null) {
     const hf = getWorldLayout().hf;
     const col = getWorldLayout().collision;
@@ -81,6 +87,15 @@ export class ThirdPersonCamera {
       const s = this.shake * this.shake * 0.25;
       this.pos.x += (Math.random() - 0.5) * s;
       this.pos.y += (Math.random() - 0.5) * s;
+    }
+    // Gesprächseinstellung: weich zur Nahaufnahme des Gegenübers überblenden
+    const want = this.focus ? 1 : 0;
+    this.focusK += (want - this.focusK) * (1 - Math.exp(-dt * 3.2));
+    if (this.focus) { this.focusPos.lerp(this.focus.pos, this.focusK < 0.02 ? 1 : 1 - Math.exp(-dt * 6)); this.focusLook.lerp(this.focus.look, this.focusK < 0.02 ? 1 : 1 - Math.exp(-dt * 6)); }
+    if (this.focusK > 0.001) {
+      const k = this.focusK * this.focusK * (3 - 2 * this.focusK);
+      this.pos.lerp(this.focusPos, k);
+      this.look.lerp(this.focusLook, k);
     }
     this.camera.position.copy(this.pos);
     this.camera.lookAt(this.look);

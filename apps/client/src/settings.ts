@@ -116,6 +116,8 @@ export interface Settings {
   padSens: number;
   uiScale: number;
   subtitles: boolean;
+  /** Dialoge und Zurufe vorlesen (Sprachausgabe des Systems) */
+  voiceOutput: boolean;
   reducedEffects: boolean;
   showDamageNumbers: boolean;
   keys: Record<Action, string[]>;
@@ -162,6 +164,7 @@ function defaults(): Settings {
     padSens: 1,
     uiScale: 1,
     subtitles: true,
+    voiceOutput: true,
     reducedEffects: false,
     showDamageNumbers: true,
     keys: structuredClone(DEFAULT_KEYS),

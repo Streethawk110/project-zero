@@ -6,6 +6,7 @@ import {
   type CharacterData, type CollisionContext, type GameEvent, type MoveInput, type MoveState, type Snapshot, type SnapshotMe, type Collider, rank,
 } from '@pz/shared';
 import { Renderer } from '../render/renderer.ts';
+import { voice } from '../audio/voice.ts';
 import { Environment } from '../render/environment.ts';
 import { Terrain } from '../render/terrain.ts';
 import { Water } from '../render/water.ts';
@@ -343,6 +344,9 @@ export class Game {
         case 'zone': this.zone = e.id; break;
         case 'emote': break;
         case 'puzzle': if (e.id === 'bells') this.audio.bell(Number(e.state.split(':')[1])); break;
+        case 'dialogue': this.speakDialogue(e); break;
+        case 'dialogue_end': voice.stop(); this.talkPartner = null; break;
+        case 'bark': this.speakBark(e); break;
       }
       this.ui.onEvent(e);
     }
@@ -551,6 +555,7 @@ export class Game {
     const room = this.inDungeon ? null : this.interiorAt(ppos.x, ppos.z);
     const ceil = this.inDungeon ? this.dungeonCeil(ppos.x, ppos.z) : room ? room.ceil : null;
     this.cam.fovBoost = this.me && this.playerRig?.anim === 'sprint' ? 6 : 0;
+    this.updateGaze(ppos);
     this.cam.update(dt, ppos, this.inDungeon, ceil);
     this.env.update(this.dayTime, this.weather, this.snap?.wInt ?? 0, ppos, this.camera.position, dt, this.inDungeon, room ? 1 : 0);
     const skyCol = this.env.fog.color;
@@ -612,6 +617,63 @@ export class Game {
       if (Math.abs(lx) <= r.hw && Math.abs(lz) <= r.hd) return r;
     }
     return null;
+  }
+
+  // ---------------- Stimmen und Gespräch ----------------
+
+  /** Gegenüber im Dialog (Kamera-Nahaufnahme, Blickkontakt) */
+  private talkPartner: EntityView | null = null;
+
+  private viewForSpeaker(speaker: string, npc: string): EntityView | null {
+    const id = speaker === 'npc' ? npc : speaker;
+    let best: EntityView | null = null;
+    for (const v of this.ents.views.values()) {
+      if (id === 'isra' ? v.kind === 'c' : (v.kind === 'n' && v.def === id)) { best = v; break; }
+    }
+    return best;
+  }
+
+  private speakDialogue(e: Extract<GameEvent, { e: 'dialogue' }>) {
+    const v = this.viewForSpeaker(e.speaker, e.npc);
+    const partner = this.viewForSpeaker('npc', e.npc) ?? v;
+    this.talkPartner = partner;
+    const female = v?.rig?.appearance.sex === 1;
+    voice.say({ id: v?.def || e.speaker, female }, e.text, (on, secs) => { if (v?.rig) v.rig.talking = on ? secs + 0.2 : 0; });
+  }
+
+  private speakBark(e: Extract<GameEvent, { e: 'bark' }>) {
+    const v = this.ents.views.get(e.eid);
+    if (!v) return;
+    const d = v.pos.distanceTo(this.camera.position);
+    if (d > 28 || this.ui.dialogueOpen) { if (v.rig) v.rig.talking = 2; return; }
+    const female = v.rig?.appearance.sex === 1;
+    voice.say({ id: v.def || v.name, female }, e.text, (on, secs) => { if (v.rig) v.rig.talking = on ? secs + 0.2 : 0; }, { interrupt: false, volume: Math.max(0.15, 1 - d / 28) });
+  }
+
+  /** NSCs und Begleiterin schauen den Spieler an, wenn er nahe ist; im Gespräch Nahaufnahme. */
+  private updateGaze(ppos: THREE.Vector3) {
+    const head = new THREE.Vector3(ppos.x, ppos.y + 1.62, ppos.z);
+    for (const v of this.ents.views.values()) {
+      if (!v.rig || (v.kind !== 'n' && v.kind !== 'c')) continue;
+      const d = v.pos.distanceTo(ppos);
+      v.rig.lookAt = d < (v === this.talkPartner ? 12 : 6) ? head : null;
+    }
+    const pv = this.talkPartner;
+    if (pv?.rig && this.ui.dialogueOpen) {
+      const h = pv.rig.j.head.getWorldPosition(new THREE.Vector3());
+      h.y += 0.07;
+      const toP = head.clone().sub(h).setY(0);
+      if (toP.lengthSq() < 1e-4) toP.set(0, 0, 1);
+      toP.normalize();
+      const right = new THREE.Vector3(toP.z, 0, -toP.x);
+      const pos = h.clone().addScaledVector(toP, 1.35).addScaledVector(right, 0.42).add(new THREE.Vector3(0, 0.06, 0));
+      this.cam.focus = { pos, look: h.clone().addScaledVector(right, 0.08) };
+      if (this.playerRig) this.playerRig.lookAt = h;
+    } else {
+      this.cam.focus = null;
+      if (!this.ui.dialogueOpen) this.talkPartner = null;
+      if (this.playerRig) this.playerRig.lookAt = null;
+    }
   }
 
   private dungeonCeil(x: number, z: number) {

@@ -130,7 +130,7 @@ export class EntityManager {
       }
       case 'n': {
         const def = NPC_BY_ID[s.d ?? ''];
-        const rig = new HumanoidRig({ appearance: def?.appearance, outfit: def?.appearance.outfit ?? 'villager' });
+        const rig = new HumanoidRig({ appearance: def?.appearance, outfit: def?.appearance.outfit ?? 'villager', faceSeed: def?.id });
         if (def?.id === 'oswin') rig.setEquipment('mace_order', '', '');
         if (def?.id === 'brann' || def?.id === 'order_guard') rig.setEquipment('sword_guard', 'shield_guard', '');
         if (def?.id === 'ysolde') rig.setEquipment('mace_order', '', '');
@@ -141,7 +141,7 @@ export class EntityManager {
         break;
       }
       case 'c': {
-        const rig = new HumanoidRig({ appearance: { sex: 1, skin: 1, hair: 4, hairColor: 6, beard: 0, height: 0.99, body: 0.35, eyes: 1, scar: 0 }, outfit: 'scholar' });
+        const rig = new HumanoidRig({ appearance: { sex: 1, skin: 1, hair: 4, hairColor: 6, beard: 0, height: 0.99, body: 0.35, eyes: 1, scar: 0 }, outfit: 'scholar', faceSeed: 'isra' });
         rig.setEquipment('bow_short', '', '');
         // Laterne am Gürtel
         const lantern = new THREE.Group();
