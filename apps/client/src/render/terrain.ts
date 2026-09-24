@@ -183,7 +183,8 @@ export class Terrain {
         const o = (j * splatRes + i) * 4;
         splatData[o] = sp[0]! * (1 - rs) * 255;
         splatData[o + 1] = sp[4]! * (1 - rs) * 255;
-        splatData[o + 2] = (sp[3]! + sp[5]!) * 255;
+        // Sand, Glas, Erdwege und Pflaster unterdrücken Gras (kein Gras mitten auf dem Weg)
+        splatData[o + 2] = Math.min(1, sp[3]! + sp[5]! + Math.max(0, sp[1]! - 0.3) * 1.3 + sp[7]! * 1.2) * 255;
         splatData[o + 3] = rs * 255;
       }
     this.splatTex = new THREE.DataTexture(splatData, splatRes, splatRes, THREE.RGBAFormat);
