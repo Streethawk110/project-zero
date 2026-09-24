@@ -9,7 +9,7 @@ import { HAIR_COLORS, SKIN_COLORS, EYE_COLORS, ITEMS, type Appearance } from '@p
 import { getModel, hasModel, namedMaterial } from './models.ts';
 import { TEX } from './textures.ts';
 import { buildSkinnedParts, hasCharacterModel, headPiece, type SkinPart } from './skinned.ts';
-import { buildHuman, eyeMaterial, hairMaterial, hasHumanModel, humanJoints, morphMeshes, skinMaterial, type Sex } from './human.ts';
+import { buildHuman, eyeMaterial, hairCapMaterial, hairMaterial, hasHumanModel, humanJoints, morphMeshes, skinMaterial, type Sex } from './human.ts';
 
 export type JointName =
   | 'hips' | 'spine' | 'chest' | 'neck' | 'head'
@@ -377,7 +377,7 @@ export class HumanoidRig {
       const hair = hairMaterial(hc, false);
       const curly = hairMaterial(hc, true);
       this.humanHair = [hair, curly];
-      this.humanCap = new THREE.MeshStandardMaterial({ color: hc.clone().multiplyScalar(0.55), roughness: 0.8 });
+      this.humanCap = hairCapMaterial(hc.clone().multiplyScalar(0.8), humanJoints(this.sex, JOINTS).get('head') ?? new THREE.Vector3(0, 1.65, 0));
       const eye = eyeMaterial(new THREE.Color(EYE_COLORS[a.eyes] ?? '#4b3621'));
       this.eyeMat = eye;
       const cloth = (n: string): THREE.Material => n.startsWith('legs') ? this.legMat : n.startsWith('accent') ? this.accentMat : this.bodyMat;
@@ -475,7 +475,7 @@ export class HumanoidRig {
       fresh.dispose();
       (this.skinMat.userData['hairCol'] as { value: THREE.Color } | undefined)?.value.copy(hc);
       for (const m of this.humanHair) m.color.copy(hc);
-      this.humanCap?.color.copy(hc).multiplyScalar(0.55);
+      this.humanCap?.color.copy(hc).multiplyScalar(0.8);
       (this.eyeMat.userData['iris'] as { value: THREE.Color } | undefined)?.value.set(EYE_COLORS[a.eyes] ?? '#4b3621');
       if (this.outfitCur) this.applyOutfitPieces(this.outfitCur);
       return;

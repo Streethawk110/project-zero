@@ -266,6 +266,38 @@ export function eyeMaterial(iris: THREE.Color) {
   return m;
 }
 
+/**
+ * Haarkappe (eng anliegende Grundschicht unter den Strähnen): vom Scheitel ausgehende Maserung,
+ * dunkler Ansatz, Glanzband – statt einer flachen Farbfläche, die wie ein Helm wirkt.
+ */
+export function hairCapMaterial(color: THREE.Color, head: THREE.Vector3) {
+  const m = new THREE.MeshStandardMaterial({ color: color.clone(), roughness: 0.62, metalness: 0 });
+  const u = { uHead: { value: head.clone().add(new THREE.Vector3(0, 0.09, -0.01)) } };
+  m.onBeforeCompile = (s) => {
+    Object.assign(s.uniforms, u);
+    s.vertexShader = s.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vCapPos;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCapPos = position;');
+    s.fragmentShader = s.fragmentShader
+      .replace('#include <common>', `#include <common>
+        varying vec3 vCapPos; uniform vec3 uHead;
+        float cHash(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+        float cNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(cHash(i), cHash(i + vec2(1, 0)), f.x), mix(cHash(i + vec2(0, 1)), cHash(i + vec2(1, 1)), f.x), f.y); }`)
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        vec3 hd = vCapPos - uHead;
+        float lon = atan(hd.x, hd.z);
+        float lat = clamp(-hd.y / 0.16, 0.0, 1.0);
+        // Strähnen laufen vom Scheitel nach unten: fein in Umfangsrichtung, gestreckt in der Höhe
+        float st = cNoise(vec2(lon * 90.0, lat * 5.0)) * 0.55 + cNoise(vec2(lon * 230.0, lat * 9.0)) * 0.45;
+        diffuseColor.rgb *= mix(0.45, 1.05, st) * mix(0.8, 1.0, lat);`)
+      .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+        reflectedLight.directSpecular *= 0.6 + st * 0.8;`);
+  };
+  m.customProgramCacheKey = () => 'human-hair-cap';
+  return m;
+}
+
 /** Haarkarten: Strähnenbild mit Deckung, Farbe aus der Haarfarbe, dunkler zum Ansatz hin. */
 export function hairMaterial(color: THREE.Color, curly: boolean) {
   const set = foliageSet(curly ? 'curly' : 'hair');

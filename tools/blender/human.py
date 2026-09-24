@@ -222,6 +222,7 @@ def build_figure(kind):
                 p0 = base.center(v, f"joint-{side}-finger-{f}-{sgm}")
                 fingers[(side, f, sgm)] = world_R[hj] @ p0 + world_T[hj]
     FIG_EXTRA["scale"] = 0.1 * height / top
+    FIG_EXTRA["neck_y"] = float(joints["neck"][1])
     FIG_EXTRA["fingers"] = fingers
     return base, out, new_pos, W
 
@@ -873,23 +874,51 @@ def beard_style(style, base, v, J, W):
     def beard_area(p):
         if p[2] < cz - 0.02:
             return False
-        if p[1] > eye_y - 0.06 or p[1] < jaw[1] - 0.06:
+        dx = abs(p[0] - mouth[0])
+        # Bartlinie: an den Koteletten hoch, über den Wangen bis knapp über den Mundwinkel
+        top = eye_y - 0.035 if dx > 0.058 else mouth[1] + 0.028 + 0.35 * max(0.0, dx - 0.03)
+        if p[1] > top or p[1] < jaw[1] - 0.07:
             return False
-        lip = ((p[0] - mouth[0]) / 0.03) ** 2 + ((p[1] - mouth[1]) / 0.012) ** 2 < 1
+        lip = (dx / 0.028) ** 2 + ((p[1] - mouth[1]) / 0.011) ** 2 < 1
         if lip:
             return False
         if style == 3:  # Kinnbart: nur Kinn und Oberlippe
-            return abs(p[0] - mouth[0]) < 0.035 and (p[1] < mouth[1] - 0.01 or abs(p[1] - (mouth[1] + 0.017)) < 0.007)
+            return dx < 0.035 and (p[1] < mouth[1] - 0.012 or abs(p[1] - (mouth[1] + 0.017)) < 0.007)
         return True
     cards = []
-    for layer, (cnt, lift) in enumerate(((520, 0.002), (420, 0.005))):
+    for layer, (cnt, lift) in enumerate(((650, 0.0015), (520, 0.0035), (300, 0.006))):
         for r in sc.sample(rnd, cnt, beard_area):
-            mus = r[1] > mouth[1]
-            dirv = np.array([(r[0] - mouth[0]) * 2.5, -1.0, 0.25]) if mus else np.array([0, -1.0, 0.35])
-            L = (0.022 if mus else 0.045 if style == 2 else 0.035) * rnd.uniform(0.8, 1.25)
-            pts, ns = grow(sc, r, dirv, L, 3, lift, 0.4, rnd, below=jaw[1] - 0.02)
-            cards.append((pts, [0.011, 0.011, 0.01, 0.008], ns, (0.55 + layer * 0.3, rnd.random(), 0.0)))
-    return hair_mesh(f"beard_{style}", cards, "hair_curly")
+            mus = r[1] > mouth[1] and abs(r[0] - mouth[0]) < 0.045
+            dirv = np.array([(r[0] - mouth[0]) * 2.5, -1.0, 0.25]) if mus else np.array([(r[0] - mouth[0]) * 0.8, -1.0, 0.3])
+            L = (0.02 if mus else 0.038 if style == 2 else 0.03) * rnd.uniform(0.7, 1.25) * (0.8 + 0.25 * layer)
+            pts, ns = grow(sc, r, dirv, L, 3, lift, 0.35, rnd, below=jaw[1] - 0.025)
+            w = 0.007 + 0.002 * layer
+            cards.append((pts, [w, w, w * 0.9, w * 0.6], ns, (0.5 + layer * 0.2, rnd.random(), 0.0)))
+    o = hair_mesh(f"beard_{style}", cards, "hair_curly")
+    beard_follow_jaw(o, base, v)
+    return o
+
+
+def beard_follow_jaw(o, base, v):
+    """Bart folgt dem Kiefer-Formziel: jede Karte übernimmt die Kieferverschiebung der nächsten Hautstelle."""
+    from mathutils.kdtree import KDTree
+    jaw = shape_deltas("jaw", len(v))
+    idx = [i for i in sorted(base.groups["body"]) if np.abs(jaw[i]).max() > 1e-6 or v[i, 1] > FIG_EXTRA.get("neck_y", 0)]
+    kd = KDTree(len(idx))
+    for n, i in enumerate(idx):
+        kd.insert(B(v[i]), n)
+    kd.balance()
+    o.shape_key_add(name="Basis", from_mix=False)
+    k = o.shape_key_add(name="jaw", from_mix=False)
+    for vt in o.data.vertices:
+        acc = np.zeros(3)
+        tot = 0.0
+        for co, n, dist in kd.find_n(vt.co, 3):
+            wgt = 1.0 / max(dist, 1e-4)
+            acc += jaw[idx[n]] * wgt
+            tot += wgt
+        d = acc / max(tot, 1e-9)
+        k.data[vt.index].co = vt.co + B(d) - B(np.zeros(3))
 
 
 def human(kind):
