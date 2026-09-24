@@ -1,0 +1,32 @@
+{
+  "name": "project-zero",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Project Zero – 3D-Story-RPG für Browser, PWA, Desktop und Mobil mit Einzelspieler und Online-Multiplayer",
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "apps/client",
+    "apps/server"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @pz/client",
+    "dev:server": "npm run dev -w @pz/server",
+    "build": "npm run build -w @pz/client && npm run build -w @pz/server",
+    "typecheck": "tsc -p packages/shared && tsc -p apps/client --noEmit && tsc -p apps/server --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "assets": "node tools/assets/build-assets.mjs",
+    "start": "npm run start -w @pz/server"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "esbuild": "^0.25.12",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}

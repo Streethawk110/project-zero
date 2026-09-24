@@ -2,6 +2,30 @@
 
 Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
 
+## 2026-09-24 – Cloud-Sitzung: Start „Project Zero“
+
+**Auftrag**
+- Großes 3D-Story-RPG „Project Zero“: Browser + installierbare App, Three.js,
+  vollständiger Einzelspieler (offline) + echter Online-Multiplayer über den
+  eigenen Server des Nutzers. Vollständige Anforderungen stehen im Chat
+  (14 Abschnitte); Designentscheidungen in `docs/DESIGN.md`.
+- **Nutzerentscheidung:** reines Computerspiel – kein Android/iOS, keine
+  Touch-Steuerung. Ziele: Browser, PWA, Desktop (Windows/macOS/Linux).
+
+**Stand**
+- Monorepo (npm-Workspaces): `packages/shared` (Simulation, Inhalte,
+  Protokoll), `apps/client`, `apps/server`, `tools/blender`, `deploy`.
+- Gemeinsame Welt-Simulation fertig und getestet (10 Vitest-Tests):
+  Gelände, Kollision, Bewegung, Kampf, Gegner-KI, 3-Phasen-Boss, 39 Skills,
+  Inventar/Handwerk/Händler, Quests, Dialoge, Begleiterin Isra,
+  Welt-Ereignisse, Rätsel, Erfolge.
+- Umgebung: Blender läuft headless über `bpy` (venv `/opt/bpyenv`, nicht im
+  Repo). Android-SDK und GitHub-Releases sind hier per Netzwerk gesperrt.
+
+**Offen**
+- 3D-Client, Speichern/Menüs, Server, Blender-Assets, Audio, Apps,
+  Deployment, README. Serverdaten des Nutzers (Hosting, Domain) noch unbekannt.
+
 ## 2026-09-24 – Cloud-Sitzung (claude.ai/code)
 
 **Besprochen**

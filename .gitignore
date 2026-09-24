@@ -1,0 +1,15 @@
+node_modules/
+dist/
+dist-*/
+*.log
+.env
+.env.*
+!.env.example
+apps/server/data/
+apps/desktop/out/
+apps/desktop/release/
+test-results/
+playwright-report/
+.vite/
+*.tsbuildinfo
+tools/blender/__pycache__/
