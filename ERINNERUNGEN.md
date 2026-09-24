@@ -129,6 +129,16 @@ Profiler nicht mitgezählt – behoben).
   Massive + verzerrtes Grat-Multifraktal + Erosionsrinnen, Gipfel bis
   ~180 m. Fels/Schnee setzt jetzt der Geländeshader pro Pixel (Neigung,
   Höhe, Rauschen, Gesteinsschichten); Schneegrenze 96–118 m (`snowAt`).
+- Texturen-Überarbeitung läuft (`tools/blender/textures.py`): Stein als
+  Bruchsteinmauerwerk, Putz, Holz, Ziegel, Stroh, Metall (Farbe ohne Metallic
+  backen, sonst schwarz; PBR-hell), Gelände mit gestreckten Rauschwerten
+  (`g.st`), Hohlraumverschattung in der Grundfarbe (`g.cavity`). Vorschau:
+  `PZ_TEX_SIZE=512 PZ_TEX_OUT=… textures.py` + `preview_tex.py`.
+  2K-Bake dauert ~30–40 min (4 Kerne); Stand beim Commit ggf. teilweise.
+- Gebäude: Dach mit Durchhang, Firstziegel/Strohwulst, behauene Balken
+  (`hewn`), Dach-UVs hangaufwärts (`box_uv`), Hof-Details `_yard` +
+  `homeExtras`-Kollision; Sockelschmutz im Client (`render/weathering.ts`).
+- Offen: Bake abschließen, Metall neu backen, alles im Spiel prüfen.
 
 ## 2026-09-24 – Cloud-Sitzung: Start „Project Zero“
 

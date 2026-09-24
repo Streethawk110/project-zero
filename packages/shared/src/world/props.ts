@@ -69,13 +69,21 @@ function innFurniture(w: number, d: number): PropCollider[] {
     ...tables.map(([x, z]) => box(0.92, 0.92, 1.4, x, z)),
   ];
 }
+/** Brennholz an der Giebelseite, Bank neben der Tür, Regenfass (tools/blender/buildings.py _yard) */
+function homeExtras(w: number, d: number, doorX: number): PropCollider[] {
+  return [
+    box(0.42, d * 0.31 + 0.05, 1.1, w / 2 + 0.45, 0),
+    box(0.7, 0.2, 0.55, doorX + 1.7, -(d / 2 + 0.45)),
+    circ(0.4, 1.0, -w / 2 + 0.55, -(d / 2 + 0.5)),
+  ];
+}
 const hearthLight = (w: number, d: number, y: number, ox = w * 0.28): PropLight =>
   ({ color: 0xff9a48, intensity: 14, dist: Math.max(w, d) * 1.1, y, ox, oz: d / 2 - 1.3 });
 
 export const PROPS: Record<string, PropDef> = {
   // Dorf
-  house_a: { model: 'house_a', colliders: walkIn(8, 6, 7, 0, homeFurniture(8, 6)), clear: 7, light: hearthLight(8, 6, 1.9), interior: { hw: 3.76, hd: 2.76, ceil: 3.65 } },
-  house_b: { model: 'house_b', colliders: walkIn(10, 7, 9, -1.5, homeFurniture(10, 7)), clear: 8, light: hearthLight(10, 7, 1.9), interior: { hw: 4.76, hd: 3.26, ceil: 3.05 } },
+  house_a: { model: 'house_a', colliders: walkIn(8, 6, 7, 0, [...homeFurniture(8, 6), ...homeExtras(8, 6, 0)]), clear: 7, light: hearthLight(8, 6, 1.9), interior: { hw: 3.76, hd: 2.76, ceil: 3.65 } },
+  house_b: { model: 'house_b', colliders: walkIn(10, 7, 9, -1.5, [...homeFurniture(10, 7), ...homeExtras(10, 7, -1.5)]), clear: 8, light: hearthLight(10, 7, 1.9), interior: { hw: 4.76, hd: 3.26, ceil: 3.05 } },
   inn: {
     model: 'inn', colliders: walkIn(12, 9, 10, 0, innFurniture(12, 9)), clear: 9, interior: { hw: 5.76, hd: 4.26, ceil: 3.25 },
     light: [hearthLight(12, 9, 2.0), { color: 0xffb060, intensity: 10, dist: 10, y: 2.1, ox: -3.4, oz: 0 }, { color: 0xffa050, intensity: 8, dist: 10, y: 2.6, oz: -5.3 }],

@@ -48,9 +48,9 @@ export function namedMaterial(name: string, fallbackColor?: THREE.Color): THREE.
     case key.startsWith('stone_block') || key.startsWith('stoneblock'): m = tex(TEX.stone(), 1); break;
     case key.startsWith('stone') || key.startsWith('rock'): m = tex(TEX.rock(), 1, { color: key.includes('moss') ? 0x8a9a7a : 0xffffff }); break;
     case key.startsWith('bark'): m = tex(TEX.bark(), 1); break;
-    case key.startsWith('metal_dark'): m = tex(TEX.metal(), 1, { color: 0x3a3a3e, metalness: 0.85 }); break;
-    case key.startsWith('metal_gold') || key.startsWith('gold'): m = tex(TEX.metal(), 1, { color: 0xc9a14a, metalness: 1, roughness: 0.35 }); break;
-    case key.startsWith('metal'): m = tex(TEX.metal(), 1, { color: 0x9a9ea5, metalness: 0.9 }); break;
+    case key.startsWith('metal_dark'): m = tex(TEX.metal(), 1, { color: 0x6e6e74, metalness: 0.85 }); break;
+    case key.startsWith('metal_gold') || key.startsWith('gold'): m = tex(TEX.metal(), 1, { color: 0xf2c46a, metalness: 1, roughness: 0.35 }); break;
+    case key.startsWith('metal'): m = tex(TEX.metal(), 1, { color: 0xd4d7dc, metalness: 0.9 }); break;
     case key.startsWith('cloth_red'): m = tex(TEX.cloth(), 2, { color: 0x7e2a22 }); break;
     case key.startsWith('cloth_blue'): m = tex(TEX.cloth(), 2, { color: 0x2d4468 }); break;
     case key.startsWith('cloth_white'): m = tex(TEX.cloth(), 2, { color: 0xd8d2c2 }); break;

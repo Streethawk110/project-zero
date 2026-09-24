@@ -123,17 +123,44 @@ def beam(name, p0, p1, w=0.18, d=None, material="wood_dark"):
     return o
 
 
-def prism_roof(name, width, depth, height, loc, overhang=0.4, material="roof", thickness=0.15):
-    """Satteldach: First entlang X."""
+def prism_roof(name, width, depth, height, loc, overhang=0.4, material="roof", thickness=0.15, sag=0.0, seed=0):
+    """Satteldach: First entlang X. sag > 0: unterteilt, First und Flächen hängen leicht durch
+    (altes Gebälk), mit kleinen Unregelmäßigkeiten."""
     w = width / 2 + overhang
     d = depth / 2 + overhang
     bm = bmesh.new()
-    verts = [
-        bm.verts.new((-w, -d, 0)), bm.verts.new((w, -d, 0)), bm.verts.new((w, 0, height)), bm.verts.new((-w, 0, height)),
-        bm.verts.new((-w, d, 0)), bm.verts.new((w, d, 0)),
-    ]
-    bm.faces.new((verts[0], verts[1], verts[2], verts[3]))
-    bm.faces.new((verts[3], verts[2], verts[5], verts[4]))
+    if sag <= 0:
+        verts = [
+            bm.verts.new((-w, -d, 0)), bm.verts.new((w, -d, 0)), bm.verts.new((w, 0, height)), bm.verts.new((-w, 0, height)),
+            bm.verts.new((-w, d, 0)), bm.verts.new((w, d, 0)),
+        ]
+        bm.faces.new((verts[0], verts[1], verts[2], verts[3]))
+        bm.faces.new((verts[3], verts[2], verts[5], verts[4]))
+    else:
+        rnd = random.Random(seed)
+        nx = max(4, round(2 * w / 1.2))
+        ny = 4
+        grid = {}
+        for side in (-1, 1):
+            for j in range(ny + 1):
+                t = j / ny  # 0 = Traufe, 1 = First
+                for i in range(nx + 1):
+                    if j == ny and side == 1:
+                        grid[(1, i, j)] = grid[(-1, i, j)]
+                        continue
+                    u = i / nx
+                    x = -w + 2 * w * u
+                    along = math.sin(math.pi * u)
+                    z = height * t - sag * along * (0.4 + 0.6 * t) - sag * 0.5 * math.sin(math.pi * t)
+                    if 0 < i < nx and 0 < j < ny:
+                        z += (rnd.random() - 0.5) * sag * 0.25
+                    grid[(side, i, j)] = bm.verts.new((x, side * d * (1 - t), z))
+        for side in (-1, 1):
+            for j in range(ny):
+                for i in range(nx):
+                    a, b = grid[(side, i, j)], grid[(side, i + 1, j)]
+                    c, e = grid[(side, i + 1, j + 1)], grid[(side, i, j + 1)]
+                    bm.faces.new((a, b, c, e) if side == -1 else (e, c, b, a))
     bm.normal_update()
     o = mesh_obj(name, bm, material)
     o.location = loc
@@ -289,6 +316,12 @@ def box_uv(o, scale=0.5):
                 u, v = co.y * (1 if n.x > 0 else -1), co.z
             elif ax == 1:
                 u, v = co.x * (-1 if n.y > 0 else 1), co.z
+            elif abs(n.z) < 0.985:
+                # Geneigte Dachfläche: v wächst hangaufwärts (sonst stünden Ziegel auf einer Seite kopf)
+                if abs(n.x) > abs(n.y):
+                    u, v = co.y, -co.x * (1 if n.x > 0 else -1)
+                else:
+                    u, v = co.x, -co.y * (1 if n.y > 0 else -1)
             else:
                 u, v = co.x, co.y
             loop[uv].uv = (u * scale, v * scale)

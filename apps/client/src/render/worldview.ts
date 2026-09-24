@@ -7,6 +7,7 @@ import { flattenMeshes, getModel, namedMaterial } from './models.ts';
 import { TEX } from './textures.ts';
 import { settings } from '../settings.ts';
 import { VLight } from './lights.ts';
+import { isWeatherable, weatheredMaterial } from './weathering.ts';
 import { foliageKindOf, foliageMaterial, treeBarkMaterial, windUniforms } from './foliage.ts';
 import { bakeImpostor } from './impostor.ts';
 
@@ -128,6 +129,9 @@ export class WorldView {
       if (isTree && name.startsWith('bark')) {
         const b = treeBarkMaterial(p.material as THREE.MeshStandardMaterial);
         return { ...p, material: b.mat, depth: b.depth };
+      }
+      if (!isTree && isWeatherable(name) && (p.material as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
+        return { ...p, material: weatheredMaterial(p.material as THREE.MeshStandardMaterial, p.matrix) };
       }
       return p;
     });

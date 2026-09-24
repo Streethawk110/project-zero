@@ -145,11 +145,26 @@ export class EntityManager {
         rig.setEquipment('bow_short', '', '');
         // Laterne am Gürtel
         const lantern = new THREE.Group();
-        const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.14, 8), namedMaterial('glow_warm'));
+        const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.11, 8), namedMaterial('glow_warm'));
         lantern.add(glass);
+        // Eisengestell: Deckel, Boden, vier Streben, Bügel
+        const iron = namedMaterial('metal_dark');
+        for (const y of [-0.065, 0.065]) {
+          const cap = new THREE.Mesh(new THREE.CylinderGeometry(y > 0 ? 0.035 : 0.06, 0.06, 0.025, 8), iron);
+          cap.position.y = y;
+          lantern.add(cap);
+        }
+        for (let k = 0; k < 4; k++) {
+          const bar = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.13, 0.008), iron);
+          bar.position.set(Math.cos(k * Math.PI / 2 + 0.4) * 0.058, 0, Math.sin(k * Math.PI / 2 + 0.4) * 0.058);
+          lantern.add(bar);
+        }
+        const handle = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.005, 4, 10, Math.PI), iron);
+        handle.position.y = 0.08;
+        lantern.add(handle);
         const l = new VLight(0xffc080, 3, 8);
         lantern.add(l);
-        lantern.position.set(-0.2, -0.05, 0.05);
+        lantern.position.set(-0.27, -0.08, 0.02);
         rig.j.hips.add(lantern);
         v.rig = rig;
         v.obj.add(rig.root);

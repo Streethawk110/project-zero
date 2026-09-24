@@ -6,31 +6,40 @@ import random
 from lib import (bake, beam, box, cone, cyl, extrude_shape, gable_wall, ico, join, prism_roof, rock, tube)
 
 
+_HEW = random.Random(42)
+
+
+def hewn(name, p0, p1, w=0.18, **kw):
+    """Handbehauener Balken: Enden und Stärke leicht unregelmäßig."""
+    j = lambda p: (p[0] + (_HEW.random() - 0.5) * 0.04, p[1] + (_HEW.random() - 0.5) * 0.03, p[2] + (_HEW.random() - 0.5) * 0.03)
+    return beam(name, j(p0), j(p1), w * (0.9 + _HEW.random() * 0.2), d=w * (0.9 + _HEW.random() * 0.2), **kw)
+
+
 def _frame_side(parts, w, y, z0, z1, braces=True, seed=0):
     """Fachwerk auf einer Längsseite (entlang X, Fassade bei y)."""
     rnd = random.Random(seed)
     n = max(2, round(w / 2.2))
     for i in range(n + 1):
         x = -w / 2 + i * w / n
-        parts.append(beam("post", (x, y, z0), (x, y, z1), 0.2))
-    parts.append(beam("sill", (-w / 2 - 0.1, y, z0), (w / 2 + 0.1, y, z0), 0.22))
-    parts.append(beam("plate", (-w / 2 - 0.1, y, z1), (w / 2 + 0.1, y, z1), 0.22))
+        parts.append(hewn("post", (x, y, z0), (x, y, z1), 0.2))
+    parts.append(hewn("sill", (-w / 2 - 0.1, y, z0), (w / 2 + 0.1, y, z0), 0.22))
+    parts.append(hewn("plate", (-w / 2 - 0.1, y, z1), (w / 2 + 0.1, y, z1), 0.22))
     if braces:
         for i in range(n):
             if rnd.random() < 0.55:
                 x0 = -w / 2 + i * w / n
                 x1 = x0 + w / n
                 if rnd.random() < 0.5:
-                    parts.append(beam("brace", (x0, y, z0), (x1, y, z1), 0.16))
+                    parts.append(hewn("brace", (x0, y, z0), (x1, y, z1), 0.16))
                 else:
-                    parts.append(beam("brace", (x1, y, z0), (x0, y, z1), 0.16))
+                    parts.append(hewn("brace", (x1, y, z0), (x0, y, z1), 0.16))
 
 
 def _frame_end(parts, d, x, z0, z1):
     for yy in (-d / 2, 0, d / 2):
-        parts.append(beam("post", (x, yy, z0), (x, yy, z1), 0.2))
-    parts.append(beam("sill", (x, -d / 2, z0), (x, d / 2, z0), 0.22))
-    parts.append(beam("plate", (x, -d / 2, z1), (x, d / 2, z1), 0.22))
+        parts.append(hewn("post", (x, yy, z0), (x, yy, z1), 0.2))
+    parts.append(hewn("sill", (x, -d / 2, z0), (x, d / 2, z0), 0.22))
+    parts.append(hewn("plate", (x, -d / 2, z1), (x, d / 2, z1), 0.22))
 
 
 def _window(parts, x, y, z, facing=1, w=0.9, h=1.1, axis="y"):
@@ -174,6 +183,35 @@ def _furnish_inn(parts, w, d, z0, hearth_x, rnd):
         parts.append(ico("flame", 0.025, (tx - 0.2, ty + 0.1, z0 + 0.96), material="glow_warm", sub=1, scale=(1, 1, 1.6)))
 
 
+def _yard(parts, w, d, door_x, rnd):
+    """Leben ums Haus (Maße wie homeExtras in props.ts): Brennholz an der Giebelseite,
+    Bank neben der Tür, Regenfass an der vorderen Ecke."""
+    # Brennholzstapel unter dem Dachüberstand (Scheite quer zur Wand, Stirnseiten sichtbar)
+    gx = w / 2 + 0.38
+    ln = d * 0.62
+    rows, per = 5, int(ln / 0.2)
+    for r in range(rows):
+        for i in range(per):
+            y = -ln / 2 + (i + 0.5 + (r % 2) * 0.5) * ln / (per + 0.5)
+            rad = 0.075 + rnd.random() * 0.03
+            parts.append(cyl("log", rad, 0.5 + rnd.uniform(-0.05, 0.05), (gx + rnd.uniform(-0.03, 0.03), y, 0.1 + r * 0.17 + rad),
+                             rot=(0, math.pi / 2, rnd.uniform(-0.08, 0.08)), material="bark", seg=6))
+    for sy in (-1, 1):
+        parts.append(beam("stake", (gx + 0.3, sy * ln / 2, 0), (gx + 0.3, sy * ln / 2, 1.05), 0.07))
+    # Bank vor der Hauswand
+    bx, by = door_x + 1.7, d / 2 + 0.45
+    parts.append(box("benchseat", (1.4, 0.34, 0.06), (bx, by, 0.46), material="wood", bevel=0.01))
+    for sx in (-1, 1):
+        parts.append(box("benchleg", (0.07, 0.3, 0.44), (bx + sx * 0.55, by, 0.22), material="wood_dark"))
+    # Regenfass mit Eimer
+    fx, fy = -w / 2 + 0.55, d / 2 + 0.5
+    parts.append(cyl("rainbarrel", 0.36, 0.95, (fx, fy, 0.475), material="wood", seg=14, r2=0.33))
+    for zz in (0.18, 0.78):
+        parts.append(cyl("hoop", 0.37, 0.05, (fx, fy, zz), material="metal_dark", seg=14, caps=False))
+    parts.append(cyl("water", 0.32, 0.02, (fx, fy, 0.9), material="water", seg=14))
+    parts.append(cyl("bucket", 0.14, 0.26, (fx + 0.55, fy + 0.1, 0.13), material="wood", seg=10, r2=0.12))
+
+
 def _interior_height(floors, plinth, wall_h):
     return (wall_h - plinth) / floors
 
@@ -237,17 +275,35 @@ def timber_house(w, d, wall_h, roof_h, *, floors=1, plinth=0.6, roof_mat="roof",
     if interior:
         rnd = random.Random(seed * 17 + 3)
         (_furnish_inn if interior == "inn" else _furnish_home)(parts, w, d, z0, w * 0.28, rnd)
+    if interior == "home":
+        _yard(parts, w, d, door_x, random.Random(seed * 31 + 7))
     # Dach mit Giebeln
     top = z0 + floors * floor_h
     ww = w + (0.5 if jetty and floors > 1 else 0)
     dd = d + (0.5 if jetty and floors > 1 else 0)
-    parts.append(prism_roof("roof", ww, dd, roof_h, (0, 0, top), overhang=0.55, material=roof_mat, thickness=0.18))
+    thatch = roof_mat.startswith("roof_thatch")
+    parts.append(prism_roof("roof", ww, dd, roof_h, (0, 0, top), overhang=0.55, material=roof_mat,
+                            thickness=0.34 if thatch else 0.18, sag=0.16 if thatch else 0.1, seed=seed))
+    sag = 0.16 if thatch else 0.1
+    half = ww / 2 + 0.55
+    ridge_z = lambda x: top + roof_h - sag * math.sin(math.pi * (x + half) / (2 * half))
+    if thatch or roof_mat == "roof":
+        # Firstwulst aus gebundenem Stroh bzw. Hohlziegel – folgen dem Durchhang
+        n = max(3, round(2 * half / (0.9 if thatch else 0.42)))
+        for k in range(n):
+            x = -half + (k + 0.5) * 2 * half / n
+            if thatch:
+                parts.append(cyl("ridgeroll", 0.26, 2 * half / n + 0.06, (x, 0, ridge_z(x) - 0.1), rot=(0, math.pi / 2, 0), material=roof_mat, seg=10))
+            else:
+                parts.append(cyl("ridgetile", 0.17, 2 * half / n + 0.04, (x, 0, ridge_z(x) - 0.02), rot=(0, math.pi / 2, 0), material="roof", seg=8, r2=0.15))
     for s in (-1, 1):
         parts.append(gable_wall("gable", dd, roof_h, (s * ww / 2, 0, top), rot_z=math.pi / 2, material="plaster"))
         parts.append(beam("gablebeam", (s * ww / 2 + s * 0.02, -dd / 2, top), (s * ww / 2 + s * 0.02, 0, top + roof_h), 0.16))
         parts.append(beam("gablebeam", (s * ww / 2 + s * 0.02, dd / 2, top), (s * ww / 2 + s * 0.02, 0, top + roof_h), 0.16))
         parts.append(beam("king", (s * ww / 2 + s * 0.02, 0, top), (s * ww / 2 + s * 0.02, 0, top + roof_h), 0.16))
-    parts.append(beam("ridge", (-ww / 2 - 0.6, 0, top + roof_h + 0.05), (ww / 2 + 0.6, 0, top + roof_h + 0.05), 0.2))
+    # Firstbalken nur als sichtbare Köpfe an den Giebeln (dazwischen hängt das Dach durch)
+    for sx in (-1, 1):
+        parts.append(beam("ridge", (sx * (ww / 2 - 0.3), 0, top + roof_h + 0.05), (sx * (ww / 2 + 0.6), 0, top + roof_h + 0.05), 0.2))
     if chimney:
         cx = ww * 0.28
         parts.append(box("chimney", (0.8, 0.8, roof_h + 1.4), (cx, -dd * 0.18, top + (roof_h + 1.4) / 2), material="stone_block", bevel=0.03))
