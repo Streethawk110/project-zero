@@ -23,7 +23,7 @@ def _trunk(h, r0, r1, seed, seg=8, lean=0.25):
 
 def tree_pine():
     rnd = random.Random(101)
-    parts = _trunk(9.6, 0.34, 0.05, 1, lean=0.12)
+    parts = _trunk(8.2, 0.34, 0.05, 1, lean=0.12)  # endet in der obersten Krone
     tiers = 7
     for i in range(tiers):
         t = i / (tiers - 1)

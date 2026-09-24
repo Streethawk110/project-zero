@@ -198,7 +198,7 @@ const atmosphereFrag = /* glsl */ `
           float s = step(0.99999, texture2D(tDepth, cuv).x);
           if (uCloudsOn > 0.5) s *= 1.0 - texture2D(tClouds, cuv).a;
           acc += s * illum;
-          illum *= 0.972;
+          illum *= 0.955;
         }
         acc /= float(uRaySamples);
         float facing = pow(max(dot(normalize((uCamWorld * vec4(0.0, 0.0, -1.0, 0.0)).xyz), uSunDir), 0.0), 2.0);
@@ -236,7 +236,7 @@ class AtmospherePass extends Pass {
         uCloudsOn: { value: clouds ? 1 : 0 },
         uCloudShadow: { value: 0.55 },
         uRaySamples: { value: raySamples },
-        uRayStrength: { value: 0.28 },
+        uRayStrength: { value: 0.1 },
       },
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
       fragmentShader: atmosphereFrag,

@@ -28,6 +28,8 @@ const frag = /* glsl */ `
   uniform vec3 uSunDir;
   uniform vec3 uSunColor;
   uniform vec3 uSkyColor;
+  uniform vec3 uSkyTop;
+  uniform vec3 uSkyHorizon;
   uniform vec3 uDeep;
   uniform vec3 uShallow;
   uniform sampler2D tHeight;
@@ -42,18 +44,26 @@ const frag = /* glsl */ `
     float ground = texture2D(tHeight, uv).r;
     float depth = max(0.0, vWPos.y - ground);
     vec2 f = vFlow * uTime;
-    vec3 n1 = texture2D(tNormal, vWPos.xz * 0.035 + vec2(uTime * 0.012, uTime * 0.008) - f * 0.05).xyz * 2.0 - 1.0;
-    vec3 n2 = texture2D(tNormal, vWPos.xz * 0.09 - vec2(uTime * 0.02, -uTime * 0.013) - f * 0.12).xyz * 2.0 - 1.0;
-    vec3 n = normalize(vec3(n1.x + n2.x, 6.0 - uRain * 2.0, n1.y + n2.y));
+    float camDist = length(cameraPosition - vWPos);
+    float detail = 1.0 - smoothstep(60.0, 260.0, camDist);
+    vec3 n1 = texture2D(tNormal, vWPos.xz * 0.018 + vec2(uTime * 0.008, uTime * 0.005) - f * 0.03).xyz * 2.0 - 1.0;
+    vec3 n2 = texture2D(tNormal, vWPos.xz * 0.047 - vec2(uTime * 0.014, -uTime * 0.01) - f * 0.08).xyz * 2.0 - 1.0;
+    vec3 n3 = texture2D(tNormal, vWPos.xz * 0.13 + vec2(-uTime * 0.03, uTime * 0.021) - f * 0.2).xyz * 2.0 - 1.0;
+    vec2 nxy = n1.xy * 0.9 + n2.xy * 0.6 + n3.xy * 0.45 * detail;
+    vec3 n = normalize(vec3(nxy.x, 3.2 - uRain * 1.2 + (1.0 - detail) * 3.0, nxy.y));
     vec3 V = normalize(cameraPosition - vWPos);
-    float fres = pow(1.0 - max(dot(n, V), 0.0), 4.0);
-    fres = mix(0.03, 1.0, fres);
+    float ndv = max(dot(n, V), 0.0);
+    float fres = 0.02 + 0.98 * pow(1.0 - ndv, 5.0);
     vec3 R = reflect(-V, n);
-    vec3 sky = mix(uSkyColor * 0.8, uSkyColor * 1.15, smoothstep(0.0, 0.6, R.y));
-    vec3 water = mix(uShallow, uDeep, smoothstep(0.0, 6.0, depth));
-    vec3 col = mix(water, sky, fres * 0.85);
-    float spec = pow(max(dot(R, uSunDir), 0.0), 220.0) * (1.0 - uNight * 0.7);
-    col += uSunColor * spec * 3.0;
+    R.y = abs(R.y);
+    vec3 sky = mix(uSkyHorizon, uSkyTop, pow(smoothstep(0.0, 0.8, R.y), 0.6));
+    vec3 water = mix(uShallow, uDeep, smoothstep(0.0, 7.0, depth));
+    // Durchleuchten der Wellenkämme gegen die Sonne
+    float sss = pow(max(dot(V, -uSunDir), 0.0), 3.0) * max(n3.z * 0.5 + 0.5, 0.0) * (1.0 - uNight);
+    water += vec3(0.05, 0.22, 0.18) * sss * 0.8;
+    vec3 col = mix(water, sky, fres);
+    float spec = pow(max(dot(R, uSunDir), 0.0), 400.0) * 6.0 + pow(max(dot(R, uSunDir), 0.0), 40.0) * 0.25;
+    col += uSunColor * spec * (1.0 - uNight * 0.7);
     // Uferschaum
     float foam = smoothstep(0.9, 0.0, depth) * (0.55 + 0.45 * sin(uTime * 1.8 + vWPos.x * 0.6 + vWPos.z * 0.4));
     foam *= smoothstep(0.35, 0.65, texture2D(tNormal, vWPos.xz * 0.2 + uTime * 0.03).b);
@@ -66,30 +76,54 @@ const frag = /* glsl */ `
   }
 `;
 
+/** Kachelbare Wellen-Normalen aus mehreren Rauschschichten (keine sichtbaren Sinusmuster). */
 function waveNormalTexture() {
-  const size = 256;
+  const size = 512;
   const data = new Uint8Array(size * size * 4);
   const h = new Float32Array(size * size);
+  // Kachelbares Wertrauschen
+  const lattice = (period: number, seed: number) => {
+    const g = new Float32Array(period * period);
+    let a = seed;
+    for (let i = 0; i < g.length; i++) { a = (a * 1664525 + 1013904223) >>> 0; g[i] = a / 4294967296; }
+    return g;
+  };
+  const octaves = [[8, 1, 3], [16, 0.55, 5], [32, 0.3, 7], [64, 0.16, 11], [128, 0.08, 13]] as const;
+  const grids = octaves.map(([p, , sd]) => lattice(p, sd));
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++) {
-      const u = (x / size) * Math.PI * 2, v = (y / size) * Math.PI * 2;
-      h[y * size + x] = Math.sin(u * 3 + Math.sin(v * 2) * 1.5) * 0.5 + Math.sin(v * 5 + u) * 0.3 + Math.sin(u * 7 - v * 4) * 0.15 + Math.sin(u * 11 + v * 9) * 0.08;
+      let v = 0;
+      octaves.forEach(([p, amp], oi) => {
+        const g = grids[oi]!;
+        const fx = (x / size) * p, fy = (y / size) * p;
+        const x0 = Math.floor(fx), y0 = Math.floor(fy);
+        const tx = fx - x0, ty = fy - y0;
+        const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+        const at = (i: number, j: number) => g[((j % p) + p) % p * p + (((i % p) + p) % p)]!;
+        const a0 = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * sx;
+        const a1 = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * sx;
+        // „Scharfe“ Wellenkämme: 1 - |2v - 1|
+        const n = a0 + (a1 - a0) * sy;
+        v += (1 - Math.abs(n * 2 - 1)) * amp;
+      });
+      h[y * size + x] = v;
     }
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++) {
       const l = h[y * size + ((x - 1 + size) % size)]!, r = h[y * size + ((x + 1) % size)]!;
       const t = h[((y - 1 + size) % size) * size + x]!, b = h[((y + 1) % size) * size + x]!;
-      const nx = (l - r) * 1.5, ny = (t - b) * 1.5;
+      const nx = (l - r) * 5, ny = (t - b) * 5;
       const i = (y * size + x) * 4;
-      data[i] = (nx * 0.5 + 0.5) * 255;
-      data[i + 1] = (ny * 0.5 + 0.5) * 255;
-      data[i + 2] = (h[y * size + x]! * 0.4 + 0.5) * 255;
+      data[i] = Math.max(0, Math.min(255, (nx * 0.5 + 0.5) * 255));
+      data[i + 1] = Math.max(0, Math.min(255, (ny * 0.5 + 0.5) * 255));
+      data[i + 2] = Math.max(0, Math.min(255, (h[y * size + x]! / 2.1) * 255));
       data[i + 3] = 255;
     }
   const t = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.minFilter = THREE.LinearMipmapLinearFilter;
   t.magFilter = THREE.LinearFilter;
+  t.anisotropy = 8;
   t.generateMipmaps = true;
   t.needsUpdate = true;
   return t;
@@ -107,6 +141,8 @@ export class Water {
         uSunDir: { value: new THREE.Vector3(0, 1, 0) },
         uSunColor: { value: new THREE.Color(1, 0.95, 0.85) },
         uSkyColor: { value: new THREE.Color(0.55, 0.68, 0.8) },
+        uSkyTop: { value: new THREE.Color(0.25, 0.42, 0.72) },
+        uSkyHorizon: { value: new THREE.Color(0.7, 0.76, 0.82) },
         uDeep: { value: new THREE.Color(0.02, 0.1, 0.13) },
         uShallow: { value: new THREE.Color(0.12, 0.32, 0.33) },
         tHeight: { value: null },
@@ -162,8 +198,10 @@ export class Water {
     this.group.add(river);
   }
 
-  update(t: number, sunDir: THREE.Vector3, sunColor: THREE.Color, skyColor: THREE.Color, night: number, rain: number) {
+  update(t: number, sunDir: THREE.Vector3, sunColor: THREE.Color, skyColor: THREE.Color, night: number, rain: number, skyTop?: THREE.Color, skyHorizon?: THREE.Color) {
     const u = this.material.uniforms;
+    u['uSkyTop']!.value.copy(skyTop ?? skyColor);
+    u['uSkyHorizon']!.value.copy(skyHorizon ?? skyColor);
     u['uTime']!.value = t;
     u['uSunDir']!.value.copy(sunDir);
     u['uSunColor']!.value.copy(sunColor);

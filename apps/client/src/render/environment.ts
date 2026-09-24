@@ -42,8 +42,8 @@ export class Environment {
   weather = 'clear';
   wInt = 0;
   onThunder: ((dist: number) => void) | null = null;
-  private skyTop = new THREE.Color(0.25, 0.42, 0.72);
-  private skyHorizon = new THREE.Color(0.7, 0.76, 0.82);
+  readonly skyTop = new THREE.Color(0.25, 0.42, 0.72);
+  readonly skyHorizon = new THREE.Color(0.7, 0.76, 0.82);
   private time = 0;
 
   /** Schattenauflösung und -bereich nach Qualitätsstufe (auch zur Laufzeit änderbar). */

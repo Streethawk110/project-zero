@@ -375,7 +375,7 @@ export class Game {
     this.camera.lookAt(cx, 12, cz);
     this.time += dt;
     this.env.update(this.dayTime, 'clear', 0, new THREE.Vector3(cx, 10, cz), this.camera.position, dt, false);
-    this.water.update(this.time, this.env.sunDir, this.env.sun.color, this.env.fog.color, this.env.nightFactor, 0);
+    this.water.update(this.time, this.env.sunDir, this.env.sun.color, this.env.fog.color, this.env.nightFactor, 0, this.env.skyTop, this.env.skyHorizon);
     this.grass.update(this.camera.position, new THREE.Vector3(9999, 0, 9999), this.time, 1, this.env.sun.color, this.env.sun.intensity, this.env.hemi.color.clone().multiplyScalar(this.env.hemi.intensity), true);
     this.world.update(this.camera.position, this.env.nightFactor, dt, this.time, false);
     lightManager.update(this.camera.position, dt);
@@ -495,7 +495,7 @@ export class Game {
     this.cam.update(dt, ppos, this.inDungeon, ceil);
     this.env.update(this.dayTime, this.weather, this.snap?.wInt ?? 0, ppos, this.camera.position, dt, this.inDungeon);
     const skyCol = this.env.fog.color;
-    this.water.update(this.time, this.env.sunDir, this.env.sun.color, skyCol, this.env.nightFactor, this.weather === 'rain' ? this.snap?.wInt ?? 0 : 0);
+    this.water.update(this.time, this.env.sunDir, this.env.sun.color, skyCol, this.env.nightFactor, this.weather === 'rain' ? this.snap?.wInt ?? 0 : 0, this.env.skyTop, this.env.skyHorizon);
     this.water.group.visible = !this.inDungeon;
     this.terrain.group.visible = !this.inDungeon;
     this.grass.update(this.camera.position, ppos, this.time, this.weather === 'rain' || this.weather === 'nullstorm' ? 2.2 : 1, this.env.sun.color, this.env.sun.intensity * (this.inDungeon ? 0 : 1), this.env.hemi.color.clone().multiplyScalar(this.env.hemi.intensity), !this.inDungeon);

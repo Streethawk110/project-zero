@@ -7,6 +7,7 @@ import { flattenMeshes, getModel, namedMaterial } from './models.ts';
 import { TEX } from './textures.ts';
 import { settings } from '../settings.ts';
 import { VLight } from './lights.ts';
+import { buildCards, cardCount, foliageKindFor, foliageMaterial, windUniforms } from './foliage.ts';
 
 const CHUNKED = new Set(['tree_pine', 'tree_oak', 'tree_dead', 'bush', 'rock_small', 'rock_large', 'palisade', 'cliff_rock']);
 const CHUNK = 80;
@@ -93,8 +94,20 @@ export class WorldView {
 
   private buildInstanced(type: string, list: PlacedObject[]) {
     const tpl = getModel(PROPS[type]?.model ?? type);
-    const parts0 = flattenMeshes(tpl.lod0);
-    const parts1 = tpl.lod1 ? flattenMeshes(tpl.lod1) : null;
+    let parts0 = flattenMeshes(tpl.lod0);
+    let parts1 = tpl.lod1 ? flattenMeshes(tpl.lod1) : null;
+    // Baumkronen durch Blattkarten mit Wind ersetzen (nur echte Blender-Modelle)
+    const fk = tpl.fromFile ? foliageKindFor(type) : null;
+    if (fk) {
+      const swap = (parts: ReturnType<typeof flattenMeshes>, lod: 0 | 1) => parts.map((p, i) => {
+        const m = p.material as THREE.Material;
+        if (!m.name?.startsWith('leaves')) return p;
+        const f = foliageMaterial(fk);
+        return { ...p, geometry: buildCards(p.geometry, fk, cardCount(fk, lod), i + 1, p.matrix), matrix: new THREE.Matrix4(), material: f.mat, depth: f.depth, castShadow: true };
+      });
+      parts0 = swap(parts0, 0);
+      if (parts1) parts1 = swap(parts1, 1);
+    }
     const groups = new Map<string, PlacedObject[]>();
     if (CHUNKED.has(type)) {
       for (const o of list) {
@@ -111,6 +124,8 @@ export class WorldView {
         objs.forEach((o, i) => im.setMatrixAt(i, tmp.multiplyMatrices(this.matrixFor(o), p.matrix)));
         im.instanceMatrix.needsUpdate = true;
         im.castShadow = p.castShadow && type !== 'bush';
+        const depth = (p as { depth?: THREE.Material }).depth;
+        if (depth) im.customDepthMaterial = depth;
         im.receiveShadow = true;
         im.computeBoundingSphere();
         this.group.add(im);
@@ -306,6 +321,7 @@ export class WorldView {
       for (const m of c.lod1) m.visible = show && !hi;
     }
     this.dungeonGroup.visible = inDungeon || cam.x > 900;
+    windUniforms.uWindTime.value = time;
     // Lichtstärken (Tag/Nacht, Flackern) nur für Quellen in Reichweite berechnen
     for (const { src: s, v } of this.lights) {
       if (s.dungeon !== inDungeon || (s.x - cam.x) ** 2 + (s.z - cam.z) ** 2 > 140 * 140) { v.intensity = 0; continue; }
