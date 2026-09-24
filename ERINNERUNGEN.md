@@ -97,6 +97,8 @@ Profiler nicht mitgezählt – behoben).
   alle Modellmaterialien (Gebäude, Requisiten) nutzten dauerhaft die
   prozeduralen Ersatztexturen (weiße „Fliesen“ an der Kapelle). Reihenfolge
   umgedreht (auch in `dev/rigPreview.ts`).
+- Web-Artifact Version 6 (gleicher Link), Texturen dort auf 1024 verkleinert
+  (sonst über 64 MB je Version).
 
 ## 2026-09-24 – Cloud-Sitzung: Grafik-Offensive (Fortsetzung)
 
