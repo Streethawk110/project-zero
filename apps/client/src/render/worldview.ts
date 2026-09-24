@@ -6,6 +6,7 @@ import { BRIDGE, bridgeSegments, getWorldLayout, PROPS, type PlacedObject, INTER
 import { flattenMeshes, getModel, namedMaterial } from './models.ts';
 import { TEX } from './textures.ts';
 import { settings } from '../settings.ts';
+import { VLight } from './lights.ts';
 
 const CHUNKED = new Set(['tree_pine', 'tree_oak', 'tree_dead', 'bush', 'rock_small', 'rock_large', 'palisade', 'cliff_rock']);
 const CHUNK = 80;
@@ -50,8 +51,7 @@ export class WorldView {
   dyn = new Map<string, DynObject>();
   dynList: DynObject[] = [];
   private lightSources: { x: number; y: number; z: number; color: number; intensity: number; dist: number; dungeon: boolean; flicker: boolean }[] = [];
-  private lightPool: THREE.PointLight[] = [];
-  private lightT = 0;
+  private lights: { src: WorldView['lightSources'][number]; v: VLight }[] = [];
   gateObjects = new Map<string, THREE.Object3D[]>();
   sightObjects: THREE.Object3D[] = [];
   tideStones: THREE.Object3D[] = [];
@@ -75,14 +75,14 @@ export class WorldView {
     for (const [t, list] of byType) this.buildInstanced(t, list);
     this.buildBridge();
     this.buildDungeon();
-    const n = settings.graphics === 'niedrig' ? 4 : settings.graphics === 'mittel' ? 8 : 12;
-    for (let i = 0; i < n; i++) {
-      const l = new THREE.PointLight(0xffa050, 0, 12, 1.6);
-      l.castShadow = false;
-      this.lightPool.push(l);
-      this.group.add(l);
-    }
     this.group.add(this.dungeonGroup);
+    // Jede Lichtquelle ist ein virtuelles Licht; die Zuteilung echter Lichter übernimmt lightManager
+    for (const src of this.lightSources) {
+      const v = new VLight(src.color, 0, src.dist, 1.6, 1);
+      v.position.set(src.x, src.y, src.z);
+      (src.dungeon ? this.dungeonGroup : this.group).add(v);
+      this.lights.push({ src, v });
+    }
   }
 
   private matrixFor(o: PlacedObject) {
@@ -284,6 +284,15 @@ export class WorldView {
     }
   }
 
+  /** Macht für das Vorladen alles sichtbar; gibt eine Funktion zum Zurücksetzen zurück. */
+  showAllForWarmup() {
+    const prev: [THREE.Object3D, boolean][] = [];
+    const show = (o: THREE.Object3D) => { prev.push([o, o.visible]); o.visible = true; };
+    for (const c of this.chunks) { c.lod0.forEach(show); c.lod1.forEach(show); }
+    show(this.dungeonGroup);
+    return () => { for (const [o, v] of prev) o.visible = v; };
+  }
+
   /** Aktualisiert Detailstufen, Sichtweite und Lichter. */
   update(cam: THREE.Vector3, night: number, dt: number, time: number, inDungeon: boolean) {
     const vd = settings.viewDistance;
@@ -297,31 +306,13 @@ export class WorldView {
       for (const m of c.lod1) m.visible = show && !hi;
     }
     this.dungeonGroup.visible = inDungeon || cam.x > 900;
-    // Lichter: die nächsten Quellen erhalten Punktlichter
-    this.lightT -= dt;
-    if (this.lightT <= 0) {
-      this.lightT = 0.5;
-      const sorted = this.lightSources
-        .filter((l) => l.dungeon === inDungeon)
-        .map((l) => ({ l, d: (l.x - cam.x) ** 2 + (l.z - cam.z) ** 2 }))
-        .sort((a, b) => a.d - b.d);
-      this.lightPool.forEach((pl, i) => {
-        const s = sorted[i];
-        if (!s || s.d > 90 * 90) { pl.visible = false; pl.userData['src'] = null; return; }
-        pl.visible = true;
-        pl.position.set(s.l.x, s.l.y, s.l.z);
-        pl.color.setHex(s.l.color);
-        pl.distance = s.l.dist;
-        pl.userData['src'] = s.l;
-      });
-    }
-    for (const pl of this.lightPool) {
-      const s = pl.userData['src'] as (typeof this.lightSources)[number] | null;
-      if (!s) continue;
+    // Lichtstärken (Tag/Nacht, Flackern) nur für Quellen in Reichweite berechnen
+    for (const { src: s, v } of this.lights) {
+      if (s.dungeon !== inDungeon || (s.x - cam.x) ** 2 + (s.z - cam.z) ** 2 > 140 * 140) { v.intensity = 0; continue; }
       const warm = s.color !== 0x7ff6ff;
       const onFactor = inDungeon || !warm ? 1 : 0.15 + night * 0.85;
       const flick = s.flicker ? 0.85 + Math.sin(time * 13 + s.x) * 0.08 + Math.sin(time * 7.3 + s.z) * 0.07 : 1;
-      pl.intensity = s.intensity * onFactor * flick;
+      v.intensity = s.intensity * onFactor * flick;
     }
   }
 }

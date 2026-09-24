@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { settings } from '../settings.ts';
+import type { AtmosphereState } from './renderer.ts';
 
 const tmpC = new THREE.Color();
 
@@ -29,6 +30,9 @@ export class Environment {
   private envScene = new THREE.Scene();
   private envSky: Sky;
   private envRT: THREE.WebGLRenderTarget | null = null;
+  // Feste Würfelkarte + wiederverwendetes PMREM-Ziel: keine Speicherreservierung beim Aktualisieren
+  private cubeRT = new THREE.WebGLCubeRenderTarget(128, { type: THREE.HalfFloatType });
+  private cubeCam = new THREE.CubeCamera(0.1, 200, this.cubeRT);
   private lastEnvKey = '';
   sunDir = new THREE.Vector3();
   nightFactor = 0;
@@ -38,6 +42,47 @@ export class Environment {
   weather = 'clear';
   wInt = 0;
   onThunder: ((dist: number) => void) | null = null;
+  private skyTop = new THREE.Color(0.25, 0.42, 0.72);
+  private skyHorizon = new THREE.Color(0.7, 0.76, 0.82);
+  private time = 0;
+
+  /** Schattenauflösung und -bereich nach Qualitätsstufe (auch zur Laufzeit änderbar). */
+  applyShadowSettings() {
+    const q = settings.shadowQuality;
+    const size = q === 'ultra' ? 6144 : q === 'hoch' ? 4096 : q === 'mittel' ? 2048 : 1024;
+    const ext = q === 'ultra' ? 80 : q === 'hoch' ? 70 : q === 'mittel' ? 55 : 42;
+    const sh = this.sun.shadow;
+    if (sh.mapSize.x !== size) {
+      sh.map?.dispose();
+      sh.map = null as unknown as THREE.WebGLRenderTarget;
+      sh.mapSize.set(size, size);
+    }
+    const cam = sh.camera;
+    cam.left = -ext; cam.right = ext; cam.top = ext; cam.bottom = -ext;
+    cam.near = 1; cam.far = 400;
+    cam.updateProjectionMatrix();
+    // Weichere Kanten bei höherer Auflösung
+    sh.radius = q === 'ultra' ? 4 : 3;
+    sh.blurSamples = q === 'ultra' ? 16 : 8;
+  }
+
+  /** Zustand für Wolken und Atmosphären-Stufe. */
+  atmosphere(): AtmosphereState {
+    const target = this.weather === 'rain' ? 0.92 : this.weather === 'cloudy' ? 0.75 : this.weather === 'nullstorm' ? 0.85 : this.weather === 'fog' ? 0.6 : 0.36;
+    return {
+      sunDir: this.sunDir.y > -0.05 ? this.sunDir : tmpV.copy(this.sunDir).multiplyScalar(-1).clone(),
+      sunColor: this.sun.color,
+      sunIntensity: this.sun.intensity,
+      fogColor: this.fog.color,
+      fogDensity: this.fog.density,
+      skyTop: this.skyTop,
+      skyHorizon: this.skyHorizon,
+      coverage: 0.36 + (target - 0.36) * this.wInt,
+      night: this.nightFactor,
+      inDungeon: this.inDungeon,
+      time: this.time,
+    };
+  }
 
   constructor(private scene: THREE.Scene, private renderer: THREE.WebGLRenderer) {
     this.sky = new Sky();
@@ -57,15 +102,9 @@ export class Environment {
 
     this.sun = new THREE.DirectionalLight(0xfff1d6, 3);
     this.sun.castShadow = settings.shadows;
-    const sm = settings.graphics === 'ultra' ? 4096 : settings.graphics === 'hoch' ? 3072 : 2048;
-    this.sun.shadow.mapSize.set(sm, sm);
-    const ext = settings.graphics === 'mittel' ? 55 : 75;
-    const cam = this.sun.shadow.camera;
-    cam.left = -ext; cam.right = ext; cam.top = ext; cam.bottom = -ext;
-    cam.near = 1; cam.far = 400;
+    this.applyShadowSettings();
     this.sun.shadow.bias = -0.0004;
     this.sun.shadow.normalBias = 0.04;
-    this.sun.shadow.radius = 3;
     scene.add(this.sun, this.sun.target);
 
     this.hemi = new THREE.HemisphereLight(0xbcd3ff, 0x4a3f2c, 0.6);
@@ -103,6 +142,7 @@ export class Environment {
 
   update(dayTime: number, weather: string, wInt: number, center: THREE.Vector3, camPos: THREE.Vector3, dt: number, inDungeon: boolean) {
     this.inDungeon = inDungeon;
+    this.time += dt;
     this.weather = weather;
     this.wInt = wInt;
     // Sonnenstand: 0.25 Aufgang, 0.5 Mittag, 0.75 Untergang
@@ -137,6 +177,9 @@ export class Environment {
 
     // Farben
     const sunCol = lerpColor([[-1, 0x7a8cc8], [-0.05, 0x7a8cc8], [0.04, 0xff9a52], [0.25, 0xffd7a8], [1, 0xfff4e2]], elev, new THREE.Color());
+    // Himmelsfarben für die Wolkenbeleuchtung
+    lerpColor([[-1, 0x02040a], [-0.08, 0x0a1224], [0.05, 0x46526e], [0.25, 0x3f6ea8], [1, 0x3a6db0]], elev, this.skyTop);
+    lerpColor([[-1, 0x05080f], [-0.08, 0x1a2234], [0.04, 0xe39a6a], [0.25, 0xb7c6d6], [1, 0xc4d3e0]], elev, this.skyHorizon);
     const fogDay = lerpColor([[-1, 0x0b1220], [-0.08, 0x141c2c], [0.05, 0xc98a62], [0.25, 0xa9b9c9], [1, 0xb5c7d6]], elev, new THREE.Color());
     let sunI = elev > -0.05 ? THREE.MathUtils.lerp(0.4, 3.2, THREE.MathUtils.smoothstep(elev, -0.05, 0.4)) : 0.35; // Mondlicht
     sunI *= 1 - overcast * 0.55;
@@ -196,8 +239,8 @@ export class Environment {
       eu['turbidity']!.value = u['turbidity']!.value;
       eu['rayleigh']!.value = u['rayleigh']!.value;
       eu['mieCoefficient']!.value = 0.004;
-      this.envRT?.dispose();
-      this.envRT = this.pmrem.fromScene(this.envScene, 0, 0.1, 200);
+      this.cubeCam.update(this.renderer, this.envScene);
+      this.envRT = this.pmrem.fromCubemap(this.cubeRT.texture, this.envRT);
       this.scene.environment = inDungeon ? null : this.envRT.texture;
       this.scene.environmentIntensity = THREE.MathUtils.lerp(0.15, 0.7, day) * (1 - overcast * 0.4);
     }

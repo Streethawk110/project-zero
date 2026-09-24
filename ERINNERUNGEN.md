@@ -2,6 +2,33 @@
 
 Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
 
+## 2026-09-24 – Cloud-Sitzung: Grafik-Offensive (Fortsetzung)
+
+**Wünsche des Nutzers**
+- Chat nur auf Deutsch. Weniger Standbilder bei Ultra (nur dort!), Grafik
+  „wie echte Spiele / 4K“, Auflösung + FPS-Limit einstellbar, Wolken.
+  Danach Schwerpunkt **Texturen** (Bibliotheken oder Blender erlaubt).
+- Keine langen Testläufe ohne Not (Nutzer hat Messläufe abgebrochen).
+
+**Erledigt**
+- Ruckler: feste Lichtanzahl (`render/lights.ts`, virtuelle Lichter statt
+  `visible`-Umschalten → keine Shader-Neuübersetzung), Vorladen aller
+  Geometrie/Shader beim Laden (`Game.prewarm`), Env-Map ohne Neuanlage
+  (CubeCamera + `fromCubemap` mit Wiederverwendung), Grafik-Neuaufbau nur
+  bei Grafikänderungen (`graphicsKey`).
+- Neue Pipeline (`render/renderer.ts`): ScenePass (HDR, MSAA optional) →
+  GTAO → Atmosphäre (Höhennebel, Sonnenstreuung, Wolken einsetzen,
+  Wolkenschatten, Lichtstrahlen) → Bloom → Grading → SMAA.
+- Volumetrische Wolken (`render/clouds.ts`), Rauschtextur vorberechnet
+  (`tools/dev/bake-clouds.ts` → `public/assets/textures/cloud-noise-64.bin`).
+- Einstellungen: Renderauflösung (nativ/720p–4K), Skalierung 50–200 %,
+  FPS-Limit, FPS-Anzeige, Schatten-/Wolken-/Texturqualität, AO,
+  Lichtstrahlen, Kantenglättung, Vegetationsdichte.
+- Achtung three r180: `GTAOPass` mit eigener Tiefentextur ohne Normalen
+  stürzt ab → GTAO rendert eigenen G-Buffer.
+- Testen ohne GPU: `tools/dev/shot-game.mjs` (klickt per JS; mit
+  `fpsCap` 2–4 und Schatten „niedrig“, sonst zu langsam).
+
 ## 2026-09-24 – Cloud-Sitzung: Start „Project Zero“
 
 **Auftrag**

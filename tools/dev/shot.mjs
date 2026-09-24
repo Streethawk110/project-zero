@@ -6,10 +6,11 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const logs = [];
 page.on('console', (m) => logs.push(`${m.type()}: ${m.text()}`));
 page.on('pageerror', (e) => logs.push(`PAGEERROR: ${e.message}\n${e.stack}`));
+if (process.env.SETTINGS) await page.addInitScript((j) => localStorage.setItem('pz.settings.v1', j), process.env.SETTINGS);
 if (process.env.LOW) await page.addInitScript(() => localStorage.setItem('pz.settings.v1', JSON.stringify({ graphics: 'niedrig', renderScale: 0.6, shadows: false, bloom: false, grass: false, viewDistance: 200, firstRun: false })));
 await page.goto(url);
 await page.waitForTimeout(Number(process.env.WAIT ?? 25000));
-await page.screenshot({ path: `${out}-menu.png` });
+await page.screenshot({ path: `${out}-menu.png`, timeout: 300000 });
 if (process.env.PLAY) {
   await page.click('text=Einzelspieler');
   await page.waitForTimeout(500);

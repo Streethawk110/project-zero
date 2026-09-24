@@ -17,7 +17,10 @@ import { HumanoidRig } from '../render/rig.ts';
 import { ThirdPersonCamera } from './camera.ts';
 import { Input } from '../input/input.ts';
 import type { GameConnection } from '../net/connection.ts';
-import { settings, onSettingsChange } from '../settings.ts';
+import { settings, onSettingsChange, graphicsKey } from '../settings.ts';
+import { lightManager, lightPoolSize } from '../render/lights.ts';
+import { makeColossus, makeCrystalPillar, makeGlassrunner, makeMoth } from '../render/creatures.ts';
+import { OUTFITS, makeWeapon } from '../render/rig.ts';
 import type { AudioEngine } from '../audio/audio.ts';
 import type { GameUI } from '../ui/gameui.ts';
 
@@ -99,6 +102,7 @@ export class Game {
     this.scene.add(this.fx.group);
     this.ents = new EntityManager(this.fx);
     this.scene.add(this.ents.group);
+    lightManager.attach(this.scene, lightPoolSize(settings.graphics));
     this.renderer.setup(this.scene, this.camera);
     this.fx.setViewportHeight(window.innerHeight * this.renderer.renderer.getPixelRatio());
     const hf = getWorldLayout().hf;
@@ -119,9 +123,57 @@ export class Game {
       this.camera.updateProjectionMatrix();
       this.fx.setViewportHeight(window.innerHeight * this.renderer.renderer.getPixelRatio());
     });
+    // Nur bei geänderten Grafikeinstellungen neu aufbauen (sonst ruckelt z. B. jede Lautstärkeänderung)
+    let gfxKey = graphicsKey();
     onSettingsChange(() => {
+      const k = graphicsKey();
+      if (k === gfxKey) return;
+      const poolChanged = lightPoolSize(settings.graphics) !== lightManager.poolSize;
+      gfxKey = k;
+      if (poolChanged) lightManager.attach(this.scene, lightPoolSize(settings.graphics));
+      this.env.applyShadowSettings();
       this.renderer.rebuild(this.scene, this.camera);
     });
+  }
+
+  /**
+   * Lädt beim Start alles auf die Grafikkarte und übersetzt alle Shader: alle Wald- und Felsbereiche
+   * (auch weit entfernte), Dungeon, Kreaturen, Figuren, Waffen und Effekte. Sonst passiert das erst
+   * beim ersten Sichtkontakt mitten im Spiel – das waren die Standbilder bei hoher Sichtweite.
+   */
+  async prewarm() {
+    const r = this.renderer.renderer;
+    const warm = new THREE.Group();
+    const views: THREE.Object3D[] = [makeGlassrunner().root, makeColossus(1).root, makeMoth().root, makeCrystalPillar(3).root];
+    for (const outfit of Object.keys(OUTFITS)) {
+      const rig = new HumanoidRig({ appearance: { skin: 1, hair: 0, hairColor: 1, beard: 1, height: 1, body: 0.5, eyes: 0, scar: 0 }, outfit });
+      views.push(rig.root);
+    }
+    for (const id of ['sword_rusty', 'sword_glass', 'bow_short', 'staff_ember', 'staff_null', 'dagger_hunt', 'axe_wood', 'mace_order', 'shield_wood', 'shield_order']) {
+      try { views.push(makeWeapon(id)); } catch { /* unbekannte Waffe: egal */ }
+    }
+    views.forEach((v, i) => { v.position.set(this.camera.position.x + (i % 6) - 3, this.camera.position.y - 2, this.camera.position.z - 6 - Math.floor(i / 6)); warm.add(v); });
+    this.fx.flash(this.camera.position.x, this.camera.position.y, this.camera.position.z - 5, 0xffffff, 0.001, 0.05);
+    this.scene.add(warm);
+    const restore = this.world.showAllForWarmup();
+    const culled: THREE.Object3D[] = [];
+    this.scene.traverse((o) => { if (o.frustumCulled) { o.frustumCulled = false; culled.push(o); } });
+    try {
+      await r.compileAsync(this.scene, this.camera);
+      // Einmal vollständig (inkl. Schatten) in ein kleines Ziel rendern: lädt Geometrie und Texturen hoch
+      const rt = new THREE.WebGLRenderTarget(64, 64);
+      r.setRenderTarget(rt);
+      r.render(this.scene, this.camera);
+      r.setRenderTarget(null);
+      rt.dispose();
+      this.renderer.render(this.scene, this.camera, 0);
+    } catch (e) {
+      console.warn('Vorladen der Grafik unvollständig:', e);
+    } finally {
+      for (const o of culled) o.frustumCulled = true;
+      restore();
+      this.scene.remove(warm);
+    }
   }
 
   get isNight() {
@@ -326,8 +378,10 @@ export class Game {
     this.water.update(this.time, this.env.sunDir, this.env.sun.color, this.env.fog.color, this.env.nightFactor, 0);
     this.grass.update(this.camera.position, new THREE.Vector3(9999, 0, 9999), this.time, 1, this.env.sun.color, this.env.sun.intensity, this.env.hemi.color.clone().multiplyScalar(this.env.hemi.intensity), true);
     this.world.update(this.camera.position, this.env.nightFactor, dt, this.time, false);
+    lightManager.update(this.camera.position, dt);
     this.fx.ambient(dt, this.camera.position, 'haldenbruck', false, false, 'clear', 0);
     this.fx.update(dt);
+    this.renderer.setAtmosphere(this.env.atmosphere(), dt);
     this.renderer.render(this.scene, this.camera, dt);
   }
 
@@ -335,17 +389,48 @@ export class Game {
     if (this.running) return;
     this.running = true;
     this.lastT = performance.now();
+    let lastRaf = this.lastT;
+    let capAcc = 0;
+    let fpsFrames = 0, fpsT = 0;
     const loop = () => {
       if (!this.running) return;
       this.raf = requestAnimationFrame(loop);
       const now = performance.now();
+      // Bildraten-Begrenzung: Frames überspringen, bis das Zeitbudget erreicht ist
+      const cap = settings.fpsCap;
+      capAcc += now - lastRaf;
+      lastRaf = now;
+      if (cap > 0) {
+        const interval = 1000 / cap;
+        if (capAcc < interval - 0.5) return;
+        capAcc = Math.min(capAcc - interval, interval);
+      } else capAcc = 0;
       const dt = Math.min(0.1, (now - this.lastT) / 1000);
       this.lastT = now;
       const t0 = performance.now();
       this.frame(dt);
       this.frameMs = this.frameMs * 0.95 + (performance.now() - t0) * 0.05;
+      fpsFrames++;
+      fpsT += dt;
+      if (fpsT >= 0.5) {
+        this.updateFpsCounter(fpsFrames / fpsT);
+        fpsFrames = 0;
+        fpsT = 0;
+      }
     };
     loop();
+  }
+
+  private fpsEl: HTMLElement | null = null;
+  private updateFpsCounter(fps: number) {
+    if (!settings.showFps) { this.fpsEl?.remove(); this.fpsEl = null; return; }
+    if (!this.fpsEl) {
+      this.fpsEl = document.createElement('div');
+      this.fpsEl.className = 'fps-counter';
+      document.body.append(this.fpsEl);
+    }
+    const r = this.renderer.renderSize();
+    this.fpsEl.textContent = `${Math.round(fps)} FPS · ${this.frameMs.toFixed(1)} ms CPU · ${r.w}×${r.h}`;
   }
 
   stop() {
@@ -415,6 +500,7 @@ export class Game {
     this.terrain.group.visible = !this.inDungeon;
     this.grass.update(this.camera.position, ppos, this.time, this.weather === 'rain' || this.weather === 'nullstorm' ? 2.2 : 1, this.env.sun.color, this.env.sun.intensity * (this.inDungeon ? 0 : 1), this.env.hemi.color.clone().multiplyScalar(this.env.hemi.intensity), !this.inDungeon);
     this.world.update(this.camera.position, this.env.nightFactor, dt, this.time, this.inDungeon);
+    lightManager.update(this.camera.position, dt);
     this.updateDynamicObjects();
     this.fx.ambient(dt, this.camera.position, zoneAt(ppos.x, ppos.z)?.id ?? null, this.isNight, this.inDungeon, this.weather, this.snap?.wInt ?? 0);
     this.fx.update(this.paused ? 0 : dt);
@@ -430,7 +516,8 @@ export class Game {
       u['uDamage']!.value = Math.max(0, (0.35 - hpf) / 0.35) * (settings.reducedEffects ? 0.5 : 1);
       u['uSaturation']!.value = this.weather === 'nullstorm' ? 0.85 : 1.05;
     }
-    this.renderer.setBloom(this.inDungeon ? 0.55 : 0.3 + this.env.nightFactor * 0.25);
+    this.renderer.setBloom(this.inDungeon ? 0.5 : 0.24 + this.env.nightFactor * 0.22);
+    this.renderer.setAtmosphere(this.env.atmosphere(), dt);
 
     // Interaktion & Ziel
     this.interactTarget = this.findInteractTarget(ppos);

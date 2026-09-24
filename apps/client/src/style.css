@@ -309,3 +309,9 @@ h3 { font-size: 1.1em; color: var(--gold); }
   .mode-cards { grid-template-columns: 1fr; }
   .skilltree { grid-template-columns: 1fr; }
 }
+
+.fps-counter {
+  position: fixed; top: 6px; left: 8px; z-index: 50; pointer-events: none;
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; color: #cfe9ff;
+  background: rgba(8, 12, 18, 0.55); padding: 3px 7px; border-radius: 4px; letter-spacing: 0.02em;
+}

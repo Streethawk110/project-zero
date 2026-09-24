@@ -6,6 +6,7 @@ import { HumanoidRig } from './rig.ts';
 import { makeColossus, makeCrystalPillar, makeGlassrunner, makeMoth, type CreatureView } from './creatures.ts';
 import type { FX } from './fx.ts';
 import { namedMaterial } from './models.ts';
+import { VLight } from './lights.ts';
 
 interface Sample { t: number; x: number; y: number; z: number; r: number }
 
@@ -146,7 +147,7 @@ export class EntityManager {
         const lantern = new THREE.Group();
         const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.14, 8), namedMaterial('glow_warm'));
         lantern.add(glass);
-        const l = new THREE.PointLight(0xffc080, 3, 8);
+        const l = new VLight(0xffc080, 3, 8);
         lantern.add(l);
         lantern.position.set(-0.2, -0.05, 0.05);
         rig.j.hips.add(lantern);

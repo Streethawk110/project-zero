@@ -73,9 +73,32 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   pause: ['Escape'],
 };
 
+export type Quality = 'aus' | 'niedrig' | 'mittel' | 'hoch' | 'ultra';
+
+/** Wählbare Renderauflösungen (Höhe in Pixeln); „nativ“ = Bildschirmauflösung. */
+export const RESOLUTIONS: [string, string][] = [
+  ['nativ', 'Nativ (Bildschirm)'], ['720', '1280 × 720 (HD)'], ['900', '1600 × 900'], ['1080', '1920 × 1080 (Full HD)'],
+  ['1440', '2560 × 1440 (WQHD)'], ['1800', '3200 × 1800'], ['2160', '3840 × 2160 (4K)'],
+];
+export const FPS_CAPS = [0, 30, 45, 60, 75, 90, 120, 144, 165, 240];
+
 export interface Settings {
   graphics: GraphicsProfile;
+  /** Renderauflösung ('nativ' oder Bildhöhe) */
+  resolution: string;
+  /** Zusätzliche Skalierung (unter 1 = schneller, über 1 = Supersampling) */
   renderScale: number;
+  /** Bildraten-Begrenzung (0 = unbegrenzt / Bildschirmfrequenz) */
+  fpsCap: number;
+  showFps: boolean;
+  clouds: Quality;
+  shadowQuality: Quality;
+  textureQuality: number;
+  antialias: 'aus' | 'smaa' | 'msaa';
+  ao: boolean;
+  godRays: boolean;
+  /** Dichte von Gras und Pflanzen (0,5–2) */
+  vegetation: number;
   fov: number;
   viewDistance: number;
   shadows: boolean;
@@ -111,10 +134,10 @@ export function defaultProfile(): GraphicsProfile {
 
 export function profileDefaults(p: GraphicsProfile) {
   switch (p) {
-    case 'ultra': return { renderScale: 1, viewDistance: 520, shadows: true, bloom: true, grass: true };
-    case 'hoch': return { renderScale: 1, viewDistance: 420, shadows: true, bloom: true, grass: true };
-    case 'mittel': return { renderScale: 0.85, viewDistance: 320, shadows: true, bloom: true, grass: true };
-    case 'niedrig': return { renderScale: 0.7, viewDistance: 220, shadows: false, bloom: false, grass: false };
+    case 'ultra': return { resolution: 'nativ', renderScale: 1, viewDistance: 700, shadows: true, bloom: true, grass: true, clouds: 'ultra' as Quality, shadowQuality: 'ultra' as Quality, textureQuality: 2048, antialias: 'msaa' as const, ao: true, godRays: true, vegetation: 1.6 };
+    case 'hoch': return { resolution: 'nativ', renderScale: 1, viewDistance: 500, shadows: true, bloom: true, grass: true, clouds: 'hoch' as Quality, shadowQuality: 'hoch' as Quality, textureQuality: 1024, antialias: 'smaa' as const, ao: true, godRays: true, vegetation: 1.2 };
+    case 'mittel': return { resolution: 'nativ', renderScale: 0.85, viewDistance: 350, shadows: true, bloom: true, grass: true, clouds: 'niedrig' as Quality, shadowQuality: 'mittel' as Quality, textureQuality: 512, antialias: 'smaa' as const, ao: false, godRays: false, vegetation: 1 };
+    case 'niedrig': return { resolution: 'nativ', renderScale: 0.7, viewDistance: 220, shadows: false, bloom: false, grass: false, clouds: 'aus' as Quality, shadowQuality: 'niedrig' as Quality, textureQuality: 512, antialias: 'aus' as const, ao: false, godRays: false, vegetation: 0.6 };
   }
 }
 
@@ -124,6 +147,8 @@ function defaults(): Settings {
     graphics: g,
     ...profileDefaults(g),
     fov: 62,
+    fpsCap: 0,
+    showFps: false,
     volMaster: 0.8,
     volMusic: 0.55,
     volSfx: 0.85,
@@ -149,7 +174,9 @@ function load(): Settings {
     const raw = localStorage.getItem(KEY);
     if (!raw) return d;
     const s = JSON.parse(raw) as Partial<Settings>;
-    return { ...d, ...s, keys: { ...d.keys, ...(s.keys ?? {}) } };
+    // Neue Einstellungen älterer Speicherstände aus dem gewählten Grafikprofil ergänzen
+    const base = { ...d, ...profileDefaults(s.graphics ?? d.graphics) };
+    return { ...base, ...s, keys: { ...d.keys, ...(s.keys ?? {}) } };
   } catch {
     return d;
   }
@@ -166,6 +193,12 @@ export function saveSettings() {
   }
   applyUiScale();
   for (const l of listeners) l(settings);
+}
+
+/** Schlüssel aller Einstellungen, die einen Neuaufbau der Grafik erfordern. */
+export function graphicsKey() {
+  const s = settings;
+  return JSON.stringify([s.graphics, s.resolution, s.renderScale, s.shadows, s.shadowQuality, s.bloom, s.grass, s.clouds, s.antialias, s.ao, s.godRays, s.fov]);
 }
 
 export function onSettingsChange(fn: (s: Settings) => void) {

@@ -2,6 +2,7 @@
 // Selbst erzeugt – keine externen Bildquellen, keine Lizenzfragen.
 
 import * as THREE from 'three';
+import { settings } from '../settings.ts';
 
 function hash(x: number, y: number, seed: number) {
   let h = (x * 374761393 + y * 668265263 + seed * 2147483647) | 0;
@@ -98,7 +99,7 @@ function build(name: string, gen: Gen, normalStrength = 2, size = texSize): PBRS
     t.magFilter = THREE.LinearFilter;
     t.minFilter = THREE.LinearMipmapLinearFilter;
     t.generateMipmaps = true;
-    t.anisotropy = 8;
+    t.anisotropy = settings.graphics === 'ultra' || settings.graphics === 'hoch' ? 16 : 8;
     if (srgb) t.colorSpace = THREE.SRGBColorSpace;
     t.needsUpdate = true;
     return t;

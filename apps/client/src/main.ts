@@ -4,6 +4,7 @@ import { applyUiScale, settings } from './settings.ts';
 import { loadRuntimeConfig } from './config.ts';
 import { loadManifest, preloadModels } from './render/models.ts';
 import { setTextureSize, TEX } from './render/textures.ts';
+import { loadCloudNoise } from './render/clouds.ts';
 import { AudioEngine } from './audio/audio.ts';
 import { Game } from './game/game.ts';
 import { GameUI } from './ui/gameui.ts';
@@ -46,12 +47,16 @@ async function boot() {
   await progress(0.42, 'Gelände und Welt …');
   getWorldLayout();
   await progress(0.55, 'Texturen …');
-  setTextureSize(settings.graphics === 'niedrig' ? 256 : 512);
+  setTextureSize(Math.min(settings.textureQuality, 1024));
   for (const k of Object.keys(TEX) as (keyof typeof TEX)[]) { TEX[k](); }
+  await progress(0.75, 'Wolken …');
+  await loadCloudNoise();
   await progress(0.8, 'Szene …');
   const audio = new AudioEngine();
   const game = new Game(canvas, audio);
   game.startMenu();
+  await progress(0.9, 'Grafik vorbereiten …');
+  await game.prewarm();
   await progress(1, 'Bereit');
   loading.remove();
 

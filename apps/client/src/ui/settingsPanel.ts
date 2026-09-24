@@ -1,4 +1,4 @@
-import { ACTIONS, keyLabel, profileDefaults, resetKeys, saveSettings, settings, type Action, type GraphicsProfile } from '../settings.ts';
+import { ACTIONS, FPS_CAPS, RESOLUTIONS, keyLabel, profileDefaults, resetKeys, saveSettings, settings, type Action, type GraphicsProfile, type Quality, type Settings } from '../settings.ts';
 import { h, clear } from './dom.ts';
 
 /** Einstellungsfenster (Hauptmenü und Pause). */
@@ -23,18 +23,37 @@ export function settingsPanel(onClose: () => void, capture: (fn: (code: string) 
     clear(body);
     const grid = h('div', { class: 'settings-grid' });
     if (tab === 'grafik') {
-      const sel = h('select', { onChange: (e: Event) => { const p = (e.target as HTMLSelectElement).value as GraphicsProfile; settings.graphics = p; Object.assign(settings, profileDefaults(p)); saveSettings(); render(); if (restartHint) restartHint.classList.remove('hidden'); } },
-        ...[['ultra', 'Ultra (starke Grafikkarte)'], ['hoch', 'Hoch'], ['mittel', 'Mittel'], ['niedrig', 'Niedrig (schwache Geräte)']].map(([v, n]) => h('option', { value: v, selected: settings.graphics === v }, n)));
+      const select = <T extends string | number>(opts: [T, string][], get: () => T, set: (v: T) => void, rerender = false) =>
+        h('select', { onChange: (e: Event) => {
+          const raw = (e.target as HTMLSelectElement).value;
+          const v = (typeof get() === 'number' ? Number(raw) : raw) as T;
+          set(v); saveSettings(); if (rerender) render();
+        } }, ...opts.map(([v, n]) => h('option', { value: String(v), selected: get() === v }, n)));
+      const q: [Quality, string][] = [['aus', 'Aus'], ['niedrig', 'Niedrig'], ['mittel', 'Mittel'], ['hoch', 'Hoch'], ['ultra', 'Ultra']];
+      const profile = select<GraphicsProfile>([['ultra', 'Ultra (starke Grafikkarte)'], ['hoch', 'Hoch'], ['mittel', 'Mittel'], ['niedrig', 'Niedrig (schwache Geräte)']], () => settings.graphics, (p) => {
+        settings.graphics = p; Object.assign(settings, profileDefaults(p)); if (restartHint) restartHint.classList.remove('hidden');
+      }, true);
       grid.append(
-        ...row('Grafikprofil', sel, 'Setzt Schatten, Sichtweite, Gras und Auflösung.'),
-        ...row('Auflösungsskalierung', range(() => settings.renderScale, (v) => (settings.renderScale = v), 0.5, 1, 0.05)),
-        ...row('Sichtweite', range(() => settings.viewDistance, (v) => (settings.viewDistance = v), 150, 600, 10, (v) => `${v} m`)),
-        ...row('Sichtfeld (FOV)', range(() => settings.fov, (v) => (settings.fov = v), 50, 90, 1, (v) => `${v}°`)),
-        ...row('Schatten', toggle(() => settings.shadows, (v) => (settings.shadows = v))),
+        h('h3', { style: { gridColumn: '1 / -1', margin: '0.2em 0 0' } }, 'Bild'),
+        ...row('Grafikprofil', profile, 'Setzt alle Werte unten auf passende Voreinstellungen.'),
+        ...row('Renderauflösung', select<string>(RESOLUTIONS, () => settings.resolution, (v) => (settings.resolution = v)), '„Nativ“ nutzt die volle Bildschirmauflösung. 4K auf einem kleineren Bildschirm = schärferes Bild (Supersampling).'),
+        ...row('Auflösungsskalierung', range(() => settings.renderScale, (v) => (settings.renderScale = v), 0.5, 2, 0.05), 'Über 100 % rendert intern höher (sehr scharf, kostet Leistung).'),
+        ...row('Kantenglättung', select<Settings['antialias']>([['aus', 'Aus'], ['smaa', 'SMAA'], ['msaa', 'MSAA 4× + SMAA']], () => settings.antialias, (v) => (settings.antialias = v))),
+        ...row('FPS-Limit', select<number>(FPS_CAPS.map((f) => [f, f === 0 ? 'Unbegrenzt (Bildschirmfrequenz)' : `${f} FPS`]), () => settings.fpsCap, (v) => (settings.fpsCap = v))),
+        ...row('FPS anzeigen', toggle(() => settings.showFps, (v) => (settings.showFps = v))),
+        ...row('Sichtfeld (FOV)', range(() => settings.fov, (v) => (settings.fov = v), 50, 100, 1, (v) => `${v}°`)),
+        h('h3', { style: { gridColumn: '1 / -1', margin: '0.8em 0 0' } }, 'Welt'),
+        ...row('Sichtweite', range(() => settings.viewDistance, (v) => (settings.viewDistance = v), 150, 1000, 10, (v) => `${v} m`)),
+        ...row('Schatten', select<Quality>(q, () => (settings.shadows ? settings.shadowQuality : 'aus'), (v) => { settings.shadows = v !== 'aus'; if (v !== 'aus') settings.shadowQuality = v; })),
+        ...row('Wolken', select<Quality>(q.filter(([v]) => v !== 'mittel'), () => settings.clouds, (v) => (settings.clouds = v)), 'Volumetrische Wolken mit Schatten auf der Landschaft.'),
+        ...row('Umgebungsverdeckung (AO)', toggle(() => settings.ao, (v) => (settings.ao = v)), 'Weiche Kontaktschatten in Ecken, unter Dächern und Bäumen.'),
+        ...row('Lichtstrahlen', toggle(() => settings.godRays, (v) => (settings.godRays = v)), 'Sonnenstrahlen durch Bäume und Wolken.'),
         ...row('Leuchten (Bloom)', toggle(() => settings.bloom, (v) => (settings.bloom = v))),
-        ...row('Gras', toggle(() => settings.grass, (v) => (settings.grass = v)), 'Änderung wirkt nach Neustart der Sitzung.'),
+        ...row('Texturqualität', select<number>([[512, 'Mittel (512)'], [1024, 'Hoch (1024)'], [2048, 'Ultra (2048)']], () => settings.textureQuality, (v) => { settings.textureQuality = v; if (restartHint) restartHint.classList.remove('hidden'); })),
+        ...row('Gras', toggle(() => settings.grass, (v) => (settings.grass = v))),
+        ...row('Vegetationsdichte', range(() => settings.vegetation, (v) => (settings.vegetation = v), 0.5, 2, 0.1)),
       );
-      restartHint = h('div', { class: 'dim small hidden', style: { marginTop: '0.8em' } }, 'Einige Änderungen (Gras, Schattenauflösung) werden beim nächsten Spielstart übernommen.');
+      restartHint = h('div', { class: 'dim small hidden', style: { marginTop: '0.8em' } }, 'Texturqualität, Gras und Vegetationsdichte werden beim nächsten Start des Spiels übernommen.');
       body.append(grid, restartHint);
       return;
     }

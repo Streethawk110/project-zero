@@ -54,7 +54,7 @@ function arrayTexture(sets: PBRSet[], key: 'map' | 'normalMap', packRough: boole
   t.magFilter = THREE.LinearFilter;
   t.minFilter = THREE.LinearMipmapLinearFilter;
   t.generateMipmaps = true;
-  t.anisotropy = 8;
+  t.anisotropy = settings.graphics === 'ultra' || settings.graphics === 'hoch' ? 16 : 8;
   if (key === 'map') t.colorSpace = THREE.SRGBColorSpace;
   t.needsUpdate = true;
   return t;

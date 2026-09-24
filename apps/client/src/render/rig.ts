@@ -19,7 +19,7 @@ const JOINTS: JointName[] = ['hips', 'spine', 'chest', 'neck', 'head', 'shoulder
 
 type Pose = Partial<Record<JointName, [number, number, number]>> & { root?: [number, number, number]; rootRot?: [number, number, number] };
 
-const OUTFITS: Record<string, { body: number; legs: number; accent: number; robe?: boolean; metal?: boolean; hood?: boolean }> = {
+export const OUTFITS: Record<string, { body: number; legs: number; accent: number; robe?: boolean; metal?: boolean; hood?: boolean }> = {
   armor_rags: { body: 0x6a6456, legs: 0x3f3a33, accent: 0x5a4a3a },
   armor_gambeson: { body: 0x8c7a5a, legs: 0x4a4034, accent: 0x5c3f28 },
   armor_leather: { body: 0x5a3f2a, legs: 0x3a2c20, accent: 0x2c4a2a, hood: true },

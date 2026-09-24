@@ -75,8 +75,10 @@ export class Grass {
 
   constructor(heightTex: THREE.Texture, splatTex: THREE.Texture) {
     if (!settings.grass) return;
-    const count = settings.graphics === 'ultra' ? 70000 : settings.graphics === 'hoch' ? 45000 : 22000;
-    const radius = settings.graphics === 'ultra' ? 48 : settings.graphics === 'hoch' ? 40 : 30;
+    // Vegetationsdichte skaliert Anzahl und Reichweite
+    const v = Math.max(0.5, Math.min(2, settings.vegetation));
+    const radius = Math.round((settings.graphics === 'ultra' ? 56 : settings.graphics === 'hoch' ? 44 : 30) * Math.sqrt(v));
+    const count = Math.round((settings.graphics === 'ultra' ? 90000 : settings.graphics === 'hoch' ? 50000 : 22000) * v);
     const base = new THREE.PlaneGeometry(1.2, 0.9, 1, 2);
     base.translate(0, 0.45, 0);
     const b2 = base.clone().rotateY(Math.PI / 3);

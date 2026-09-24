@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { getModel, hasModel, namedMaterial } from './models.ts';
+import { VLight } from './lights.ts';
 
 export interface CreatureView {
   root: THREE.Group;
@@ -160,7 +161,7 @@ export function makeColossus(scale = 1): CreatureView {
   wk.scale.set(0.8, 1.6, 0.8);
   wk.rotation.x = -0.6;
   weak.add(wk);
-  const wl = new THREE.PointLight(0x7ff6ff, 3, 6);
+  const wl = new VLight(0x7ff6ff, 3, 6);
   weak.add(wl);
   body.add(weak);
   const head = new THREE.Group();
@@ -248,7 +249,7 @@ export function makeMoth(): CreatureView {
     body.add(w);
     wings.push(w);
   }
-  const light = new THREE.PointLight(0x7ff6ff, 2, 7);
+  const light = new VLight(0x7ff6ff, 2, 7);
   body.add(light);
   let flinch = 0;
   return {
@@ -280,7 +281,7 @@ export function makeCrystalPillar(tall: number): CreatureView {
     s.rotation.z = Math.cos(i) * 0.5;
     root.add(s);
   }
-  const light = new THREE.PointLight(0x7ff6ff, 6, 14);
+  const light = new VLight(0x7ff6ff, 6, 14);
   light.position.y = tall * 0.6;
   root.add(light);
   let flinch = 0;

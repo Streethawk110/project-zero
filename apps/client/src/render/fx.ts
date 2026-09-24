@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { getHeightfield } from '@pz/shared';
 import { settings } from '../settings.ts';
+import { VLight } from './lights.ts';
 
 function softDot() {
   const c = document.createElement('canvas');
@@ -151,7 +152,7 @@ export class FX {
   add: Particles;
   alpha: Particles;
   private decals: Decal[] = [];
-  private flashes: { light: THREE.PointLight; t: number; dur: number; i: number }[] = [];
+  private flashes: { light: VLight; t: number; dur: number; i: number }[] = [];
   private lines: { obj: THREE.Line; t: number; dur: number }[] = [];
   private slashes: { mesh: THREE.Mesh; t: number; dur: number }[] = [];
   private ambientT = 0;
@@ -164,8 +165,8 @@ export class FX {
     this.alpha = new Particles(Math.round(2500 * this.quality) + 400, false);
     this.group.add(this.add.points, this.alpha.points);
     for (let i = 0; i < 4; i++) {
-      const l = new THREE.PointLight(0xffffff, 0, 12);
-      l.visible = false;
+      // Virtuelle Lichter: kein Umschalten der Sichtbarkeit (das würde alle Shader neu übersetzen)
+      const l = new VLight(0xffffff, 0, 12, 2, 4);
       this.group.add(l);
       this.flashes.push({ light: l, t: 1, dur: 1, i: 0 });
     }
@@ -200,7 +201,6 @@ export class FX {
     f.light.position.set(x, y, z);
     f.light.color.setHex(hex);
     f.light.distance = dist;
-    f.light.visible = true;
     f.t = 0;
     f.dur = dur;
     f.i = intensity;
@@ -374,10 +374,10 @@ export class FX {
     this.add.update(dt);
     this.alpha.update(dt);
     for (const f of this.flashes) {
-      if (!f.light.visible) continue;
+      if (f.t >= f.dur) continue;
       f.t += dt;
       const k = 1 - f.t / f.dur;
-      if (k <= 0) { f.light.visible = false; continue; }
+      if (k <= 0) { f.light.intensity = 0; continue; }
       f.light.intensity = f.i * k * k * (settings.reducedEffects ? 0.5 : 1);
     }
     for (let i = this.decals.length - 1; i >= 0; i--) {
