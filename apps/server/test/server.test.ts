@@ -94,7 +94,7 @@ describe('Mehrspieler-Server', () => {
   });
 
   it('meldet Konten an und legt Online-Charaktere an', async () => {
-    const st = await (await fetch(`${base}/healthz`)).json();
+    const st = (await (await fetch(`${base}/healthz`)).json()) as { ok: boolean };
     expect(st.ok).toBe(true);
     a = await TestClient.register(base, 'alice');
     b = await TestClient.register(base, 'bruno');

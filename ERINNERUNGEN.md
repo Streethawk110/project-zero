@@ -38,9 +38,16 @@ Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
   9 Server-Integrationstests grün; Browser-Test mit 2 Spielern erfolgreich.
   Testzugänge: tester1/tester2, Passwort „zero-test“ (`PZ_ALLOW_TEST_ACCOUNTS=1`).
 
+- Blender-Modelle fertig (`tools/blender/*.py`, Einstieg `build_all.py`):
+  75 Modelle (Gebäude, Requisiten, Natur mit LOD1, Figurenteile, Waffen,
+  Kreaturen) → `apps/client/public/assets/models` + `manifest.json`.
+  Danach `node tools/models/optimize.mjs` (Meshopt, ~2,7 MB → 1 MB; Rig-Teile
+  bleiben unkomprimiert, weil die Quantisierung Knotentransformationen
+  einführt). Vorschau-Renderer: `tools/blender/preview.py` (Cycles, CPU).
+  Im Spiel geprüft (Dorf, Figuren, Schild-Ausrichtung korrigiert).
+
 **Offen**
-- Blender-Modelle (Figuren/Gebäude sind noch
-  Ersatzformen), PWA/Desktop-App, Deployment, README.
+- PWA/Desktop-App, Deployment, README, E2E-Tests.
   Serverdaten des Nutzers (Hosting, Domain) noch unbekannt.
 
 ## 2026-09-24 – Cloud-Sitzung (claude.ai/code)

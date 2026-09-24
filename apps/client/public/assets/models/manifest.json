@@ -1,1 +1,210 @@
-{}
+{
+ "altar": {
+  "file": "altar.glb"
+ },
+ "anvil": {
+  "file": "anvil.glb"
+ },
+ "barrel": {
+  "file": "barrel.glb"
+ },
+ "bell_pillar": {
+  "file": "bell_pillar.glb"
+ },
+ "bench": {
+  "file": "bench.glb"
+ },
+ "boss_pillar": {
+  "file": "boss_pillar.glb"
+ },
+ "bush": {
+  "file": "bush.glb",
+  "lod1": "bush_lod1.glb"
+ },
+ "cart": {
+  "file": "cart.glb"
+ },
+ "chapel": {
+  "file": "chapel.glb",
+  "lod1": "chapel_lod1.glb"
+ },
+ "chest": {
+  "file": "chest.glb"
+ },
+ "cliff_rock": {
+  "file": "cliff_rock.glb",
+  "lod1": "cliff_rock_lod1.glb"
+ },
+ "colossus": {
+  "file": "colossus.glb"
+ },
+ "crate": {
+  "file": "crate.glb"
+ },
+ "crystal_large": {
+  "file": "crystal_large.glb"
+ },
+ "crystal_node": {
+  "file": "crystal_node.glb"
+ },
+ "crystal_small": {
+  "file": "crystal_small.glb"
+ },
+ "dock": {
+  "file": "dock.glb"
+ },
+ "expedition_wagon": {
+  "file": "expedition_wagon.glb"
+ },
+ "fence": {
+  "file": "fence.glb"
+ },
+ "fish_hut": {
+  "file": "fish_hut.glb"
+ },
+ "glassrunner": {
+  "file": "glassrunner.glb"
+ },
+ "haystack": {
+  "file": "haystack.glb"
+ },
+ "herb_node": {
+  "file": "herb_node.glb"
+ },
+ "house_a": {
+  "file": "house_a.glb",
+  "lod1": "house_a_lod1.glb"
+ },
+ "house_b": {
+  "file": "house_b.glb",
+  "lod1": "house_b_lod1.glb"
+ },
+ "humanoid": {
+  "file": "humanoid.glb"
+ },
+ "inn": {
+  "file": "inn.glb",
+  "lod1": "inn_lod1.glb"
+ },
+ "kontor": {
+  "file": "kontor.glb",
+  "lod1": "kontor_lod1.glb"
+ },
+ "lamp": {
+  "file": "lamp.glb"
+ },
+ "lever": {
+  "file": "lever.glb"
+ },
+ "lore": {
+  "file": "lore.glb"
+ },
+ "mine_cart": {
+  "file": "mine_cart.glb"
+ },
+ "mine_entrance": {
+  "file": "mine_entrance.glb"
+ },
+ "mine_house": {
+  "file": "mine_house.glb"
+ },
+ "moth": {
+  "file": "moth.glb"
+ },
+ "ore_node": {
+  "file": "ore_node.glb"
+ },
+ "palisade": {
+  "file": "palisade.glb",
+  "lod1": "palisade_lod1.glb"
+ },
+ "pressure_plate": {
+  "file": "pressure_plate.glb"
+ },
+ "raven_stone": {
+  "file": "raven_stone.glb"
+ },
+ "rest_shrine": {
+  "file": "rest_shrine.glb"
+ },
+ "rock_large": {
+  "file": "rock_large.glb",
+  "lod1": "rock_large_lod1.glb"
+ },
+ "rock_small": {
+  "file": "rock_small.glb",
+  "lod1": "rock_small_lod1.glb"
+ },
+ "ruin_arch": {
+  "file": "ruin_arch.glb"
+ },
+ "ruin_pillar": {
+  "file": "ruin_pillar.glb"
+ },
+ "ruin_wall": {
+  "file": "ruin_wall.glb"
+ },
+ "salt_node": {
+  "file": "salt_node.glb"
+ },
+ "shipwreck": {
+  "file": "shipwreck.glb"
+ },
+ "smithy": {
+  "file": "smithy.glb",
+  "lod1": "smithy_lod1.glb"
+ },
+ "stall": {
+  "file": "stall.glb"
+ },
+ "statue_oda": {
+  "file": "statue_oda.glb"
+ },
+ "stele": {
+  "file": "stele.glb"
+ },
+ "tide_stone": {
+  "file": "tide_stone.glb"
+ },
+ "tower": {
+  "file": "tower.glb",
+  "lod1": "tower_lod1.glb"
+ },
+ "tree_dead": {
+  "file": "tree_dead.glb",
+  "lod1": "tree_dead_lod1.glb"
+ },
+ "tree_oak": {
+  "file": "tree_oak.glb",
+  "lod1": "tree_oak_lod1.glb"
+ },
+ "tree_pine": {
+  "file": "tree_pine.glb",
+  "lod1": "tree_pine_lod1.glb"
+ },
+ "twin_door": {
+  "file": "twin_door.glb"
+ },
+ "vogthaus": {
+  "file": "vogthaus.glb",
+  "lod1": "vogthaus_lod1.glb"
+ },
+ "watchpost": {
+  "file": "watchpost.glb"
+ },
+ "weapons": {
+  "file": "weapons.glb"
+ },
+ "well": {
+  "file": "well.glb"
+ },
+ "wood_node": {
+  "file": "wood_node.glb"
+ },
+ "woodpile": {
+  "file": "woodpile.glb"
+ },
+ "workbench": {
+  "file": "workbench.glb"
+ }
+}

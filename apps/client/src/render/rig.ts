@@ -131,6 +131,8 @@ export class HumanoidRig {
     }
   }
 
+  private bw = 1;
+
   private joint(name: JointName, parent: THREE.Object3D, x: number, y: number, z: number) {
     const o = new THREE.Group();
     o.name = name;
@@ -147,6 +149,8 @@ export class HumanoidRig {
     if (tpl) {
       mesh = tpl.clone(true);
       mesh.position.set(0, 0, 0);
+      // Körperbau: Blender-Teile sind für Breite 1 modelliert
+      if (!/^(head|neckmesh|hand_)/.test(name)) mesh.scale.set(this.bw, 1, this.bw);
       mesh.traverse((c) => {
         const mm = c as THREE.Mesh;
         if (mm.isMesh) {
@@ -166,6 +170,7 @@ export class HumanoidRig {
 
   private build(a: Appearance, outfit: (typeof OUTFITS)[string]) {
     const bw = 0.85 + a.body * 0.3; // Körperbreite
+    this.bw = bw;
     const cap = (r: number, l: number) => new THREE.Mesh(new THREE.CapsuleGeometry(r, l, 4, 10));
     const hips = this.joint('hips', this.body, 0, 0.95, 0);
     this.part(hips, 'pelvis', () => { const m = cap(0.16 * bw, 0.12); m.rotation.z = Math.PI / 2; m.scale.set(1, 1, 0.8); return m; }, this.legMat);
@@ -491,6 +496,19 @@ export function makeWeapon(id: string): THREE.Object3D {
   if (lib) {
     const m = lib.clone(true);
     m.position.set(0, 0, 0);
+    // Materialvarianten wie bei den Ersatzmodellen: Glas-/Nulllicht-Waffen, seltene Stücke, Glutstäbe
+    m.traverse((c) => {
+      const mesh = c as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.castShadow = true;
+      const swap = (mt: THREE.Material) => {
+        if (mt.name === 'metal') return glassy ? namedMaterial('crystal') : rare ? namedMaterial('metal_gold') : mt;
+        if (mt.name === 'glow_null' && id.includes('ember')) return namedMaterial('glow_warm');
+        if (mt.name === 'wood' && type === 'shield' && id.includes('order')) return namedMaterial('metal_gold');
+        return mt;
+      };
+      mesh.material = Array.isArray(mesh.material) ? mesh.material.map(swap) : swap(mesh.material);
+    });
     g.add(m);
   } else {
     const metal = namedMaterial(glassy ? 'crystal' : rare ? 'metal_gold' : 'metal');
@@ -536,8 +554,7 @@ export function makeWeapon(id: string): THREE.Object3D {
       case 'shield': {
         const s = add(new THREE.CylinderGeometry(0.34, 0.34, 0.04, 20), id.includes('order') ? namedMaterial('metal_gold') : wood, 0, -0.08, 0.05, Math.PI / 2);
         s.rotation.z = Math.PI / 2;
-        add(new THREE.CylinderGeometry(0.08, 0.08, 0.05, 12), metal, 0, -0.08, 0.02, Math.PI / 2).rotation.z = Math.PI / 2;
-        g.rotation.y = Math.PI / 2;
+        add(new THREE.CylinderGeometry(0.08, 0.08, 0.05, 12), metal, -0.02, -0.08, 0.05, Math.PI / 2).rotation.z = Math.PI / 2;
         break;
       }
       case 'quiver':
@@ -551,6 +568,8 @@ export function makeWeapon(id: string): THREE.Object3D {
   }
   if (type !== 'shield' && type !== 'quiver' && type !== 'focus' && type !== 'bow') g.rotation.x = -Math.PI / 2 + 0.2;
   if (type === 'bow') g.rotation.set(0, Math.PI / 2, 0.2);
+  // Schild: Vorderseite zeigt entlang des Unterarms (Tragehaltung: Unterarm nach vorn), Griff an der Faust
+  if (type === 'shield') { g.rotation.set(0, 0, Math.PI / 2); g.position.set(-0.08, -0.05, -0.05); }
   if (type === 'staff') g.rotation.set(-Math.PI / 2, 0, 0);
   return g;
 }
