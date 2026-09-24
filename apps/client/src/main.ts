@@ -3,7 +3,9 @@ import { createCharacter, getWorldLayout, type Appearance, type OriginId } from 
 import { applyUiScale, settings } from './settings.ts';
 import { loadRuntimeConfig } from './config.ts';
 import { loadManifest, preloadModels } from './render/models.ts';
-import { loadBakedTextures, setTextureSize, TEX } from './render/textures.ts';
+import { BAKED_NAMES, loadBakedTextures, setTextureSize, TEX } from './render/textures.ts';
+import { hasCharacterModel } from './render/skinned.ts';
+import { diag, gpuName } from './diag.ts';
 import { loadCloudNoise } from './render/clouds.ts';
 import { AudioEngine } from './audio/audio.ts';
 import { Game } from './game/game.ts';
@@ -43,13 +45,17 @@ async function boot() {
   await loadRuntimeConfig();
   await loadManifest();
   await progress(0.1, 'Modelle …');
-  await preloadModels((p) => { fill.style.transform = `scaleX(${0.1 + p * 0.3})`; });
+  const mod = await preloadModels((p) => { fill.style.transform = `scaleX(${0.1 + p * 0.3})`; });
+  diag.models = `${mod.loaded}/${mod.total}`;
+  diag.figure = hasCharacterModel() ? 'neu' : 'alt (Ersatz)';
+  diag.gpu = gpuName();
   await progress(0.42, 'Gelände und Welt …');
   getWorldLayout();
   await progress(0.5, 'Texturen …');
   setTextureSize(Math.min(settings.textureQuality, 1024));
   // Gebackene Blender-Texturen (fehlende werden prozedural ersetzt)
-  await loadBakedTextures(settings.textureQuality, (p) => { fill.style.transform = `scaleX(${0.5 + p * 0.2})`; });
+  const tex = await loadBakedTextures(settings.textureQuality, (p) => { fill.style.transform = `scaleX(${0.5 + p * 0.2})`; });
+  diag.textures = `${tex}/${BAKED_NAMES.length}`;
   for (const k of Object.keys(TEX) as (keyof typeof TEX)[]) { TEX[k](); }
   await progress(0.75, 'Wolken …');
   await loadCloudNoise();

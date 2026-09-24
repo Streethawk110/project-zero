@@ -3,6 +3,7 @@
 // prozedurale PBR-Texturen ersetzt, damit alle Modelle einheitlich aussehen.
 
 import * as THREE from 'three';
+import { diag } from '../diag.ts';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { PROPS } from '@pz/shared';
@@ -122,10 +123,12 @@ export async function preloadModels(onProgress: (p: number) => void) {
       templates.set(name, { lod0, lod1, parts, fromFile: true });
     } catch (e) {
       console.warn('Modell konnte nicht geladen werden:', name, e);
+      diag.errors.push(`Modell ${name}: ${(e as Error).message}`.slice(0, 120));
     }
     done++;
     onProgress(done / Math.max(1, names.length));
   }));
+  return { loaded: [...templates.values()].filter((t) => t.fromFile).length, total: names.length };
 }
 
 export function hasModel(name: string) {

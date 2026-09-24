@@ -7,6 +7,7 @@ import { HumanoidRig } from '../render/rig.ts';
 import { Api, RemoteSession, serverUrl } from '../net/remote.ts';
 import { settings, saveSettings } from '../settings.ts';
 import { runtimeConfig } from '../config.ts';
+import { diagLine } from '../diag.ts';
 
 export interface MenuCallbacks {
   startNew(slot: number, name: string, origin: OriginId, appearance: Appearance): void;
@@ -51,7 +52,7 @@ export class MainMenu {
       btn('Einstellungen', () => this.settings()),
       btn('Über das Spiel', () => this.about()),
       this.cb.quit ? btn('Beenden', () => this.cb.quit!()) : null,
-      h('div', { class: 'menu-foot' }, 'Einzelspieler: offline spielbar, Spielstände bleiben auf diesem Gerät. Online: persistente Charaktere auf dem Server.', h('br'), `Version ${__APP_VERSION__}`),
+      h('div', { class: 'menu-foot' }, 'Einzelspieler: offline spielbar, Spielstände bleiben auf diesem Gerät. Online: persistente Charaktere auf dem Server.', h('br'), `Version ${__APP_VERSION__}`, h('br'), diagLine(settings.graphics)),
     ));
   }
 

@@ -2,6 +2,7 @@
 // Selbst erzeugt – keine externen Bildquellen, keine Lizenzfragen.
 
 import * as THREE from 'three';
+import { diag } from '../diag.ts';
 import { settings } from '../settings.ts';
 
 function hash(x: number, y: number, seed: number) {
@@ -110,6 +111,7 @@ export async function loadBakedTextures(size: number, onProgress?: (p: number) =
       baked.set(name, { map: bitmapTex(c!, true), normalMap: bitmapTex(n!, false), roughnessMap: arm, aoMap: arm, bitmaps: { size: sz, color: c!, normal: n!, arm: a! } });
     } catch (e) {
       console.warn('Textur fehlt, nutze prozedurale:', name, e);
+      diag.errors.push(`Textur ${name}: ${(e as Error).message}`.slice(0, 120));
     }
     done++;
     onProgress?.(done / BAKED_NAMES.length);

@@ -139,6 +139,9 @@ Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
   (Version 3). Nutzer sah trotzdem „alte Grafik“ → Menü zeigt jetzt
   „Version 0.2.0 · Build <Datum> UTC“ zur Kontrolle. Lokal geprüft: die
   Web-Fassung lädt alle Texturen, die neue Figur und die Wolken.
+- Nutzer sieht weiterhin „alte Grafik“ → Diagnosezeile im Menü (`src/diag.ts`):
+  Grafikprofil, Modelle x/y, Texturen x/18, Figur neu/alt, GPU, Ladefehler.
+  Ursache noch offen; Nutzer um Screenshot der Menüzeile gebeten.
 
 **Offen**
 - Nutzer nach Serverdaten fragen (Hosting-Art, Node verfügbar?, Domain,
