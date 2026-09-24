@@ -103,7 +103,17 @@ function prepare(obj: THREE.Object3D) {
 }
 
 async function loadGlb(file: string) {
-  const gltf = await loader.loadAsync(base + file);
+  let gltf;
+  if (file.endsWith('.glb.json')) {
+    // Web-Fassung (claude.ai-Artifact): GLB als Base64 in JSON, weil dort weder .glb-Dateien noch
+    // data:-Adressen oder WebAssembly erlaubt sind (tools/dev/make-web-artifact.mjs)
+    const r = await fetch(base + file);
+    if (!r.ok) throw new Error(`${file}: ${r.status}`);
+    const bin = Uint8Array.from(atob(((await r.json()) as { glb: string }).glb), (c) => c.charCodeAt(0));
+    gltf = await loader.parseAsync(bin.buffer, base);
+  } else {
+    gltf = await loader.loadAsync(base + file);
+  }
   const root = gltf.scene;
   prepare(root);
   return root;

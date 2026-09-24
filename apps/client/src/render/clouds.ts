@@ -69,9 +69,15 @@ function toTexture(data: Uint8Array, size: number) {
 export async function loadCloudNoise(url = './assets/textures/cloud-noise-64.bin') {
   if (cachedNoise) return cachedNoise;
   try {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(String(r.status));
-    const data = new Uint8Array(await r.arrayBuffer());
+    let r = await fetch(url);
+    let data: Uint8Array;
+    if (r.ok) data = new Uint8Array(await r.arrayBuffer());
+    else {
+      // Web-Fassung: Base64 in JSON (tools/dev/make-web-artifact.mjs)
+      r = await fetch(url.replace(/\.bin$/, '.json'));
+      if (!r.ok) throw new Error(String(r.status));
+      data = Uint8Array.from(atob(((await r.json()) as { data: string }).data), (c) => c.charCodeAt(0));
+    }
     if (data.length !== 64 * 64 * 64 * 2) throw new Error('Größe');
     cachedNoise = toTexture(data, 64);
   } catch {

@@ -141,7 +141,12 @@ Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
   Web-Fassung lädt alle Texturen, die neue Figur und die Wolken.
 - Nutzer sieht weiterhin „alte Grafik“ → Diagnosezeile im Menü (`src/diag.ts`):
   Grafikprofil, Modelle x/y, Texturen x/18, Figur neu/alt, GPU, Ladefehler.
-  Ursache noch offen; Nutzer um Screenshot der Menüzeile gebeten.
+  Nutzer meldete „Fehler“. Vermutete Ursache: Artifact-CSP sperrt
+  `data:`-Adressen (glTF-Puffer) und WebAssembly (Meshopt) → Modelle fielen
+  still auf Ersatzformen zurück. Web-Fassung nutzt jetzt `.glb.json`
+  (entpacktes GLB als Base64, Client parst selbst) und
+  `cloud-noise-64.json`. Unter nachgestellter strenger CSP geprüft:
+  65/65 Modelle, 18/18 Texturen, Figur neu. Artifact Version 5.
 
 **Offen**
 - Nutzer nach Serverdaten fragen (Hosting-Art, Node verfügbar?, Domain,

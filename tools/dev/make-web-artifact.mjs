@@ -1,5 +1,5 @@
 // Erzeugt aus apps/client/dist eine Fassung, die als claude.ai-Artifact läuft:
-// .glb → eingebettetes glTF (.gltf.json), Wolkenrauschen → JSON, ohne Service Worker.
+// .glb → entpacktes GLB als Base64 in .glb.json, Wolkenrauschen → JSON, ohne Service Worker.
 //   node tools/dev/make-web-artifact.mjs <zielordner>
 import { cp, readdir, readFile, rm, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -15,19 +15,20 @@ for (const f of ['sw.js', 'precache.json']) await rm(join(out, f), { force: true
 await MeshoptDecoder.ready; await MeshoptEncoder.ready;
 const io = new NodeIO().setLogger(new Logger(Logger.Verbosity.ERROR)).registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder, 'meshopt.encoder': MeshoptEncoder });
 const dir = join(out, 'assets/models');
+// Meshopt entpacken (kein WebAssembly nötig) und das GLB als Base64 in JSON ablegen
+// (.glb-Dateien und data:-Adressen sind im Artifact nicht nutzbar)
 for (const f of (await readdir(dir)).filter((f) => f.endsWith('.glb'))) {
   const doc = await io.read(join(dir, f));
-  const { json, resources } = await io.writeJSON(doc);
-  for (const b of json.buffers ?? []) {
-    const data = b.uri ? resources[b.uri] : undefined;
-    if (!data) continue;
-    b.uri = 'data:application/octet-stream;base64,' + Buffer.from(data).toString('base64');
-  }
-  await writeFile(join(dir, f.replace(/\.glb$/, '.gltf.json')), JSON.stringify(json));
+  for (const e of doc.getRoot().listExtensionsUsed()) if (e.extensionName === 'EXT_meshopt_compression') e.dispose();
+  const glb = await io.writeBinary(doc);
+  await writeFile(join(dir, f.replace(/\.glb$/, '.glb.json')), JSON.stringify({ glb: Buffer.from(glb).toString('base64') }));
   await unlink(join(dir, f));
 }
+const noise = join(out, 'assets/textures/cloud-noise-64.bin');
+await writeFile(noise.replace(/\.bin$/, '.json'), JSON.stringify({ data: (await readFile(noise)).toString('base64') }));
+await unlink(noise);
 const man = JSON.parse(await readFile(join(dir, 'manifest.json'), 'utf8'));
-for (const k in man) { man[k].file = man[k].file.replace(/\.glb$/, '.gltf.json'); if (man[k].lod1) man[k].lod1 = man[k].lod1.replace(/\.glb$/, '.gltf.json'); }
+for (const k in man) { man[k].file = man[k].file.replace(/\.glb$/, '.glb.json'); if (man[k].lod1) man[k].lod1 = man[k].lod1.replace(/\.glb$/, '.glb.json'); }
 await writeFile(join(dir, 'manifest.json'), JSON.stringify(man));
 // Dateiliste für die Veröffentlichung
 const files = [];
