@@ -8,6 +8,7 @@ import { JournalWin } from './win_journal.ts';
 import { MapWin } from './win_map.ts';
 import { CraftWin, RestWin, ShopWin, SteleWin, TradeWin } from './win_misc.ts';
 import { settingsPanel } from './settingsPanel.ts';
+import { LockpickUI } from './lockpick.ts';
 import type { Win } from './win.ts';
 import type { Game } from '../game/game.ts';
 import type { GameConnection } from '../net/connection.ts';
@@ -51,6 +52,7 @@ export class GameUI {
   private companionOrder: 'follow' | 'wait' | 'plate' = 'follow';
   private duelFrom: number | null = null;
   private lastInteractLabel = '';
+  private lockpick: LockpickUI | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -242,7 +244,20 @@ export class GameUI {
   }
 
   blocksGameInput() {
-    return !!this.current || !!this.pauseEl || this.dialogueOpen || !!this.emoteEl || !!this.settingsEl || (this.game?.input.typing ?? false);
+    return !!this.current || !!this.pauseEl || this.dialogueOpen || !!this.emoteEl || !!this.settingsEl || !!this.lockpick || (this.game?.input.typing ?? false);
+  }
+
+  /** Schlossknacken-Minispiel öffnen (vom Server nach Interaktion mit einer abgeschlossenen Tür). */
+  openLockpick(id: string, level: number, picks: number) {
+    this.lockpick?.close();
+    const dex = (this.char as unknown as { attrs?: { dex?: number } } | null)?.attrs?.dex ?? 6;
+    const ui = new LockpickUI(level, picks, dex, (ok) => {
+      this.lockpick = null;
+      if (ok !== null) this.cmd({ t: 'lockpick', id, ok });
+    }, (sid) => this.game?.audio.sfx(sid));
+    this.lockpick = ui;
+    this.root.append(ui.el);
+    this.game?.input.releaseLock();
   }
 
   wantsPointerLock() {
@@ -250,6 +265,7 @@ export class GameUI {
   }
 
   handleHotkeys(i: Input) {
+    if (this.lockpick) { i.pressed('pause', true); return; }
     // Dialogauswahl per Zifferntasten
     if (this.dialogueOpen) {
       for (let k = 0; k < 6; k++) {

@@ -6,6 +6,7 @@ import { INTERACTABLES, INTERACTABLE_BY_ID } from '../content/interactables.ts';
 import { ITEMS } from '../content/items.ts';
 import { LOOT } from '../content/loot.ts';
 import { NPCS } from '../content/npcs.ts';
+import { HOUSES, doorLockLevel } from '../world/houses.ts';
 import { SKILL_BY_ID } from '../content/skills.ts';
 import { SPAWNS, type SpawnGroup } from '../content/spawns.ts';
 import { clamp, dist2, rng, yawDir, yawTo, angleDiff, type Rng } from '../math.ts';
@@ -58,6 +59,8 @@ export class World {
   ents = new Map<number, Ent>();
   players = new Map<string, PlayerEnt>();
   gates = new Set<string>();
+  /** Geöffnete Haustüren (für alle Spieler der Welt gleich) */
+  doorsOpen = new Set<string>();
   worldFlags = new Set<string>();
   spawnState = new Map<string, { alive: number[]; respawnAt: number; active: boolean }>();
   events: WorldEvents;
@@ -176,6 +179,7 @@ export class World {
         if (c.requires && !(p && this.hasFlag(p, c.requires))) return false;
         if (c.requires === 'tidepath_open' && !this.isNight) return false;
         if (c.gate && this.gateOpen(c.gate, p)) return false;
+        if (c.door && this.doorsOpen.has(c.door)) return false;
         return true;
       },
     };
@@ -250,6 +254,9 @@ export class World {
       case 'interact':
         if (!this.canAct(p)) return;
         this.startInteract(p, cmd.id, cmd.eid);
+        return;
+      case 'lockpick':
+        this.lockpickResult(p, cmd.id, !!cmd.ok);
         return;
       case 'interact_cancel':
         p.interacting = null;
@@ -1310,6 +1317,7 @@ export class World {
       this.toast(p, it.condFail ?? 'Das geht jetzt nicht.', 'warn');
       return;
     }
+    if (it.kind === 'door') { this.useDoor(p, it.id); return; }
     const dur = it.interactTime ?? (it.kind === 'chest' ? 1 : it.kind === 'lore' || it.kind === 'glyph' ? 0.4 : 0.3);
     p.interacting = { id: it.id, t: 0, dur, name: it.name };
     p.action = { type: 'interact', id: it.kind, t: 0, dur: Math.max(dur, 0.6), hitAt: 99, hit: true, yaw: yawTo(p.m.x, p.m.z, pos.x, pos.z), lockMove: true, moveMult: 0 };
@@ -1339,6 +1347,7 @@ export class World {
       case 'chest': {
         if (c.flags['chest_' + it.id]) return;
         c.flags['chest_' + it.id] = 1;
+        if (it.owned) this.witness(p, 'Diebstahl');
         c.stats.chests++;
         const t = LOOT[it.loot ?? ''];
         if (t) {
@@ -1485,6 +1494,87 @@ export class World {
       }
     }
     p.charDirty = true;
+  }
+
+  // ======================= Türen, Schlösser, Diebstahl =======================
+
+  doorLevel(id: string): 0 | 1 | 2 {
+    if (this.worldFlags.has('unlocked_' + id)) return 0;
+    const i = Number(id.slice(5));
+    return HOUSES[i] ? doorLockLevel(i, this.isNight) : 0;
+  }
+
+  useDoor(p: PlayerEnt, id: string) {
+    if (this.doorsOpen.has(id)) {
+      this.doorsOpen.delete(id);
+      this.emitNear(p.m.x, p.m.z, { e: 'sfx', id: 'door_close', x: p.m.x, y: p.m.y + 1, z: p.m.z }, 30);
+      return;
+    }
+    const lvl = this.doorLevel(id);
+    if (lvl > 0) {
+      const picks = inv.countItem(p.char, 'lockpick');
+      if (picks <= 0) {
+        this.emit(p, { e: 'sfx', id: 'door_locked' });
+        this.toast(p, lvl === 2 ? 'Abgeschlossen – ein schweres Schloss. Ohne Dietrich kommst du hier nicht hinein.' : 'Abgeschlossen. Mit einem Dietrich ließe sich das Schloss öffnen (Krämer Pell verkauft welche).', 'warn');
+        return;
+      }
+      p.lockpick = { id, t: this.now() };
+      this.emit(p, { e: 'lockpick', id, level: lvl, picks });
+      return;
+    }
+    this.doorsOpen.add(id);
+    this.emitNear(p.m.x, p.m.z, { e: 'sfx', id: 'door_open', x: p.m.x, y: p.m.y + 1, z: p.m.z }, 30);
+  }
+
+  lockpickResult(p: PlayerEnt, id: string, ok: boolean) {
+    const it = INTERACTABLE_BY_ID[id];
+    if (!it || it.kind !== 'door' || dist2(it.x, it.z, p.m.x, p.m.z) > 4.5 * 4.5) return;
+    if (this.doorLevel(id) === 0 || inv.countItem(p.char, 'lockpick') <= 0) return;
+    // Ergebnis nur für ein begonnenes Knacken und nicht schneller als ein Mensch es schafft
+    const lp = p.lockpick;
+    if (!lp || lp.id !== id) return;
+    if (ok && this.now() - lp.t < 1200) return;
+    if (ok) p.lockpick = null;
+    if (!ok) {
+      inv.removeItem(p.char, 'lockpick', 1);
+      p.charDirty = true;
+      this.emit(p, { e: 'sfx', id: 'pick_break' });
+      this.toast(p, 'Der Dietrich ist abgebrochen.', 'bad');
+      return;
+    }
+    this.worldFlags.add('unlocked_' + id);
+    this.doorsOpen.add(id);
+    this.emit(p, { e: 'sfx', id: 'lock_open' });
+    this.toast(p, 'Das Schloss gibt nach.', 'good');
+    this.witness(p, 'Einbruch');
+  }
+
+  /** Sieht jemand den Spieler bei einer Straftat? Zeugen rufen, Wachen verhängen eine Strafe. */
+  witness(p: PlayerEnt, what: 'Einbruch' | 'Diebstahl') {
+    let best: NpcEnt | null = null;
+    let bd = 12 * 12;
+    for (const e of this.ents.values()) {
+      if (e.kind !== 'npc' || e.area !== p.area) continue;
+      const d = dist2(e.m.x, e.m.z, p.m.x, p.m.z);
+      if (d >= bd) continue;
+      // Sichtlinie: keine Wand dazwischen
+      const dx = p.m.x - e.m.x, dz = p.m.z - e.m.z, L = Math.sqrt(d) || 1;
+      const hit = this.layout.collision.raycast(e.m.x, e.m.y + 1.5, e.m.z, dx / L, dz / L, L - 0.4, this.collisionCtx(p));
+      if (hit < Infinity) continue;
+      best = e; bd = d;
+    }
+    if (!best) return;
+    const guard = best.def.id === 'brann' || best.def.id === 'order_guard';
+    const lines = what === 'Einbruch' ? ['He! Was machst du da an der Tür?', 'Einbrecher! Haltet ihn!', 'Das ist nicht dein Haus!'] : ['Dieb! Leg das zurück!', 'Haltet den Dieb!', 'Das gehört dir nicht!'];
+    this.emitNear(best.m.x, best.m.z, { e: 'bark', eid: best.id, name: best.def.name, text: lines[Math.floor(Math.random() * lines.length)]!, dur: 3 }, 30);
+    if (guard) {
+      const fine = Math.min(p.char.gold, what === 'Einbruch' ? 25 : 15);
+      p.char.gold -= fine;
+      p.charDirty = true;
+      this.toast(p, `${best.def.name} hat dich erwischt: ${fine} Gold Strafe.`, 'bad');
+    } else {
+      this.toast(p, `${best.def.name} hat dich gesehen.`, 'warn');
+    }
   }
 
   openGate(id: string) {
@@ -2156,6 +2246,7 @@ export class World {
     return {
       tick: this.tick, time: this.time, day: this.dayTime, weather: this.weather, wInt: Math.round(this.weatherIntensity * 100) / 100,
       ack: p.lastSeq, me, ents, gone, ev: this.events.stateFor(p), gates, boss,
+      doors: [...this.doorsOpen], locked: HOUSES.map((_, i) => `door_${i}`).filter((id) => this.doorLevel(id) > 0),
     };
   }
 

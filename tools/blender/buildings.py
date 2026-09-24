@@ -62,8 +62,16 @@ def _window(parts, x, y, z, facing=1, w=0.9, h=1.1, axis="y"):
             parts.append(box("shutter", (0.05, w * 0.5, h), (x + off + 0.02 * facing, y + s * (w * 0.75 + 0.05), z), material="wood"))
 
 
-def _door(parts, x, y, w=1.3, h=2.3, facing=1, open_=False):
+def _door(parts, x, y, w=1.3, h=2.3, facing=1, open_=False, leaf=True):
     off = 0.11 * facing
+    if not leaf:
+        # Nur Rahmen: Türflügel ist ein eigenes, drehbares Objekt (door_leaf)
+        for s in (-1, 1):
+            parts.append(box("jamb", (0.12, 0.3, h + 0.05), (x + s * (1.25 / 2 + 0.06), y - 0.12, 0.6 + h / 2), material="wood_dark", bevel=0.01))
+        parts.append(box("lintel", (1.25 + 0.5, 0.3, 0.22), (x, y - 0.12, 0.6 + 2.35 + 0.11), material="wood_dark"))
+        parts.append(box("step", (w + 0.6, 0.7, 0.3), (x, y + 0.35 * facing, 0.15), material="stone_block", bevel=0.03))
+        parts.append(box("threshold", (1.3, 0.3, 0.06), (x, y - 0.12, 0.62), material="wood_dark"))
+        return
     if open_:
         # Nach innen aufgeschwenkt (Angel links), damit man hindurchgehen kann
         parts.append(box("door", (0.1, w, h), (x - w / 2 + 0.08, y - w / 2 - 0.1, 0.6 + h / 2), material="wood_dark", bevel=0.02))
@@ -271,7 +279,7 @@ def timber_house(w, d, wall_h, roof_h, *, floors=1, plinth=0.6, roof_mat="roof",
                 _window(parts, x, -dd / 2, zb + floor_h * 0.55, -1)
         for s in (-1, 1):
             _window(parts, s * ww / 2, 0, zb + floor_h * 0.55, s, axis="x")
-    _door(parts, door_x, d / 2, open_=bool(interior))
+    _door(parts, door_x, d / 2, leaf=not interior)
     if interior:
         rnd = random.Random(seed * 17 + 3)
         (_furnish_inn if interior == "inn" else _furnish_home)(parts, w, d, z0, w * 0.28, rnd)
@@ -631,7 +639,68 @@ def shipwreck():
     return obj
 
 
+def door_leaf():
+    """Haustür als eigenes Objekt: Angel bei x = 0, Blatt 1,25 m entlang +X, 2,35 m hoch.
+    Außenseite = Blender +Y (Spiel −Z): senkrechte Bohlen, Eisenbänder, Ringgriff, Schlossblech;
+    innen Querriegel und Strebe."""
+    parts = []
+    rnd = random.Random(11)
+    W, H, T = 1.23, 2.33, 0.06
+    n = 5
+    for i in range(n):
+        bw = W / n
+        x = (i + 0.5) * bw + 0.01
+        parts.append(box("board", (bw - 0.008, T, H - rnd.uniform(0, 0.02)), (x, 0, H / 2), material="wood_dark", bevel=0.006))
+    # Innen: Riegel und Strebe (Spiel +Z = Blender -Y)
+    for zz in (0.35, H - 0.35):
+        parts.append(box("batten", (W - 0.08, 0.05, 0.14), (W / 2, -T / 2 - 0.025, zz), material="wood", bevel=0.005))
+    br = box("brace", (0.12, 0.045, 1.9), (W / 2, -T / 2 - 0.025, H / 2), rot=(0, -0.62, 0), material="wood")
+    parts.append(br)
+    # Außen: Bandeisen mit Nägeln, Ring, Schloss
+    for zz in (0.35, H - 0.35):
+        parts.append(box("strap", (W * 0.82, 0.012, 0.07), (W * 0.41, T / 2 + 0.006, zz), material="metal_dark"))
+        for k in range(5):
+            parts.append(cyl("nail", 0.012, 0.012, (0.1 + k * W * 0.16, T / 2 + 0.014, zz), rot=(math.pi / 2, 0, 0), material="metal_dark", seg=6))
+    parts.append(cyl("ringbase", 0.045, 0.012, (W - 0.2, T / 2 + 0.008, 1.05), rot=(math.pi / 2, 0, 0), material="metal_dark", seg=10))
+    ring = bpy_torus("ring", 0.055, 0.008, (W - 0.2, T / 2 + 0.02, 0.99))
+    parts.append(ring)
+    parts.append(box("lockplate", (0.1, 0.012, 0.16), (W - 0.2, T / 2 + 0.007, 0.82), material="metal_dark", bevel=0.004))
+    parts.append(box("keyhole", (0.018, 0.014, 0.045), (W - 0.2, T / 2 + 0.012, 0.8), material="void"))
+    # Innen: Klinke/Riegel
+    parts.append(box("bolt", (0.22, 0.03, 0.035), (W - 0.2, -T / 2 - 0.02, 1.0), material="metal_dark"))
+    return join(parts, "door_leaf")
+
+
+def bpy_torus(name, R, r, loc):
+    import bmesh
+    import bpy
+    from lib import mesh_obj
+    bm = bmesh.new()
+    segs, rings = 16, 6
+    verts = []
+    for i in range(segs):
+        a = 2 * math.pi * i / segs
+        row = []
+        for j in range(rings):
+            b = 2 * math.pi * j / rings
+            x = (R + r * math.cos(b)) * math.cos(a)
+            z = (R + r * math.cos(b)) * math.sin(a)
+            y = r * math.sin(b)
+            row.append(bm.verts.new((x, y, z)))
+        verts.append(row)
+    for i in range(segs):
+        for j in range(rings):
+            a, b = verts[i][j], verts[(i + 1) % segs][j]
+            c, d = verts[(i + 1) % segs][(j + 1) % rings], verts[i][(j + 1) % rings]
+            bm.faces.new((a, b, c, d))
+    o = mesh_obj(name, bm, "metal_dark")
+    o.location = loc
+    _ = bpy
+    return o
+
+
 ASSETS = {
+    "door_leaf": (door_leaf, None),
     "house_a": (house_a, 0.5), "house_b": (house_b, 0.5), "inn": (inn, 0.5), "smithy": (smithy, 0.5), "chapel": (chapel, 0.5),
     "vogthaus": (vogthaus, 0.5), "kontor": (kontor, 0.5), "stall": (stall, None), "well": (well, None), "palisade": (palisade, 0.5),
     "tower": (tower, 0.5), "mine_entrance": (mine_entrance, None), "mine_house": (mine_house, None), "fish_hut": (fish_hut, None),

@@ -31,6 +31,7 @@ export const LOOT: Record<string, LootTable> = {
 
   // Truhen
   chest_expedition: { gold: [10, 15], always: [{ item: 'potion_heal', chance: 1, min: 2, max: 2 }, { item: 'bread', chance: 1, min: 2, max: 2 }], entries: [] },
+  chest_home: { gold: [4, 22], rolls: 2, entries: [{ item: 'bread', chance: 0.5, min: 1, max: 2 }, { item: 'cloth', chance: 0.35 }, { item: 'potion_heal', chance: 0.2 }, { item: 'lockpick', chance: 0.3, min: 1, max: 2 }, { item: 'leather', chance: 0.2 }, { item: 'ring_copper', chance: 0.05 }] },
   chest_forest: { gold: [15, 30], rolls: 3, entries: [{ item: 'potion_heal', chance: 0.6 }, { item: 'herb_silverroot', chance: 0.7, min: 2, max: 4 }, { item: 'ring_hunter', chance: 0.25 }, { item: 'bow_hunter', chance: 0.2 }, { item: 'quiver_basic', chance: 0.3 }] },
   chest_oda: { gold: [40, 60], shards: [2, 3], always: [{ item: 'amulet_tide', chance: 1 }], rolls: 2, entries: [{ item: 'potion_mana', chance: 0.8, min: 1, max: 2 }, { item: 'focus_lens', chance: 0.4 }, { item: 'purge_tonic', chance: 0.5 }] },
   chest_glass: { gold: [30, 50], shards: [1, 3], rolls: 3, entries: [{ item: 'null_crystal', chance: 0.9, min: 1, max: 3 }, { item: 'crystal_draught', chance: 0.4 }, { item: 'staff_ember', chance: 0.15 }, { item: 'sword_glass', chance: 0.1 }] },

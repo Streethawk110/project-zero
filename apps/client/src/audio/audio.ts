@@ -251,6 +251,13 @@ export class AudioEngine {
       case 'craft': for (let i = 0; i < 3; i++) { this.tone(o, t + i * 0.18, 1600, 0.2, 'square', 0.06, 1400); this.noiseBurst(o, t + i * 0.18, 0.1, 'bandpass', 3000, 2000, 5, 0.4); } break;
       case 'upgrade': this.tone(o, t, 523, 0.3, 'triangle', 0.15); this.tone(o, t + 0.12, 784, 0.4, 'triangle', 0.15); this.tone(o, t + 0.24, 1046, 0.6, 'triangle', 0.15); break;
       case 'lever': this.noiseBurst(o, t, 0.3, 'bandpass', 600, 200, 3, 0.8); this.tone(o, t + 0.1, 180, 0.2, 'square', 0.1, 120); break;
+      // Holztür: Knarren der Angel (gleitender, rauer Ton) und dumpfer Anschlag
+      case 'door_open': this.tone(o, t, 210, 0.7, 'sawtooth', 0.035, 330, 0.05); this.tone(o, t + 0.05, 420, 0.6, 'sawtooth', 0.02, 610, 0.05); this.noiseBurst(o, t, 0.25, 'bandpass', 900, 400, 4, 0.3); break;
+      case 'door_close': this.tone(o, t, 300, 0.35, 'sawtooth', 0.03, 200, 0.03); this.noiseBurst(o, t + 0.32, 0.18, 'lowpass', 300, 90, 2, 0.9); this.tone(o, t + 0.32, 70, 0.25, 'sine', 0.25, 50); break;
+      case 'door_locked': for (let i = 0; i < 2; i++) { this.noiseBurst(o, t + i * 0.14, 0.08, 'bandpass', 1800, 900, 6, 0.5); this.tone(o, t + i * 0.14, 90, 0.1, 'square', 0.08, 70); } break;
+      case 'lock_open': this.noiseBurst(o, t, 0.06, 'bandpass', 3200, 1500, 8, 0.6); this.tone(o, t + 0.05, 1400, 0.08, 'square', 0.05, 900); this.noiseBurst(o, t + 0.12, 0.12, 'bandpass', 1200, 600, 5, 0.5); break;
+      case 'pick_break': this.noiseBurst(o, t, 0.05, 'highpass', 5000, 4000, 2, 0.8); this.tone(o, t, 2600, 0.12, 'triangle', 0.08, 1900); break;
+      case 'pick_tick': this.noiseBurst(o, t, 0.025, 'bandpass', 4200, 2000, 10, 0.35); break;
       default:
         if (id.startsWith('alert_')) {
           const fam = id.slice(6);

@@ -56,6 +56,9 @@
  "dock": {
   "file": "dock.glb"
  },
+ "door_leaf": {
+  "file": "door_leaf.glb"
+ },
  "expedition_wagon": {
   "file": "expedition_wagon.glb"
  },

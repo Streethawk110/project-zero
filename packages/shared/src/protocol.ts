@@ -31,6 +31,7 @@ export type GameCommand =
   | { t: 'buy'; shop: string; item: string; n: number }
   | { t: 'sell'; shop: string; uid: string; n: number }
   | { t: 'rest' }
+  | { t: 'lockpick'; id: string; ok: boolean }
   | { t: 'travel'; rest: string }
   | { t: 'sight'; on: boolean }
   | { t: 'track_quest'; id: string | null }
@@ -111,6 +112,9 @@ export interface Snapshot {
   gone: number[];
   ev: WorldEventState[];
   gates: string[];
+  /** Offene Haustüren und gerade abgeschlossene */
+  doors?: string[];
+  locked?: string[];
   boss?: { eid: number; name: string; hp: number; mhp: number; phase: number; shield: boolean } | null;
 }
 
@@ -125,6 +129,7 @@ export type GameEvent =
   | { e: 'loot'; items: { id: string; n: number }[]; gold?: number; shards?: number }
   | { e: 'dialogue'; npc: string; speaker: string; name: string; text: string; choices: { text: string; idx: number; tag?: string; disabled?: boolean }[] }
   | { e: 'dialogue_end' }
+  | { e: 'lockpick'; id: string; level: number; picks: number }
   | { e: 'shop'; id: string }
   | { e: 'craft_open'; station: 'camp' | 'bench'; name: string }
   | { e: 'rest_open'; id: string }

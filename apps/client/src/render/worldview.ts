@@ -194,7 +194,7 @@ export class WorldView {
     this.group.add(node);
     const d: DynObject = { obj: o, node };
     // Interaktive Objekte bekommen einen dezenten Leuchtring
-    if (o.id && INTERACTABLE_BY_ID[o.id]) {
+    if (o.id && INTERACTABLE_BY_ID[o.id] && !o.door) {
       const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.7, 32), new THREE.MeshBasicMaterial({ color: 0xd9b26a, transparent: true, opacity: 0.0, depthWrite: false, side: THREE.DoubleSide }));
       ring.rotation.x = -Math.PI / 2;
       ring.position.set(o.x, o.y + 0.05, o.z);

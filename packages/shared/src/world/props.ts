@@ -44,8 +44,6 @@ function walkIn(w: number, d: number, height: number, doorX: number, furniture: 
     box(t, d / 2, height, w / 2 - t, 0),
     box((l1 - l0) / 2, t, height, (l0 + l1) / 2, fz),
     box((r1 - r0) / 2, t, height, (r0 + r1) / 2, fz),
-    // offen stehender Türflügel innen links
-    box(0.06, 0.62, 2.9, doorX - DOOR_W / 2 + 0.1, -(d / 2 - 0.75)),
     ...furniture,
   ];
 }
@@ -82,6 +80,8 @@ const hearthLight = (w: number, d: number, y: number, ox = w * 0.28): PropLight 
 
 export const PROPS: Record<string, PropDef> = {
   // Dorf
+  // Türflügel: Angel im Ursprung, Blatt entlang +X (1,25 m), Kollision nur geschlossen
+  door_leaf: { model: 'door_leaf', colliders: [box(0.64, 0.07, 2.5, 0.625, 0)] },
   house_a: { model: 'house_a', colliders: walkIn(8, 6, 7, 0, [...homeFurniture(8, 6), ...homeExtras(8, 6, 0)]), clear: 7, light: hearthLight(8, 6, 1.9), interior: { hw: 3.76, hd: 2.76, ceil: 3.65 } },
   house_b: { model: 'house_b', colliders: walkIn(10, 7, 9, -1.5, [...homeFurniture(10, 7), ...homeExtras(10, 7, -1.5)]), clear: 8, light: hearthLight(10, 7, 1.9), interior: { hw: 4.76, hd: 3.26, ceil: 3.05 } },
   inn: {

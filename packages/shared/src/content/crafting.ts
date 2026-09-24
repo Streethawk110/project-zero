@@ -61,7 +61,7 @@ export const SHOPS: Record<string, ShopDef> = {
   pell: {
     id: 'pell', name: 'Pells Krämerstand', stock: [
       { item: 'potion_heal' }, { item: 'potion_mana' }, { item: 'potion_stamina' }, { item: 'bread' }, { item: 'salve_burn' },
-      { item: 'cloth' }, { item: 'leather' }, { item: 'quiver_basic' }, { item: 'focus_lens' }, { item: 'ring_copper' },
+      { item: 'cloth' }, { item: 'leather' }, { item: 'quiver_basic' }, { item: 'focus_lens' }, { item: 'ring_copper' }, { item: 'lockpick' },
       { item: 'bomb_fire', cond: 'flag:choice_kontor' }, { item: 'crystal_draught', cond: 'flag:choice_kontor' },
     ],
   },

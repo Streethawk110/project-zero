@@ -315,3 +315,10 @@ h3 { font-size: 1.1em; color: var(--gold); }
   font: 600 12px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; color: #cfe9ff;
   background: rgba(8, 12, 18, 0.55); padding: 3px 7px; border-radius: 4px; letter-spacing: 0.02em;
 }
+
+/* Schlossknacken */
+.lockpick { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -52%); display: flex; flex-direction: column; align-items: center; gap: 0.6em; padding: 1.2em 1.6em; background: radial-gradient(ellipse at center, rgba(20,16,12,0.94), rgba(8,7,6,0.97)); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+.lockpick .lock-title { font-family: var(--serif, Georgia, serif); font-size: 1.2em; color: #e6d3a8; letter-spacing: 0.04em; }
+.lockpick .lock-canvas { width: 360px; height: 360px; cursor: crosshair; }
+.lockpick .lock-info { color: #cfc6b4; font-size: 0.95em; }
+.lockpick .lock-help { color: #9a917f; font-size: 0.85em; max-width: 380px; text-align: center; }

@@ -297,6 +297,8 @@ export interface InteractableDef {
   resource?: { item: string; min: number; max: number; respawn: number; tool?: string };
   target?: { x: number; z: number; zone?: string };
   interactTime?: number;
+  /** Gehört jemandem: Nehmen ist Diebstahl, wenn es jemand sieht */
+  owned?: boolean;
   radius?: number;
 }
 

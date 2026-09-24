@@ -1,5 +1,6 @@
 import type { InteractableDef } from '../types.ts';
 import { DUNGEON_ORIGIN as D } from '../world/region.ts';
+import { HOUSES, houseChest, houseDoor } from '../world/houses.ts';
 
 const bell = (i: number): InteractableDef => {
   const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
@@ -88,5 +89,15 @@ export const INTERACTABLES: InteractableDef[] = [
 function res(prefix: string, prop: string, name: string, item: string, pts: [number, number][], min: number, max: number, respawn: number, y?: number): InteractableDef[] {
   return pts.map(([x, z], i) => ({ id: `${prefix}_${i}`, kind: 'resource', name, x, z, prop, rot: i * 1.3, resource: { item, min, max, respawn }, interactTime: 1.6, y }));
 }
+
+// ---------- Haustüren und Truhen in Wohnhäusern (world/houses.ts) ----------
+HOUSES.forEach((h, i) => {
+  const d = houseDoor(i);
+  INTERACTABLES.push({ id: d.id, kind: 'door', name: h.t === 'inn' ? 'Tür der Letzten Laterne' : h.owner ? `Haustür (${h.owner})` : 'Haustür', x: d.center.x, z: d.center.z, radius: 1.2, interactTime: 0.25 });
+  if (h.t !== 'inn') {
+    const c = houseChest(i);
+    INTERACTABLES.push({ id: `hchest_${i}`, kind: 'chest', name: h.owner ? `Truhe (${h.owner})` : 'Truhe', x: c.x, z: c.z, loot: 'chest_home', radius: 1.0, owned: h.lock > 0 || !!h.nightLock });
+  }
+});
 
 export const INTERACTABLE_BY_ID: Record<string, InteractableDef> = Object.fromEntries(INTERACTABLES.map((i) => [i.id, i]));

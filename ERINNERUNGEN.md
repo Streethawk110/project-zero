@@ -113,6 +113,22 @@ Profiler nicht mitgezählt – behoben).
   Blickziel (`rig.lookAt`), Blinzeln, Sprechen (`rig.talking`), Stimmung,
   Gesicht je `faceSeed`, Faust um Waffen. Waffen sitzen in der Handfläche,
   Bogen in der linken Hand, Blockhaltung mit Schild vor dem Körper.
+- Figuren sprechen: `audio/voice.ts` (Web Speech API, de-DE, Stimmlage je
+  Figur), Dialoge und Zurufe (`bark`) werden vorgelesen, Mund bewegt sich,
+  Einstellung „Sprachausgabe“. Gesprächskamera über die Schulter
+  (`cam.focus`, `Game.updateGaze`), NSCs schauen den Spieler an.
+  NSCs stehen jetzt auf Dielenböden (`groundHeight` beim Erzeugen), Hedda
+  steht an ihrer Theke im Gasthaus.
+- Türen und Schlösser: `world/houses.ts` (HOUSES mit lock 0/1/2, nightLock,
+  Besitzer), Türflügel `door_leaf` als eigenes Objekt (Kollision nur
+  geschlossen, Collider.door), `World.useDoor/lockpickResult/witness`,
+  Snapshot `doors`/`locked`, Befehl `lockpick` (Server prüft Mindestdauer).
+  Dietrich (`lockpick`) bei Pell, Truhen in Häusern (`hchest_i`, Loot
+  `chest_home`, `owned` → Zeugen, Wachen verhängen Strafe).
+  Minispiel `ui/lockpick.ts`. Im Spiel geprüft (Tür öffnen, Minispiel).
+- Test-Hinweis: Grafik „hoch“ ist ohne GPU hier so langsam (0,8 s Spielzeit
+  in 30 s), dass Abläufe noch nicht begonnen haben → für Ablauf-Tests
+  „niedrig“/„mittel“ nehmen.
 
 ## 2026-09-24 – Cloud-Sitzung: Grafik-Offensive (Fortsetzung)
 

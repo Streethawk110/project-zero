@@ -2,6 +2,7 @@
 // Glasnarbe, Küste, Dungeon-Wände und alle Kollider. Deterministisch.
 
 import { clamp, fbm, makeNoise2D, rng, smoothstep } from '../math.ts';
+import { HOUSES, houseDoor } from './houses.ts';
 import { CollisionWorld } from './collision.ts';
 import { PROPS } from './props.ts';
 import { BRIDGE, DUNGEON_ORIGIN, PLAY_HALF, REST_POINTS, VILLAGE, WORLD_SEED } from './region.ts';
@@ -22,6 +23,8 @@ export interface PlacedObject {
   hiddenUntilSight?: boolean;
   /** Tor-ID (Objekt verschwindet, wenn Tor offen) */
   gate?: string;
+  /** Tür-ID: Türflügel (drehbar, Kollision nur geschlossen) */
+  door?: string;
 }
 
 export interface DungeonRect { x0: number; z0: number; x1: number; z1: number; floor: number; ceil: number }
@@ -61,7 +64,7 @@ function buildLayout(): WorldLayout {
       const wx = x + ox * c + oz * sn, wz = z - ox * sn + oz * c;
       const y0 = y + (pc.y0 ?? -1) * (pc.y0 ? s : 1);
       const y1 = y + pc.h * s;
-      const extraC = { requires: extra.requires, gate: extra.gate, walkable: pc.walkable };
+      const extraC = { requires: extra.requires, gate: extra.gate, walkable: pc.walkable, door: extra.door };
       if (pc.kind === 'circle') col.addCircle(wx, wz, (pc.r ?? 0.5) * s, y0, y1, extraC);
       else col.addBox(wx, wz, (pc.hw ?? 0.5) * s, (pc.hd ?? 0.5) * s, rot, y0, y1, extraC);
     }
@@ -73,22 +76,18 @@ function buildLayout(): WorldLayout {
   // ---------------- Haldenbruck ----------------
   const V = VILLAGE;
   const buildings: [string, number, number, number][] = [
-    ['inn', 44, 18, Math.PI],
     ['chapel', -6, 14, -Math.PI / 2],
     ['smithy', 0, 54, 0],
     ['kontor', 42, 54, 0],
     ['vogthaus', -4, 70, -Math.PI / 2],
-    ['house_a', -24, 22, -Math.PI / 2],
-    ['house_b', -28, 56, -Math.PI / 2],
-    ['house_a', 8, 84, -Math.PI / 2],
-    ['house_b', 38, 82, Math.PI / 2],
-    ['house_a', 60, 62, Math.PI / 2],
-    ['house_a', 62, 46, Math.PI],
-    ['house_b', 34, -2, Math.PI / 2],
-    ['house_a', 58, 8, Math.PI / 2],
-    ['house_a', -12, -4, -Math.PI / 2],
   ];
   for (const [t, x, z, r] of buildings) place(t, x, z, r);
+  // Begehbare Häuser (world/houses.ts) mit drehbaren Türflügeln
+  HOUSES.forEach((h, i) => {
+    const o = place(h.t, h.x, h.z, h.rot);
+    const d = houseDoor(i);
+    place('door_leaf', d.hinge.x, d.hinge.z, h.rot, 1, { id: d.id, door: d.id, y: o.y + 0.64 });
+  });
   place('well', 14, 34);
   for (const [x, z, r] of [[28, 47, Math.PI], [12, 49, Math.PI], [30, 30, 0], [6, 30, 0.3]] as const) place('stall', x, z, r);
   place('anvil', 4, 49, 0.2);

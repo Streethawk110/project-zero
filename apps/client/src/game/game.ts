@@ -122,6 +122,7 @@ export class Game {
           if (c.requires === 'tidepath_open' && !this.isNight) return false;
         }
         if (c.gate && (this.snap?.gates.includes(c.gate) || this.char?.flags['gate_' + c.gate])) return false;
+        if (c.door && this.snap?.doors?.includes(c.door)) return false;
         return true;
       },
     };
@@ -345,6 +346,7 @@ export class Game {
         case 'emote': break;
         case 'puzzle': if (e.id === 'bells') this.audio.bell(Number(e.state.split(':')[1])); break;
         case 'dialogue': this.speakDialogue(e); break;
+        case 'lockpick': this.ui.openLockpick(e.id, e.level, e.picks); break;
         case 'dialogue_end': voice.stop(); this.talkPartner = null; break;
         case 'bark': this.speakBark(e); break;
       }
@@ -502,7 +504,10 @@ export class Game {
     this.audio.setPaused(p);
   }
 
+  private lastDt = 0.016;
+
   private frame(dt: number) {
+    this.lastDt = dt;
     if (!this.conn) { this.menuFrame(dt); return; }
     this.menuMode = false;
     const i = this.input;
@@ -763,6 +768,14 @@ export class Game {
       if (o.id && c.nodes[o.id] && c.nodes[o.id]! > nowMs) visible = false; // Ressource erschöpft
       if (o.id === 'herzsplitter' && (c.flags['splitter_taken'] || !c.flags['q_splitter_visible'])) visible = false;
       d.node.visible = visible;
+      if (o.door) {
+        // Tür schwingt nach innen auf (weich animiert)
+        const want = this.snap?.doors?.includes(o.door) ? -1.55 : 0;
+        const cur = (d.node.userData['swing'] as number | undefined) ?? 0;
+        const nxt = cur + (want - cur) * Math.min(1, this.lastDt * 5);
+        d.node.userData['swing'] = nxt;
+        d.node.rotation.y = o.rot + nxt;
+      }
       if (d.glow) {
         const it = this.interactTarget;
         const on = visible && !!it && it.id === o.id;
@@ -797,6 +810,14 @@ export class Game {
       if (it.kind === 'resource' && (c.nodes[it.id] ?? 0) > Date.now()) continue;
       if (it.id === 'herzsplitter' && (c.flags['splitter_taken'] || !c.flags['q_splitter_visible'])) continue;
       if (it.id === 'lina_cat' && c.flags['cat_found']) continue;
+      if (it.kind === 'door') {
+        const open = !!this.snap?.doors?.includes(it.id);
+        const locked = !open && !!this.snap?.locked?.includes(it.id);
+        const picks = c.inventory.filter((i) => i.id === 'lockpick').reduce((a, i) => a + i.n, 0);
+        const label = open ? `Schließen: ${it.name}` : locked ? (picks > 0 ? `Schloss knacken (${picks} Dietrich${picks > 1 ? 'e' : ''}): ${it.name}` : `Abgeschlossen: ${it.name}`) : `Öffnen: ${it.name}`;
+        consider({ label, key, id: it.id, kind: it.kind, x: it.x, z: it.z }, d, (it.radius ?? 2.2) + 1.2);
+        continue;
+      }
       const verb = { chest: 'Öffnen', lore: 'Lesen', glyph: 'Entziffern', resource: 'Sammeln', workbench: 'Werkbank benutzen', transition: 'Betreten', viewpoint: 'Ausblick genießen', bell: 'Glocke anschlagen', stele: 'Stele untersuchen', lever: 'Hebel umlegen', switch: 'Weiche umstellen', search: 'Untersuchen', quest_object: 'Untersuchen', plate: '', door: 'Öffnen', rest: 'Rasten' }[it.kind];
       if (!verb) continue;
       consider({ label: `${verb}: ${it.name}`, key, id: it.id, kind: it.kind, x: it.x, z: it.z }, d, (it.radius ?? 2.2) + 1.2);

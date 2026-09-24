@@ -38,6 +38,7 @@ export function validCommand(c: unknown): c is GameCommand {
     case 'loot_take': return isNum(c['eid'], 0, 1e9);
     case 'emote': return isId(c['id']);
     case 'companion': return ['follow', 'wait', 'plate'].includes(c['order'] as string);
+    case 'lockpick': return isId(c['id']) && isBool(c['ok']);
     case 'stele': return Array.isArray(c['order']) && c['order'].length <= 3 && c['order'].every((x) => isId(x));
     case 'duel': return isNum(c['target'], 0, 1e9);
     case 'duel_accept': return isNum(c['from'], 0, 1e9);

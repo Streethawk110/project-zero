@@ -13,6 +13,8 @@ export interface ColliderBase {
   gate?: string;
   /** Oberseite ist begehbar (Brücken, Plattformen, Stege). */
   walkable?: boolean;
+  /** Türflügel: nur aktiv, solange die Tür geschlossen ist. */
+  door?: string;
 }
 export interface CircleCollider extends ColliderBase { kind: 'circle'; r: number }
 export interface BoxCollider extends ColliderBase { kind: 'box'; hw: number; hd: number; rot: number; c: number; s: number }

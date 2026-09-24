@@ -35,6 +35,8 @@ interface BaseEnt {
 }
 
 export interface PlayerEnt extends BaseEnt {
+  /** Laufendes Schlossknacken (Server prüft die Mindestdauer) */
+  lockpick?: { id: string; t: number } | null;
   kind: 'player';
   pid: string;
   char: CharacterData;
