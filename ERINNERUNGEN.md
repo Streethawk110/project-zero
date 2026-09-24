@@ -46,8 +46,19 @@ Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
   einführt). Vorschau-Renderer: `tools/blender/preview.py` (Cycles, CPU).
   Im Spiel geprüft (Dorf, Figuren, Schild-Ausrichtung korrigiert).
 
+- PWA fertig: `manifest.webmanifest`, Symbole (`tools/dev/icons.mjs`),
+  `public/sw.js` mit Precache-Liste aus dem Build (Vite-Plugin in
+  `vite.config.ts`). Einzelspieler startet offline.
+- E2E-Tests (`npm run build && npm run test:e2e`, Playwright): Einzelspieler
+  (Pause stoppt die Welt, Speichern/Export/Laden), Offline-PWA, 2 echte
+  Online-Spieler mit Chat – alle 3 grün. Der Testserver liefert den gebauten
+  Client selbst aus (`tests/e2e/start-test-server.mjs`, Port 8799).
+- Behoben: Server-`isMain` griff bei jedem Dateinamen auf „server.mjs“;
+  `stop()` schließt jetzt auch Keep-Alive-Verbindungen.
+- GitHub-Releases sind inzwischen erreichbar → Electron-Download möglich.
+
 **Offen**
-- PWA/Desktop-App, Deployment, README, E2E-Tests.
+- Desktop-App, Deployment, README.
   Serverdaten des Nutzers (Hosting, Domain) noch unbekannt.
 
 ## 2026-09-24 – Cloud-Sitzung (claude.ai/code)

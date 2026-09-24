@@ -44,13 +44,15 @@ export async function startServer(overrides: Partial<typeof config> = {}) {
     if (backupTimer) clearInterval(backupTimer);
     game.stop();
     wss.close();
+    http.closeAllConnections();
     await new Promise((r) => http.close(r));
     db.close();
   };
   return { db, auth, game, http, port, stop };
 }
 
-const isMain = import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('server.mjs') || process.argv[1]?.endsWith('main.ts');
+const entry = (process.argv[1] ?? '').split(/[\\/]/).pop();
+const isMain = import.meta.url === `file://${process.argv[1]}` || entry === 'server.mjs' || entry === 'main.ts';
 if (isMain && !process.env['VITEST']) {
   const args = process.argv.slice(2);
   if (args.includes('--migrate-only')) {
