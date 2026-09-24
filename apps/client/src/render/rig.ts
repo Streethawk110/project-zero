@@ -1,0 +1,556 @@
+// Humanoides Rig mit prozeduraler Animation.
+// Teile (Kopf, Torso, Gliedmaßen, Haare …) kommen aus dem Blender-Modell „humanoid“,
+// sonst aus einfachen Ersatzformen. Posen werden mit Überblendung gemischt;
+// die Schrittphase folgt der zurückgelegten Strecke (kein Fußrutschen), und
+// die Füße passen sich dem Gelände an.
+
+import * as THREE from 'three';
+import { HAIR_COLORS, SKIN_COLORS, EYE_COLORS, ITEMS, type Appearance } from '@pz/shared';
+import { getModel, hasModel, namedMaterial } from './models.ts';
+import { TEX } from './textures.ts';
+
+export type JointName =
+  | 'hips' | 'spine' | 'chest' | 'neck' | 'head'
+  | 'shoulderL' | 'upperArmL' | 'foreArmL' | 'handL'
+  | 'shoulderR' | 'upperArmR' | 'foreArmR' | 'handR'
+  | 'thighL' | 'shinL' | 'footL' | 'thighR' | 'shinR' | 'footR';
+
+const JOINTS: JointName[] = ['hips', 'spine', 'chest', 'neck', 'head', 'shoulderL', 'upperArmL', 'foreArmL', 'handL', 'shoulderR', 'upperArmR', 'foreArmR', 'handR', 'thighL', 'shinL', 'footL', 'thighR', 'shinR', 'footR'];
+
+type Pose = Partial<Record<JointName, [number, number, number]>> & { root?: [number, number, number]; rootRot?: [number, number, number] };
+
+const OUTFITS: Record<string, { body: number; legs: number; accent: number; robe?: boolean; metal?: boolean; hood?: boolean }> = {
+  armor_rags: { body: 0x6a6456, legs: 0x3f3a33, accent: 0x5a4a3a },
+  armor_gambeson: { body: 0x8c7a5a, legs: 0x4a4034, accent: 0x5c3f28 },
+  armor_leather: { body: 0x5a3f2a, legs: 0x3a2c20, accent: 0x2c4a2a, hood: true },
+  armor_chain: { body: 0x8a8e94, legs: 0x3e3a36, accent: 0x6a2a24, metal: true },
+  armor_robe: { body: 0x2d4468, legs: 0x22324c, accent: 0xc9a14a, robe: true },
+  armor_scale: { body: 0x4f8a94, legs: 0x2e3a40, accent: 0x9ff8ff, metal: true },
+  armor_rooted: { body: 0x3e4a2a, legs: 0x2e3620, accent: 0x6a8a3a, hood: true },
+  armor_order: { body: 0xd8d2c2, legs: 0x6a6258, accent: 0xc9a14a, metal: true },
+  // NSC-Kleidung
+  guard: { body: 0x6a2a24, legs: 0x3a3430, accent: 0x9a9ea5, metal: true },
+  noble: { body: 0x3c2a4a, legs: 0x2a2230, accent: 0xc9a14a },
+  priest: { body: 0xd8d2c2, legs: 0xb8b0a0, accent: 0xc9a14a, robe: true },
+  merchant: { body: 0x7a5a2a, legs: 0x4a3a26, accent: 0x2a5a4a },
+  villager: { body: 0x7a6a50, legs: 0x4a4034, accent: 0x6a4a30 },
+  smith: { body: 0x4a3a2a, legs: 0x3a3028, accent: 0x2a2a2a },
+  fisher: { body: 0x3a4a5a, legs: 0x3a3a3a, accent: 0xd8c27a, hood: true },
+  child: { body: 0x9a6a5a, legs: 0x5a4a3a, accent: 0xd8c27a },
+  rooted: { body: 0x3e4a2a, legs: 0x2e3620, accent: 0x7ff6ff, robe: true, hood: true },
+  miner: { body: 0x5a4a3a, legs: 0x3a3228, accent: 0xd9a441 },
+  scholar: { body: 0x3a5a6a, legs: 0x2e3a40, accent: 0xc9a14a },
+  bandit: { body: 0x4a3a2a, legs: 0x2a2620, accent: 0x6a2a24, hood: true },
+  echo: { body: 0x1a2030, legs: 0x141824, accent: 0x7ff6ff },
+  boss: { body: 0x3a4a5a, legs: 0x2a3440, accent: 0x7ff6ff, metal: true },
+};
+
+function mat(color: number, opts: THREE.MeshStandardMaterialParameters = {}) {
+  const t = TEX.cloth();
+  return new THREE.MeshStandardMaterial({ color, map: t.map, normalMap: t.normalMap, roughness: 0.85, ...opts });
+}
+
+export interface RigOptions {
+  appearance?: Partial<Appearance>;
+  outfit?: string;
+  echo?: boolean;
+  scale?: number;
+}
+
+export class HumanoidRig {
+  root = new THREE.Group();
+  body = new THREE.Group();
+  j = {} as Record<JointName, THREE.Object3D>;
+  private rest = {} as Record<JointName, THREE.Euler>;
+  private cur = {} as Record<JointName, THREE.Quaternion>;
+  private from = {} as Record<JointName, THREE.Quaternion>;
+  private rootOff = new THREE.Vector3();
+  private rootRot = new THREE.Euler();
+  anim = 'idle';
+  private prevAnim = 'idle';
+  animT = 0;
+  blend = 1;
+  private blendDur = 0.18;
+  phase = 0;
+  speed = 0;
+  weapon: THREE.Object3D | null = null;
+  offhand: THREE.Object3D | null = null;
+  weaponId = '';
+  offhandId = '';
+  armorId = '';
+  skinMat: THREE.MeshStandardMaterial;
+  bodyMat: THREE.MeshStandardMaterial;
+  legMat: THREE.MeshStandardMaterial;
+  accentMat: THREE.MeshStandardMaterial;
+  hairMat: THREE.MeshStandardMaterial;
+  private hairNode = new THREE.Group();
+  private beardNode = new THREE.Group();
+  private robeNode = new THREE.Group();
+  private hoodNode = new THREE.Group();
+  private veins: THREE.MeshStandardMaterial[] = [];
+  actionDur = 0.6;
+  height = 1.8;
+  footOffL = 0;
+  footOffR = 0;
+  hipsDrop = 0;
+  appearance: Appearance;
+  touch = 0;
+  private flinch = 0;
+
+  constructor(opts: RigOptions = {}) {
+    const a: Appearance = { body: 0.5, height: 1, skin: 1, hair: 0, hairColor: 2, beard: 0, eyes: 0, scar: 0, ...opts.appearance };
+    this.appearance = a;
+    const echo = !!opts.echo;
+    this.skinMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(SKIN_COLORS[a.skin] ?? SKIN_COLORS[1]), roughness: 0.6, map: TEX.skin().map });
+    const outfit = OUTFITS[opts.outfit ?? 'armor_gambeson'] ?? OUTFITS['armor_gambeson']!;
+    this.bodyMat = mat(outfit.body, outfit.metal ? { metalness: 0.7, roughness: 0.4 } : {});
+    this.legMat = mat(outfit.legs);
+    this.accentMat = mat(outfit.accent, { metalness: 0.3 });
+    this.hairMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(HAIR_COLORS[a.hairColor] ?? '#3b2718'), roughness: 0.75 });
+    if (echo) {
+      for (const m of [this.skinMat, this.bodyMat, this.legMat, this.accentMat, this.hairMat]) {
+        m.color.setHex(0x0c1220);
+        m.emissive = new THREE.Color(0x2a6a80);
+        m.emissiveIntensity = 0.6;
+        m.transparent = true;
+        m.opacity = 0.8;
+        m.map = null;
+      }
+    }
+    this.build(a, outfit);
+    // Posen sind im Rig-Raum mit Blickrichtung +Z definiert; die Figur blickt in der Welt nach -Z.
+    const flip = new THREE.Group();
+    flip.rotation.y = Math.PI;
+    flip.add(this.body);
+    this.root.add(flip);
+    this.root.scale.setScalar((opts.scale ?? 1) * a.height);
+    this.setAppearance(a);
+    for (const n of JOINTS) {
+      this.cur[n] = this.j[n].quaternion.clone();
+      this.from[n] = this.j[n].quaternion.clone();
+    }
+  }
+
+  private joint(name: JointName, parent: THREE.Object3D, x: number, y: number, z: number) {
+    const o = new THREE.Group();
+    o.name = name;
+    o.position.set(x, y, z);
+    parent.add(o);
+    this.j[name] = o;
+    this.rest[name] = new THREE.Euler();
+    return o;
+  }
+
+  private part(parent: THREE.Object3D, name: string, fallback: () => THREE.Mesh, m: THREE.Material) {
+    const tpl = hasModel('humanoid') ? getModel('humanoid').parts.get(name) : undefined;
+    let mesh: THREE.Object3D;
+    if (tpl) {
+      mesh = tpl.clone(true);
+      mesh.position.set(0, 0, 0);
+      mesh.traverse((c) => {
+        const mm = c as THREE.Mesh;
+        if (mm.isMesh) {
+          const n = (Array.isArray(mm.material) ? mm.material[0] : mm.material)?.name ?? '';
+          mm.material = n.startsWith('skin') ? this.skinMat : n.startsWith('legs') ? this.legMat : n.startsWith('accent') ? this.accentMat : n.startsWith('hair') ? this.hairMat : n.startsWith('eye') ? mm.material : m;
+          mm.castShadow = true;
+        }
+      });
+    } else {
+      mesh = fallback();
+      (mesh as THREE.Mesh).material = m;
+      mesh.castShadow = true;
+    }
+    parent.add(mesh);
+    return mesh;
+  }
+
+  private build(a: Appearance, outfit: (typeof OUTFITS)[string]) {
+    const bw = 0.85 + a.body * 0.3; // Körperbreite
+    const cap = (r: number, l: number) => new THREE.Mesh(new THREE.CapsuleGeometry(r, l, 4, 10));
+    const hips = this.joint('hips', this.body, 0, 0.95, 0);
+    this.part(hips, 'pelvis', () => { const m = cap(0.16 * bw, 0.12); m.rotation.z = Math.PI / 2; m.scale.set(1, 1, 0.8); return m; }, this.legMat);
+    const spine = this.joint('spine', hips, 0, 0.1, 0);
+    this.part(spine, 'belly', () => { const m = cap(0.15 * bw, 0.12); m.position.y = 0.1; m.scale.z = 0.75; return m; }, this.bodyMat);
+    const chest = this.joint('chest', spine, 0, 0.22, 0);
+    this.part(chest, 'torso', () => { const m = cap(0.19 * bw, 0.18); m.position.y = 0.14; m.scale.set(1.05, 1, 0.7); return m; }, this.bodyMat);
+    // Gürtel
+    this.part(spine, 'belt', () => { const m = new THREE.Mesh(new THREE.TorusGeometry(0.155 * bw, 0.025, 6, 16)); m.rotation.x = Math.PI / 2; m.scale.z = 0.75; return m; }, this.accentMat);
+    const neck = this.joint('neck', chest, 0, 0.36, 0);
+    this.part(neck, 'neckmesh', () => { const m = cap(0.055, 0.06); m.position.y = 0.04; return m; }, this.skinMat);
+    const head = this.joint('head', neck, 0, 0.1, 0);
+    this.part(head, 'head', () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.115, 16, 14)); m.position.y = 0.1; m.scale.set(0.92, 1.1, 1); return m; }, this.skinMat);
+    // Augen
+    const eyeMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(EYE_COLORS[a.eyes] ?? '#4b3621'), roughness: 0.2 });
+    for (const sx of [-0.04, 0.04]) {
+      const e = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), eyeMat);
+      e.position.set(sx, 0.12, 0.1);
+      head.add(e);
+    }
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.05, 6), this.skinMat);
+    nose.rotation.x = Math.PI / 2;
+    nose.position.set(0, 0.09, 0.115);
+    head.add(nose);
+    head.add(this.hairNode, this.beardNode, this.hoodNode);
+    for (const side of ['L', 'R'] as const) {
+      const s = side === 'L' ? 1 : -1;
+      const sh = this.joint(`shoulder${side}`, chest, s * 0.21 * bw, 0.3, 0);
+      this.part(sh, `shoulderpad_${side.toLowerCase()}`, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.075 * bw, 10, 8)); m.scale.set(1.1, 0.8, 1); return m; }, outfit.metal ? this.bodyMat : this.accentMat);
+      const ua = this.joint(`upperArm${side}`, sh, s * 0.02, -0.02, 0);
+      this.part(ua, `upperarm_${side.toLowerCase()}`, () => { const m = cap(0.05 * bw, 0.2); m.position.y = -0.14; return m; }, this.bodyMat);
+      const fa = this.joint(`foreArm${side}`, ua, 0, -0.29, 0);
+      this.part(fa, `forearm_${side.toLowerCase()}`, () => { const m = cap(0.043 * bw, 0.18); m.position.y = -0.12; return m; }, outfit.robe ? this.bodyMat : this.skinMat);
+      const hand = this.joint(`hand${side}`, fa, 0, -0.26, 0);
+      this.part(hand, `hand_${side.toLowerCase()}`, () => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.09, 0.04)); m.position.y = -0.03; return m; }, this.skinMat);
+      const th = this.joint(`thigh${side}`, hips, s * 0.1 * bw, -0.05, 0);
+      this.part(th, `thigh_${side.toLowerCase()}`, () => { const m = cap(0.075 * bw, 0.28); m.position.y = -0.2; return m; }, this.legMat);
+      const sn = this.joint(`shin${side}`, th, 0, -0.43, 0);
+      this.part(sn, `shin_${side.toLowerCase()}`, () => { const m = cap(0.058 * bw, 0.28); m.position.y = -0.2; return m; }, this.legMat);
+      const ft = this.joint(`foot${side}`, sn, 0, -0.42, 0);
+      this.part(ft, `foot_${side.toLowerCase()}`, () => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 0.24)); m.position.set(0, -0.03, 0.05); return m; }, this.accentMat);
+    }
+    // Robe/Rock
+    const robe = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * bw, 0.32 * bw, 0.75, 14, 1, true), this.bodyMat);
+    robe.position.y = -0.33;
+    robe.castShadow = true;
+    this.robeNode.add(robe);
+    hips.add(this.robeNode);
+    this.robeNode.visible = !!outfit.robe;
+    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), this.accentMat);
+    hood.position.set(0, 0.11, -0.015);
+    hood.scale.set(1, 1.1, 1.08);
+    this.hoodNode.add(hood);
+    this.hoodNode.visible = !!outfit.hood;
+    // Adern der Berührung (leuchtend, abhängig vom Berührungswert)
+    const veinMat = new THREE.MeshStandardMaterial({ color: 0x9ff8ff, emissive: 0x7ff6ff, emissiveIntensity: 0, transparent: true, opacity: 0 });
+    this.veins.push(veinMat);
+    for (const n of ['foreArmL', 'foreArmR', 'neck'] as JointName[]) {
+      const v = new THREE.Mesh(new THREE.CylinderGeometry(0.047, 0.047, 0.2, 8, 1, true), veinMat);
+      v.position.y = n === 'neck' ? 0.04 : -0.12;
+      this.j[n].add(v);
+    }
+  }
+
+  setAppearance(a: Appearance) {
+    this.appearance = a;
+    this.skinMat.color.set(SKIN_COLORS[a.skin] ?? SKIN_COLORS[1]!);
+    this.hairMat.color.set(HAIR_COLORS[a.hairColor] ?? '#3b2718');
+    this.hairNode.clear();
+    this.beardNode.clear();
+    const add = (g: THREE.BufferGeometry, x: number, y: number, z: number, sx = 1, sy = 1, sz = 1, parent = this.hairNode) => {
+      const m = new THREE.Mesh(g, this.hairMat);
+      m.position.set(x, y, z);
+      m.scale.set(sx, sy, sz);
+      m.castShadow = true;
+      parent.add(m);
+      return m;
+    };
+    const cap = new THREE.SphereGeometry(0.122, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    switch (a.hair) {
+      case 0: add(cap, 0, 0.115, 0.01, 1, 1, 1.05); break; // Kurz
+      case 1: add(cap, 0, 0.115, 0.01, 1, 1, 1.05); add(new THREE.CapsuleGeometry(0.03, 0.25, 4, 8), 0, -0.02, -0.13); break; // Zopf
+      case 2: add(cap, 0, 0.115, 0.01, 1.05, 1.05, 1.1); add(new THREE.CylinderGeometry(0.12, 0.14, 0.3, 14, 1, true, Math.PI * 1.15, Math.PI * 1.7), 0, 0.0, -0.02); break; // Lang
+      case 3: break; // Kahl
+      case 4: add(cap, 0, 0.115, 0.01, 1, 0.95, 1.02); add(new THREE.SphereGeometry(0.05, 10, 8), 0, 0.22, -0.07); break; // Knoten
+      case 5: for (let i = 0; i < 9; i++) add(new THREE.ConeGeometry(0.045, 0.12, 5), Math.cos(i * 0.7) * 0.08, 0.2 + (i % 3) * 0.015, Math.sin(i * 0.7) * 0.08).rotation.set(Math.sin(i) * 0.6, i, Math.cos(i) * 0.6); break; // Wirr
+    }
+    switch (a.beard) {
+      case 1: add(new THREE.SphereGeometry(0.1, 12, 8, 0, Math.PI * 2, Math.PI * 0.55, Math.PI * 0.3), 0, 0.1, 0.005, 1, 1, 1.02, this.beardNode); break;
+      case 2: add(new THREE.SphereGeometry(0.105, 12, 10, Math.PI * 0.1, Math.PI * 0.8, Math.PI * 0.45, Math.PI * 0.5), 0, 0.08, 0.0, 1, 1.25, 1.08, this.beardNode); break;
+      case 3: add(new THREE.ConeGeometry(0.035, 0.1, 8), 0, 0.0, 0.09, 1, 1, 1, this.beardNode).rotation.x = Math.PI; break;
+    }
+    if (a.scar) {
+      const scarMat = new THREE.MeshStandardMaterial({ color: a.scar === 3 ? 0x9ff8ff : 0x8a4a3a, emissive: a.scar === 3 ? 0x3cc9e0 : 0x000000, emissiveIntensity: 1 });
+      const s = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.06, 0.004), scarMat);
+      s.position.set(a.scar === 2 ? 0.045 : -0.07, a.scar === 2 ? 0.13 : 0.08, 0.1);
+      s.rotation.z = 0.3;
+      this.beardNode.add(s);
+    }
+  }
+
+  setTouch(t: number) {
+    this.touch = t;
+    const on = Math.max(0, (t - 25) / 75);
+    for (const v of this.veins) {
+      v.opacity = on * 0.6;
+      v.emissiveIntensity = on * 2.5;
+    }
+  }
+
+  setEquipment(weaponId: string, offhandId: string, armorId: string) {
+    if (weaponId !== this.weaponId) {
+      this.weaponId = weaponId;
+      this.weapon?.removeFromParent();
+      this.weapon = weaponId ? makeWeapon(weaponId) : null;
+      if (this.weapon) this.j.handR.add(this.weapon);
+    }
+    if (offhandId !== this.offhandId) {
+      this.offhandId = offhandId;
+      this.offhand?.removeFromParent();
+      this.offhand = offhandId ? makeWeapon(offhandId) : null;
+      if (this.offhand) {
+        const kind = ITEMS[offhandId]?.offhand?.type;
+        if (kind === 'quiver') { this.offhand.position.set(0.1, 0.15, -0.14); this.offhand.rotation.z = 0.3; this.j.chest.add(this.offhand); }
+        else this.j.handL.add(this.offhand);
+      }
+    }
+    if (armorId !== this.armorId && armorId) {
+      this.armorId = armorId;
+      const o = OUTFITS[armorId];
+      if (o) {
+        this.bodyMat.color.setHex(o.body);
+        this.bodyMat.metalness = o.metal ? 0.7 : 0;
+        this.bodyMat.roughness = o.metal ? 0.4 : 0.85;
+        this.legMat.color.setHex(o.legs);
+        this.accentMat.color.setHex(o.accent);
+        this.robeNode.visible = !!o.robe;
+        this.hoodNode.visible = !!o.hood;
+      }
+    }
+  }
+
+  get weaponType() {
+    return ITEMS[this.weaponId]?.weapon?.type ?? 'none';
+  }
+
+  play(anim: string, dur?: number) {
+    if (anim === this.anim) return;
+    const oneShot = anim.startsWith('atk') || anim === 'heavy' || anim === 'bow' || anim === 'cast' || anim.startsWith('skill') || anim === 'hit';
+    for (const n of JOINTS) this.from[n].copy(this.j[n].quaternion);
+    this.prevAnim = this.anim;
+    this.anim = anim;
+    this.animT = 0;
+    this.blend = 0;
+    this.blendDur = anim === 'dodge' ? 0.06 : oneShot ? 0.08 : this.prevAnim === 'dodge' ? 0.12 : 0.2;
+    if (dur) this.actionDur = dur;
+  }
+
+  hit() {
+    this.flinch = 0.25;
+  }
+
+  /** speed: horizontale Geschwindigkeit (m/s), groundL/R: Geländehöhe unter den Füßen relativ zur Wurzel */
+  update(dt: number, speed: number, groundL = 0, groundR = 0) {
+    this.animT += dt;
+    this.blend = Math.min(1, this.blend + dt / this.blendDur);
+    this.speed = speed;
+    this.flinch = Math.max(0, this.flinch - dt);
+    // Schrittphase an Strecke koppeln (Schrittlänge je nach Tempo)
+    const stride = speed > 6.5 ? 2.6 : speed > 3.5 ? 1.9 : 1.2;
+    this.phase += (speed * dt) / stride * Math.PI * 2 * 0.5;
+    const pose = this.computePose(this.anim, this.animT);
+    const tq = new THREE.Quaternion();
+    const e = new THREE.Euler();
+    const k = easeInOut(this.blend);
+    for (const n of JOINTS) {
+      const r = pose[n] ?? [0, 0, 0];
+      // Beine: in den Posen bedeutet negatives X „Knie nach vorn“, positives „Knie beugen“
+      const leg = n.startsWith('thigh') || n.startsWith('shin') || n.startsWith('foot');
+      e.set(leg ? -r[0] : r[0], r[1], r[2], 'YXZ');
+      tq.setFromEuler(e);
+      this.cur[n].slerpQuaternions(this.from[n], tq, k);
+      this.j[n].quaternion.copy(this.cur[n]);
+    }
+    const ro = pose.root ?? [0, 0, 0];
+    this.rootOff.lerp(new THREE.Vector3(ro[0], ro[1], ro[2]), Math.min(1, dt * 14));
+    const rr = pose.rootRot ?? [0, 0, 0];
+    this.rootRot.x += (rr[0] - this.rootRot.x) * Math.min(1, dt * (this.anim === 'dodge' ? 40 : 10));
+    this.rootRot.z += (rr[2] - this.rootRot.z) * Math.min(1, dt * 10);
+    // Bodenanpassung: Hüfte auf den tieferen Fuß absenken, Knie beugen
+    const lo = Math.min(groundL, groundR, 0);
+    this.hipsDrop += (Math.max(-0.35, lo) - this.hipsDrop) * Math.min(1, dt * 12);
+    const grounded = !['jump', 'fall', 'dodge', 'swim', 'tread', 'downed', 'dead', 'die', 'emote_sit'].includes(this.anim);
+    if (grounded && speed < 1.5) {
+      const bendL = Math.max(0, groundL - this.hipsDrop), bendR = Math.max(0, groundR - this.hipsDrop);
+      this.j.thighL.rotateX(Math.min(0.9, bendL * 2.2));
+      this.j.shinL.rotateX(-Math.min(1.6, bendL * 4.4));
+      this.j.thighR.rotateX(Math.min(0.9, bendR * 2.2));
+      this.j.shinR.rotateX(-Math.min(1.6, bendR * 4.4));
+    }
+    if (this.flinch > 0) this.j.chest.rotateX(-this.flinch * 1.2);
+    this.body.position.set(this.rootOff.x, this.rootOff.y + (grounded ? this.hipsDrop : 0), -this.rootOff.z);
+    this.body.rotation.set(this.rootRot.x, 0, this.rootRot.z);
+  }
+
+  private computePose(anim: string, t: number): Pose {
+    const s = Math.sin, c = Math.cos, ph = this.phase;
+    const wt = this.weaponType;
+    const armed = wt !== 'none';
+    const ready = (p: Pose): Pose => {
+      // Waffenhaltung im Ruhezustand
+      if (wt === 'bow') { p.upperArmL = [-0.3, 0, 0.15]; p.foreArmL = [-0.3, 0, 0]; }
+      else if (wt === 'staff') { p.upperArmR = [-0.25, 0, -0.15]; p.foreArmR = [-0.6, 0, 0]; }
+      else if (armed) { p.upperArmR = [-0.15, 0, -0.12]; p.foreArmR = [-0.7, 0, 0]; p.handR = [0.3, 0, 0]; }
+      if (this.offhandId && ITEMS[this.offhandId]?.offhand?.type === 'shield') { p.upperArmL = [-0.2, 0, 0.2]; p.foreArmL = [-1.2, 0.2, 0]; }
+      return p;
+    };
+    const locomotion = (amp: number, arm: number, lean: number, bob: number): Pose => ({
+      hips: [0, s(ph) * 0.08 * amp, 0],
+      spine: [lean * 0.5, -s(ph) * 0.06 * amp, 0],
+      chest: [lean * 0.5, -s(ph) * 0.1 * amp, 0],
+      head: [-lean * 0.6, s(ph) * 0.04, 0],
+      thighL: [s(ph) * 0.75 * amp - 0.05, 0, 0.03],
+      shinL: [Math.max(0, -s(ph + 0.9)) * 1.25 * amp + 0.05, 0, 0],
+      footL: [Math.max(0, s(ph)) * -0.3 * amp, 0, 0],
+      thighR: [-s(ph) * 0.75 * amp - 0.05, 0, -0.03],
+      shinR: [Math.max(0, s(ph + 0.9)) * 1.25 * amp + 0.05, 0, 0],
+      footR: [Math.max(0, -s(ph)) * -0.3 * amp, 0, 0],
+      upperArmL: [-s(ph) * 0.6 * arm, 0, 0.1],
+      foreArmL: [-0.3 - Math.max(0, s(ph)) * 0.5 * arm, 0, 0],
+      upperArmR: [s(ph) * 0.6 * arm, 0, -0.1],
+      foreArmR: [-0.3 - Math.max(0, -s(ph)) * 0.5 * arm, 0, 0],
+      root: [0, Math.abs(c(ph)) * bob - bob * 0.5, 0],
+    });
+    const prog = Math.min(1, t / Math.max(0.1, this.actionDur));
+    switch (anim) {
+      case 'idle': case 'recover': case 'idle_boss': {
+        const b = s(t * 1.6);
+        return ready({ chest: [b * 0.02, 0, 0], head: [b * 0.015, s(t * 0.4) * 0.1, 0], upperArmL: [0, 0, 0.12 + b * 0.02], upperArmR: [0, 0, -0.12 - b * 0.02], foreArmL: [-0.15, 0, 0], foreArmR: [-0.15, 0, 0], thighL: [0.02, 0, 0.04], thighR: [-0.02, 0, -0.04], root: [0, b * 0.005, 0] });
+      }
+      case 'talk': {
+        const g = s(t * 2.3);
+        return { head: [s(t * 1.7) * 0.08, s(t * 0.9) * 0.15, 0], upperArmR: [-0.4 - g * 0.2, 0, -0.2], foreArmR: [-1.0 + g * 0.3, 0, 0], upperArmL: [0, 0, 0.12], foreArmL: [-0.2, 0, 0] };
+      }
+      case 'walk': return ready(locomotion(0.55, 0.5, 0.03, 0.03));
+      case 'run': return ready(locomotion(0.85, 0.8, 0.12, 0.06));
+      case 'sprint': { const p = locomotion(1.15, 1.1, 0.3, 0.09); return p; }
+      case 'swim': return { rootRot: [1.3, 0, 0], root: [0, 0.4, 0], upperArmL: [-2.6 + s(t * 4) * 1.2, 0, 0.3], upperArmR: [-2.6 - s(t * 4) * 1.2, 0, -0.3], thighL: [s(t * 6) * 0.3, 0, 0], thighR: [-s(t * 6) * 0.3, 0, 0] };
+      case 'tread': return { root: [0, 0.2 + s(t * 2) * 0.05, 0], upperArmL: [-0.4, 0, 0.9 + s(t * 3) * 0.3], upperArmR: [-0.4, 0, -0.9 - s(t * 3) * 0.3], thighL: [s(t * 3) * 0.4, 0, 0], thighR: [-s(t * 3) * 0.4, 0, 0], shinL: [0.6, 0, 0], shinR: [0.6, 0, 0] };
+      case 'jump': return ready({ thighL: [-0.9, 0, 0], shinL: [1.4, 0, 0], thighR: [-0.2, 0, 0], shinR: [0.6, 0, 0], upperArmL: [-0.8, 0, 0.5], upperArmR: [-0.8, 0, -0.5], spine: [0.1, 0, 0] });
+      case 'fall': return ready({ thighL: [-0.5, 0, 0.1], shinL: [0.8, 0, 0], thighR: [-0.3, 0, -0.1], shinR: [0.5, 0, 0], upperArmL: [-0.3, 0, 0.9], upperArmR: [-0.3, 0, -0.9] });
+      case 'dodge': {
+        const k = Math.min(1, t / 0.38);
+        return { rootRot: [k * Math.PI * 2, 0, 0], root: [0, -0.35 * s(k * Math.PI), 0], spine: [0.9, 0, 0], chest: [0.5, 0, 0], head: [0.5, 0, 0], thighL: [-1.6, 0, 0], shinL: [2.2, 0, 0], thighR: [-1.6, 0, 0], shinR: [2.2, 0, 0], upperArmL: [-1.2, 0, 0.3], upperArmR: [-1.2, 0, -0.3], foreArmL: [-1.2, 0, 0], foreArmR: [-1.2, 0, 0] };
+      }
+      case 'block': return { chest: [0.1, -0.3, 0], upperArmL: [-1.2, 0.3, 0.3], foreArmL: [-1.3, 0.6, 0], upperArmR: [-0.4, 0, -0.3], foreArmR: [-1.1, 0, 0], thighL: [-0.3, 0, 0.1], shinL: [0.4, 0, 0], thighR: [0.2, 0, -0.1], shinR: [0.3, 0, 0], root: [0, -0.08, 0] };
+      case 'atk1': case 'atk2': case 'atk3': case 'heavy': case 'skill': case 'skill:bash': {
+        // Ausholen → Schlag → Zurückziehen
+        const wind = 0.4, strike = 0.55;
+        const k1 = Math.min(1, prog / wind), k2 = Math.min(1, Math.max(0, (prog - wind) / (strike - wind))), k3 = Math.max(0, (prog - strike) / (1 - strike));
+        const dir = anim === 'atk2' ? -1 : 1;
+        const over = anim === 'atk3' || anim === 'heavy';
+        if (over) {
+          const raise = -2.8 * k1 * (1 - k2) + (-0.3) * k2 * (1 - k3);
+          return { spine: [0.3 * k2, 0, 0], chest: [-0.35 * k1 + 0.6 * k2 - 0.25 * k3, 0, 0], upperArmR: [raise, 0, -0.3], foreArmR: [-0.5 * (1 - k2), 0, 0], upperArmL: [raise * 0.8, 0, 0.3], foreArmL: [-0.5, 0, 0], thighL: [-0.5 * k2, 0, 0], shinL: [0.4 * k2, 0, 0], thighR: [0.3 * k2, 0, 0], root: [0, -0.15 * k2 * (1 - k3), -0.25 * k2] };
+        }
+        const tw = dir * (0.9 * k1 - 1.8 * k2 + 0.9 * k3);
+        return { chest: [0.1, tw * 0.6, 0], spine: [0.05, tw * 0.3, 0], upperArmR: [-1.4, dir * (0.9 * k1 - 1.9 * k2 + 1.0 * k3), -0.9 + 0.4 * k2], foreArmR: [-0.5 + 0.4 * k2, 0, 0], handR: [0.2, 0, 0], upperArmL: [-0.2, 0, 0.3], foreArmL: [-0.6, 0, 0], thighL: [-0.35 * k2, 0, 0], shinL: [0.3 * k2, 0, 0], thighR: [0.25 * k2, 0, 0], root: [0, -0.06 * k2, -0.2 * k2] };
+      }
+      case 'bow': case 'skill:bow': {
+        const draw = Math.min(1, prog / 0.55), rel = prog > 0.55 ? 1 : 0;
+        return { chest: [0, -0.9, 0], head: [0, 0.8, 0], upperArmL: [-1.55, 0.9, 0.1], foreArmL: [0, 0, 0], upperArmR: [-1.5, 0.9 - draw * 0.2, -0.3 + rel * 0.3], foreArmR: [-2.1 * draw * (1 - rel), 0, 0], thighL: [-0.2, 0, 0.1], thighR: [0.2, 0, -0.1] };
+      }
+      case 'cast': case 'skill:cast': {
+        const k1 = Math.min(1, prog / 0.45), k2 = Math.max(0, (prog - 0.45) / 0.55);
+        return { chest: [-0.15 * k1 + 0.2 * k2, 0, 0], upperArmR: [-1.4 * k1 - 0.2 * k2, 0.2, -0.3], foreArmR: [-0.8 * (1 - k2), 0, 0], upperArmL: [-1.2 * k1, -0.2, 0.3], foreArmL: [-0.9 * (1 - k2), 0, 0], root: [0, 0, -0.08 * k2] };
+      }
+      case 'hit': return { chest: [-0.4, 0.2, 0], head: [-0.3, 0, 0], upperArmL: [-0.3, 0, 0.5], upperArmR: [-0.3, 0, -0.5] };
+      case 'stun': case 'frozen': return { head: [0.3 + s(t * 3) * 0.2, s(t * 2) * 0.4, 0], chest: [0.2, 0, s(t * 2.5) * 0.1], upperArmL: [0, 0, 0.3], upperArmR: [0, 0, -0.3], thighL: [-0.2, 0, 0], shinL: [0.4, 0, 0], thighR: [-0.2, 0, 0], shinR: [0.4, 0, 0], root: [0, -0.1, 0] };
+      case 'die': case 'dead': case 'downed': {
+        const k = Math.min(1, t / 0.6);
+        return { rootRot: [(-Math.PI / 2) * k * 0.95, 0, 0.2 * k], root: [0, -0.8 * k, 0.4 * k], chest: [0.2, 0.3, 0], head: [0.3, 0.4, 0], upperArmL: [-0.6, 0, 1.1], upperArmR: [anim === 'downed' ? -1.5 : -0.3, 0, -1.0], thighL: [0.1, 0, 0.1], thighR: [-0.3, 0, -0.1], shinR: [0.6, 0, 0] };
+      }
+      case 'interact': case 'revive': {
+        const r = s(t * 5) * 0.1;
+        return { spine: [0.45, 0, 0], chest: [0.35, 0, 0], upperArmR: [-1.2 + r, 0, -0.1], foreArmR: [-0.5, 0, 0], upperArmL: [-0.8, 0, 0.2], foreArmL: [-0.8, 0, 0], thighL: [-0.6, 0, 0], shinL: [1.0, 0, 0], thighR: [-0.1, 0, 0], shinR: [0.4, 0, 0], root: [0, -0.2, 0] };
+      }
+      case 'emote_wave': return { upperArmR: [-0.2, 0, -2.6], foreArmR: [0, 0, -0.4 + s(t * 9) * 0.5], head: [0, 0.15, 0] };
+      case 'emote_bow': { const k = Math.min(1, t / 0.5) * (t < 1.6 ? 1 : Math.max(0, 1 - (t - 1.6) / 0.5)); return { spine: [0.6 * k, 0, 0], chest: [0.4 * k, 0, 0], upperArmR: [-0.5 * k, 0, -0.1], foreArmR: [-1.5 * k, 0.5, 0] }; }
+      case 'emote_cheer': return { upperArmL: [-0.2, 0, 2.6 + s(t * 8) * 0.2], upperArmR: [-0.2, 0, -2.6 - s(t * 8) * 0.2], root: [0, Math.abs(s(t * 6)) * 0.12, 0], head: [-0.3, 0, 0] };
+      case 'emote_sit': { const k = Math.min(1, t / 0.6); return { root: [0, -0.62 * k, 0], thighL: [-1.5 * k, 0, 0.2], shinL: [1.5 * k, 0, 0], thighR: [-1.5 * k, 0, -0.2], shinR: [1.5 * k, 0, 0], upperArmL: [-0.4, 0, 0.3], upperArmR: [-0.4, 0, -0.3], foreArmL: [-0.8, 0, 0], foreArmR: [-0.8, 0, 0], spine: [0.2, 0, 0] }; }
+      case 'emote_dance': return { hips: [0, s(t * 5) * 0.4, s(t * 5) * 0.15], chest: [0, -s(t * 5) * 0.3, 0], upperArmL: [-0.5, 0, 1.5 + s(t * 10) * 0.4], upperArmR: [-0.5, 0, -1.5 + s(t * 10) * 0.4], thighL: [s(t * 10) * 0.4, 0, 0.1], shinL: [Math.max(0, s(t * 10)) * 0.8, 0, 0], thighR: [-s(t * 10) * 0.4, 0, -0.1], shinR: [Math.max(0, -s(t * 10)) * 0.8, 0, 0], root: [0, Math.abs(s(t * 10)) * 0.06, 0] };
+      case 'emote_point': return { upperArmR: [-1.55, -0.1, -0.1], foreArmR: [0, 0, 0], head: [0, 0, 0] };
+      case 'gazed': return { chest: [0.15, 0, 0], head: [0.2, 0, 0.1], upperArmL: [-0.9, 0, 0.3], upperArmR: [-1.1, 0, -0.3], foreArmL: [-0.4, 0, 0], foreArmR: [-0.5, 0, 0], thighL: [0.4, 0, 0], thighR: [-0.4, 0, 0], shinR: [0.5, 0, 0] };
+      case 'shielded': return { chest: [0.1, 0, 0], upperArmL: [-0.4, 0, 1.2 + s(t * 2) * 0.1], upperArmR: [-0.4, 0, -1.2 - s(t * 2) * 0.1], head: [-0.3, 0, 0], root: [0, s(t * 1.5) * 0.05, 0] };
+      case 'shoot': return { chest: [0, -0.6, 0], upperArmL: [-1.5, 0.5, 0], upperArmR: [-1.5, 0.6, 0], foreArmR: [-0.3, 0, 0] };
+      default:
+        if (anim.startsWith('w_') || anim.startsWith('a_')) {
+          // Gegnerangriffe (Humanoide): Ausholen / Zuschlagen
+          const windup = anim.startsWith('w_');
+          return windup
+            ? { chest: [-0.2, 0.6, 0], upperArmR: [-2.2, 0.5, -0.4], foreArmR: [-0.8, 0, 0], upperArmL: [-0.4, 0, 0.4], thighL: [-0.4, 0, 0], shinL: [0.5, 0, 0], root: [0, -0.1, 0.1] }
+            : { chest: [0.3, -0.7, 0], upperArmR: [-0.8, -0.9, -0.6], foreArmR: [-0.2, 0, 0], upperArmL: [-0.3, 0, 0.4], thighL: [-0.5, 0, 0], shinL: [0.4, 0, 0], thighR: [0.3, 0, 0], root: [0, -0.1, -0.25] };
+        }
+        return ready({});
+    }
+  }
+}
+
+function easeInOut(t: number) {
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
+/** Waffen- und Nebenhandmodelle (aus Blender „weapons“ oder Ersatzformen). */
+export function makeWeapon(id: string): THREE.Object3D {
+  const def = ITEMS[id];
+  const type = def?.weapon?.type ?? def?.offhand?.type ?? 'sword';
+  const tplName = `w_${type}`;
+  const g = new THREE.Group();
+  const lib = hasModel('weapons') ? getModel('weapons').parts.get(tplName) : undefined;
+  const rare = def && ['rare', 'epic', 'legendary'].includes(def.rarity);
+  const glassy = id.includes('glass') || id.includes('null') || id.includes('rast') || id.includes('prism');
+  if (lib) {
+    const m = lib.clone(true);
+    m.position.set(0, 0, 0);
+    g.add(m);
+  } else {
+    const metal = namedMaterial(glassy ? 'crystal' : rare ? 'metal_gold' : 'metal');
+    const wood = namedMaterial('wood_dark');
+    const leather = namedMaterial('leather');
+    const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, rx = 0) => {
+      const mesh = new THREE.Mesh(geo, m);
+      mesh.position.set(x, y, z);
+      mesh.rotation.x = rx;
+      mesh.castShadow = true;
+      g.add(mesh);
+      return mesh;
+    };
+    switch (type) {
+      case 'sword':
+        add(new THREE.CylinderGeometry(0.018, 0.02, 0.18, 8), leather, 0, -0.03, 0);
+        add(new THREE.BoxGeometry(0.2, 0.03, 0.04), metal, 0, -0.13, 0);
+        add(new THREE.BoxGeometry(0.055, 0.85, 0.012), metal, 0, -0.57, 0);
+        break;
+      case 'axe':
+        add(new THREE.CylinderGeometry(0.02, 0.022, 0.8, 8), wood, 0, -0.3, 0);
+        add(new THREE.BoxGeometry(0.2, 0.16, 0.02), metal, 0.08, -0.62, 0);
+        break;
+      case 'mace':
+        add(new THREE.CylinderGeometry(0.02, 0.022, 0.7, 8), wood, 0, -0.25, 0);
+        add(new THREE.DodecahedronGeometry(0.09, 0), metal, 0, -0.62, 0);
+        break;
+      case 'dagger':
+        add(new THREE.CylinderGeometry(0.016, 0.018, 0.12, 8), leather, 0, -0.03, 0);
+        add(new THREE.BoxGeometry(0.04, 0.3, 0.01), metal, 0, -0.24, 0);
+        break;
+      case 'bow': {
+        const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, 0.65, 0), new THREE.Vector3(0, 0, -0.28), new THREE.Vector3(0, -0.65, 0));
+        add(new THREE.TubeGeometry(curve, 16, 0.018, 6), wood, 0, 0, 0);
+        add(new THREE.CylinderGeometry(0.003, 0.003, 1.3, 4), namedMaterial('cloth_white'), 0, 0, 0);
+        g.rotation.set(0, 0, 0);
+        break;
+      }
+      case 'staff':
+        add(new THREE.CylinderGeometry(0.022, 0.028, 1.7, 8), wood, 0, -0.35, 0);
+        add(new THREE.OctahedronGeometry(0.08, 0), namedMaterial(id.includes('ember') ? 'glow_warm' : 'glow_null'), 0, 0.52, 0);
+        break;
+      case 'shield': {
+        const s = add(new THREE.CylinderGeometry(0.34, 0.34, 0.04, 20), id.includes('order') ? namedMaterial('metal_gold') : wood, 0, -0.08, 0.05, Math.PI / 2);
+        s.rotation.z = Math.PI / 2;
+        add(new THREE.CylinderGeometry(0.08, 0.08, 0.05, 12), metal, 0, -0.08, 0.02, Math.PI / 2).rotation.z = Math.PI / 2;
+        g.rotation.y = Math.PI / 2;
+        break;
+      }
+      case 'quiver':
+        add(new THREE.CylinderGeometry(0.06, 0.05, 0.5, 10), leather, 0, 0, 0);
+        for (let i = 0; i < 5; i++) add(new THREE.CylinderGeometry(0.006, 0.006, 0.2, 4), wood, Math.cos(i) * 0.03, 0.32, Math.sin(i) * 0.03);
+        break;
+      case 'focus':
+        add(new THREE.OctahedronGeometry(0.07, 0), namedMaterial('crystal'), 0, -0.08, -0.05);
+        break;
+    }
+  }
+  if (type !== 'shield' && type !== 'quiver' && type !== 'focus' && type !== 'bow') g.rotation.x = -Math.PI / 2 + 0.2;
+  if (type === 'bow') g.rotation.set(0, Math.PI / 2, 0.2);
+  if (type === 'staff') g.rotation.set(-Math.PI / 2, 0, 0);
+  return g;
+}

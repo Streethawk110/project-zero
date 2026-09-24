@@ -52,6 +52,7 @@ export interface SnapshotMe {
   cds: Record<string, number>;
   stat: string[];
   act: string;
+  an: string;
   res: number;
   downed: number; // Restzeit (s) bis Ausbluten, 0 = nicht am Boden
   dead: boolean;

@@ -22,9 +22,19 @@ Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
 - Umgebung: Blender läuft headless über `bpy` (venv `/opt/bpyenv`, nicht im
   Repo). Android-SDK und GitHub-Releases sind hier per Netzwerk gesperrt.
 
+- 3D-Client läuft (in headless Chromium geprüft): Menü mit Weltflug,
+  Charaktererstellung, Einzelspieler mit Isra, Kampf, HUD, alle Fenster
+  (Inventar, Charakter, Skillbaum, Journal, Karte, Händler, Handwerk, Rast,
+  Stele, Handel, Einstellungen mit Tastenbelegung), Speicherplätze mit
+  Export/Import, prozedurale Audio-Engine und Musik.
+- Test-Hinweis: headless Chromium mit SwiftShader ist sehr langsam; für
+  Screenshots das Grafikprofil „niedrig“ setzen (`tools/dev/shot.mjs`, `LOW=1`).
+  Playwright ist auf 1.56.0 gepinnt (passt zum vorinstallierten Chromium 1194).
+
 **Offen**
-- 3D-Client, Speichern/Menüs, Server, Blender-Assets, Audio, Apps,
-  Deployment, README. Serverdaten des Nutzers (Hosting, Domain) noch unbekannt.
+- Multiplayer-Server, Blender-Modelle (Figuren/Gebäude sind noch
+  Ersatzformen), PWA/Desktop-App, Deployment, README.
+  Serverdaten des Nutzers (Hosting, Domain) noch unbekannt.
 
 ## 2026-09-24 – Cloud-Sitzung (claude.ai/code)
 

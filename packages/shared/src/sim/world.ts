@@ -2172,6 +2172,7 @@ export class World {
       cds: Object.fromEntries(Object.entries(p.cds).map(([k, v]) => [k, Math.round(v * 10) / 10])),
       stat: p.statuses.map((s) => s.id),
       act: p.action?.id ?? '',
+      an: p.anim,
       res: Math.round(this.resonance.get(p.party ?? `solo:${p.id}`) ?? 0),
       downed: p.downedT > 0 ? Math.ceil(p.downedT) : 0,
       dead: p.dead,
