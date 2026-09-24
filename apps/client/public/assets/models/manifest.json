@@ -28,6 +28,9 @@
   "file": "chapel.glb",
   "lod1": "chapel_lod1.glb"
  },
+ "character": {
+  "file": "character.glb"
+ },
  "chest": {
   "file": "chest.glb"
  },

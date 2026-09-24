@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { HAIR_COLORS, SKIN_COLORS, EYE_COLORS, ITEMS, type Appearance } from '@pz/shared';
 import { getModel, hasModel, namedMaterial } from './models.ts';
 import { TEX } from './textures.ts';
+import { buildSkinnedParts, hasCharacterModel, headPiece, type SkinPart } from './skinned.ts';
 
 export type JointName =
   | 'hips' | 'spine' | 'chest' | 'neck' | 'head'
@@ -45,9 +46,10 @@ export const OUTFITS: Record<string, { body: number; legs: number; accent: numbe
   boss: { body: 0x3a4a5a, legs: 0x2a3440, accent: 0x7ff6ff, metal: true },
 };
 
-function mat(color: number, opts: THREE.MeshStandardMaterialParameters = {}) {
-  const t = TEX.cloth();
-  return new THREE.MeshStandardMaterial({ color, map: t.map, normalMap: t.normalMap, roughness: 0.85, ...opts });
+function mat(color: number, opts: THREE.MeshStandardMaterialParameters = {}, kind: 'cloth' | 'leather' | 'metal' = 'cloth') {
+  const t = kind === 'leather' ? TEX.leather() : kind === 'metal' ? TEX.metal() : TEX.cloth();
+  const ao = t.aoMap ? { aoMap: t.aoMap } : {};
+  return new THREE.MeshStandardMaterial({ color, map: t.map, normalMap: t.normalMap, roughnessMap: t.roughnessMap, ...ao, roughness: 0.85, ...opts });
 }
 
 export interface RigOptions {
@@ -83,6 +85,10 @@ export class HumanoidRig {
   legMat: THREE.MeshStandardMaterial;
   accentMat: THREE.MeshStandardMaterial;
   hairMat: THREE.MeshStandardMaterial;
+  /** Durchgehende, gebundene Figur aus dem Blender-Modell „character“ (sonst Einzelteile). */
+  private useSkin = hasCharacterModel();
+  private pieces = new Map<SkinPart, THREE.Group>();
+  private eyeMat = new THREE.MeshStandardMaterial({ color: 0x4b3621, roughness: 0.25 });
   private hairNode = new THREE.Group();
   private beardNode = new THREE.Group();
   private robeNode = new THREE.Group();
@@ -103,9 +109,9 @@ export class HumanoidRig {
     const echo = !!opts.echo;
     this.skinMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(SKIN_COLORS[a.skin] ?? SKIN_COLORS[1]), roughness: 0.6, map: TEX.skin().map });
     const outfit = OUTFITS[opts.outfit ?? 'armor_gambeson'] ?? OUTFITS['armor_gambeson']!;
-    this.bodyMat = mat(outfit.body, outfit.metal ? { metalness: 0.7, roughness: 0.4 } : {});
+    this.bodyMat = mat(outfit.body, outfit.metal ? { metalness: 0.7, roughness: 0.55 } : {}, outfit.metal ? 'metal' : 'cloth');
     this.legMat = mat(outfit.legs);
-    this.accentMat = mat(outfit.accent, { metalness: 0.3 });
+    this.accentMat = mat(outfit.accent, { roughness: 0.75 }, 'leather');
     this.hairMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(HAIR_COLORS[a.hairColor] ?? '#3b2718'), roughness: 0.75 });
     if (echo) {
       for (const m of [this.skinMat, this.bodyMat, this.legMat, this.accentMat, this.hairMat]) {
@@ -124,6 +130,7 @@ export class HumanoidRig {
     flip.add(this.body);
     this.root.add(flip);
     this.root.scale.setScalar((opts.scale ?? 1) * a.height);
+    if (this.useSkin) this.bindSkin(outfit);
     this.setAppearance(a);
     for (const n of JOINTS) {
       this.cur[n] = this.j[n].quaternion.clone();
@@ -144,6 +151,7 @@ export class HumanoidRig {
   }
 
   private part(parent: THREE.Object3D, name: string, fallback: () => THREE.Mesh, m: THREE.Material) {
+    if (this.useSkin) return new THREE.Group();
     const tpl = hasModel('humanoid') ? getModel('humanoid').parts.get(name) : undefined;
     let mesh: THREE.Object3D;
     if (tpl) {
@@ -185,8 +193,9 @@ export class HumanoidRig {
     const head = this.joint('head', neck, 0, 0.1, 0);
     this.part(head, 'head', () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.115, 16, 14)); m.position.y = 0.1; m.scale.set(0.92, 1.1, 1); return m; }, this.skinMat);
     // Augen
-    const eyeMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(EYE_COLORS[a.eyes] ?? '#4b3621'), roughness: 0.2 });
-    for (const sx of [-0.04, 0.04]) {
+    const eyeMat = this.eyeMat;
+    eyeMat.color.set(EYE_COLORS[a.eyes] ?? '#4b3621');
+    for (const sx of this.useSkin ? [] : [-0.04, 0.04]) {
       const e = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), eyeMat);
       e.position.set(sx, 0.12, 0.1);
       head.add(e);
@@ -194,7 +203,7 @@ export class HumanoidRig {
     const nose = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.05, 6), this.skinMat);
     nose.rotation.x = Math.PI / 2;
     nose.position.set(0, 0.09, 0.115);
-    head.add(nose);
+    if (!this.useSkin) head.add(nose);
     head.add(this.hairNode, this.beardNode, this.hoodNode);
     for (const side of ['L', 'R'] as const) {
       const s = side === 'L' ? 1 : -1;
@@ -217,13 +226,13 @@ export class HumanoidRig {
     const robe = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * bw, 0.32 * bw, 0.75, 14, 1, true), this.bodyMat);
     robe.position.y = -0.33;
     robe.castShadow = true;
-    this.robeNode.add(robe);
+    if (!this.useSkin) this.robeNode.add(robe);
     hips.add(this.robeNode);
     this.robeNode.visible = !!outfit.robe;
     const hood = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), this.accentMat);
     hood.position.set(0, 0.11, -0.015);
     hood.scale.set(1, 1.1, 1.08);
-    this.hoodNode.add(hood);
+    if (!this.useSkin) this.hoodNode.add(hood);
     this.hoodNode.visible = !!outfit.hood;
     // Adern der Berührung (leuchtend, abhängig vom Berührungswert)
     const veinMat = new THREE.MeshStandardMaterial({ color: 0x9ff8ff, emissive: 0x7ff6ff, emissiveIntensity: 0, transparent: true, opacity: 0 });
@@ -233,6 +242,43 @@ export class HumanoidRig {
       v.position.y = n === 'neck' ? 0.04 : -0.12;
       this.j[n].add(v);
     }
+  }
+
+  /** Bindet die durchgehende Figur an die Gelenke (Ruhepose). */
+  private bindSkin(outfit: (typeof OUTFITS)[string]) {
+    const white = new THREE.MeshStandardMaterial({ color: 0xece6dc, roughness: 0.3 });
+    const black = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.2 });
+    const matFor = (n: string): THREE.Material => {
+      const k = n.toLowerCase();
+      if (k.startsWith('skin')) return this.skinMat;
+      if (k.startsWith('legs')) return this.legMat;
+      if (k.startsWith('accent')) return this.accentMat;
+      if (k.startsWith('hair')) return this.hairMat;
+      if (k.startsWith('iris')) return this.eyeMat;
+      if (k.startsWith('eyewhite')) return white;
+      if (k === 'eye' || k.startsWith('eye.')) return black;
+      if (k.startsWith('metal')) return namedMaterial('metal');
+      return this.bodyMat;
+    };
+    const bw = 0.85 + this.appearance.body * 0.3;
+    const { parts } = buildSkinnedParts(this.j, JOINTS, this.body, bw, matFor);
+    this.pieces = parts;
+    this.applyOutfitPieces(outfit);
+  }
+
+  private applyOutfitPieces(o: (typeof OUTFITS)[string]) {
+    if (!this.useSkin) return;
+    const show = (n: SkinPart, v: boolean) => { const p = this.pieces.get(n); if (p) p.visible = v; };
+    show('skin', true);
+    show('tunic', true);
+    show('trousers', true);
+    show('boots', true);
+    show('belt', !o.robe);
+    show('robe', !!o.robe);
+    show('hood', !!o.hood);
+    show('plates', !!o.metal);
+    // Unter der Kapuze keine langen Haare
+    this.hairNode.visible = !o.hood;
   }
 
   setAppearance(a: Appearance) {
@@ -249,6 +295,23 @@ export class HumanoidRig {
       parent.add(m);
       return m;
     };
+    this.eyeMat.color.set(EYE_COLORS[a.eyes] ?? '#4b3621');
+    if (this.useSkin) {
+      // Frisur und Bart aus Strähnen (Blender), starr am Kopfgelenk
+      const headY = 1.73;
+      const hp = headPiece(`hair_${a.hair}`, headY, this.hairMat);
+      if (hp) this.hairNode.add(hp);
+      const bp = a.beard ? headPiece(`beard_${a.beard}`, headY, this.hairMat) : null;
+      if (bp) this.beardNode.add(bp);
+      if (a.scar) {
+        const scarMat = new THREE.MeshStandardMaterial({ color: a.scar === 3 ? 0x9ff8ff : 0x8a4a3a, emissive: a.scar === 3 ? 0x3cc9e0 : 0x000000, emissiveIntensity: 1 });
+        const sc = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.05, 0.004), scarMat);
+        sc.position.set(a.scar === 2 ? 0.045 : -0.06, a.scar === 2 ? 0.125 : 0.085, 0.106);
+        sc.rotation.z = 0.3;
+        this.beardNode.add(sc);
+      }
+      return;
+    }
     const cap = new THREE.SphereGeometry(0.122, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55);
     switch (a.hair) {
       case 0: add(cap, 0, 0.115, 0.01, 1, 1, 1.05); break; // Kurz
@@ -309,6 +372,7 @@ export class HumanoidRig {
         this.accentMat.color.setHex(o.accent);
         this.robeNode.visible = !!o.robe;
         this.hoodNode.visible = !!o.hood;
+        this.applyOutfitPieces(o);
       }
     }
   }

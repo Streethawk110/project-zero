@@ -9,7 +9,7 @@ test('Einzelspieler: neues Spiel, Pause hält die Welt an, Speichern und Laden',
   // Die Simulation läuft
   // (Die ersten Bilder dauern mit Software-WebGL wegen der Shader-Übersetzung länger.)
   const a = await spState(page);
-  await expect.poll(async () => (await spState(page)).tick, { timeout: 60_000 }).toBeGreaterThan(a.tick + 20);
+  await expect.poll(async () => (await spState(page)).tick, { timeout: 180_000 }).toBeGreaterThan(a.tick + 20);
 
   // Pause (Esc) hält die Welt wirklich an
   await page.keyboard.press('Escape');

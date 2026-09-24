@@ -38,6 +38,15 @@ Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
   `public/assets/textures`. Vorschau: `tools/blender/preview_tex.py`.
   Gelände-Shader v3: Höhen-Überblendung, echte Tangenten-Normalen, AO,
   Kachelbruch. Laden: `loadBakedTextures(settings.textureQuality)`.
+- Figuren neu (`tools/blender/character.py` → Modell `character`): Kopf mit
+  modelliertem Gesicht (Augen/Iris/Lider/Brauen, Nase, Lippen, Ohren), Hände
+  mit Fingern, Kleidungsschichten (tunic, trousers, boots, belt, robe, hood,
+  plates), 6 Frisuren + 3 Bärte aus Strähnen. Client: `render/skinned.ts`
+  bindet die Teile als SkinnedMesh direkt an die Rig-Gelenke (Gewichte aus
+  Abstand zu Knochenstrecken, Kopf/Hände/Füße starr); alte Einzelteile nur
+  noch als Ersatz ohne Modell. Im Spiel geprüft.
+- E2E: Einzelspieler-Test braucht im Gesamtlauf ohne GPU länger (Timeout
+  auf 180 s erhöht); einzeln 54 s grün, MP und Offline grün.
 
 ## 2026-09-24 – Cloud-Sitzung: Start „Project Zero“
 

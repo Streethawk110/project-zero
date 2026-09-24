@@ -19,9 +19,10 @@ import props  # noqa: E402
 import nature  # noqa: E402
 import characters  # noqa: E402
 import creatures  # noqa: E402
+import character  # noqa: E402
 
 REGISTRY = {}
-for mod in (buildings, props, nature, characters, creatures):
+for mod in (buildings, props, nature, characters, creatures, character):
     REGISTRY.update(mod.ASSETS)
 
 
