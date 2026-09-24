@@ -31,8 +31,15 @@ Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
   Screenshots das Grafikprofil „niedrig“ setzen (`tools/dev/shot.mjs`, `LOW=1`).
   Playwright ist auf 1.56.0 gepinnt (passt zum vorinstallierten Chromium 1194).
 
+- Mehrspieler-Server fertig (`apps/server`): Konten (scrypt), SQLite mit
+  Migrationen, Oberwelt-Shards à 16 Spieler, Dungeon-Instanzen je Gruppe,
+  Gruppen, Chat, Markierungen, Duelle, Handel, Wiederverbindung (90 s
+  Gnadenfrist), Speicherung alle 20 s, Sicherungen, Rate-Limits.
+  9 Server-Integrationstests grün; Browser-Test mit 2 Spielern erfolgreich.
+  Testzugänge: tester1/tester2, Passwort „zero-test“ (`PZ_ALLOW_TEST_ACCOUNTS=1`).
+
 **Offen**
-- Multiplayer-Server, Blender-Modelle (Figuren/Gebäude sind noch
+- Blender-Modelle (Figuren/Gebäude sind noch
   Ersatzformen), PWA/Desktop-App, Deployment, README.
   Serverdaten des Nutzers (Hosting, Domain) noch unbekannt.
 

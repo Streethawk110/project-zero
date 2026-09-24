@@ -183,11 +183,19 @@ export class RemoteConnection implements GameConnection {
   private onMessage(m: ServerMessage) {
     switch (m.m) {
       case 'snap': this.handlers.onSnapshot(m.s); break;
-      case 'ev': this.handlers.onEvents(m.e); break;
+      case 'ev': {
+        const rest = [];
+        for (const e of m.e) {
+          if (e.e === 'char') this.handlers.onChar(e.data);
+          else rest.push(e);
+        }
+        if (rest.length) this.handlers.onEvents(rest);
+        break;
+      }
       case 'joined':
         this.eid = m.eid;
         this.handlers.onChar(m.char);
-        this.handlers.onTransfer?.();
+        this.handlers.onTransfer?.(m.char);
         if (m.resumed) this.handlers.onStatus?.('online', 'Wieder verbunden.');
         break;
       case 'chat': this.handlers.onChat?.(m.from, m.text, m.ch); break;

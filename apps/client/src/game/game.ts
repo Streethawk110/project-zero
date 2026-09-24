@@ -145,7 +145,16 @@ export class Game {
       onPartyInvite: (f) => this.ui.partyInvite(f),
       onMarker: (f, x, z, k) => { this.ui.marker(f, x, z, k); this.audio.ui('ping'); },
       onStatus: (st, d) => this.ui.netStatus(st, d),
-      onTransfer: () => { this.pending = []; },
+      onTransfer: (c) => {
+        // Instanzwechsel (z. B. Grube betreten) oder Wiederverbindung: Ansicht neu aufbauen
+        this.ents.clear();
+        this.pending = [];
+        this.pred.x = c.pos.x; this.pred.y = c.pos.y; this.pred.z = c.pos.z;
+        this.pred.vx = this.pred.vy = this.pred.vz = 0;
+        this.prevPred = copyMoveState(this.pred);
+        this.visualErr.set(0, 0, 0);
+        this.serverTimeOffset = null;
+      },
     };
   }
 

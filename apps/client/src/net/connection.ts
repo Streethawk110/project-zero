@@ -9,7 +9,7 @@ export interface ConnectionHandlers {
   onPartyInvite?(from: string): void;
   onMarker?(from: string, x: number, z: number, kind: string): void;
   onStatus?(status: 'online' | 'reconnecting' | 'offline', detail?: string): void;
-  onTransfer?(): void;
+  onTransfer?(char: CharacterData): void;
 }
 
 /** Gemeinsame Schnittstelle für Einzelspieler (lokal) und Mehrspieler (Server). */
