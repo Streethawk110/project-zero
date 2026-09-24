@@ -75,6 +75,12 @@ Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
   Quest-Sackgassen; per Mutation geprüft) und `boss.test.ts` (3 Phasen,
   Säulen, Nullpuls, Skalierung, Zurücksetzen). Jetzt 28 Unit-Tests + 3 E2E.
 
+- Spielbare Web-Fassung (nur Einzelspieler) als privates Artifact:
+  https://claude.ai/artifact/5rbSisefuvQXjACC37VpHZ (Modelle dafür als
+  eingebettete `.gltf.json`, da `.glb` dort nicht erlaubt ist; nicht im Repo).
+- Nutzer will lokal weiterarbeiten: `claude --teleport` im eigenen Terminal
+  (im Projektordner), Sitzung `session_014K5hn531XejJHioneCKYqy`.
+
 **Offen**
 - Nutzer nach Serverdaten fragen (Hosting-Art, Node verfügbar?, Domain,
   Zugang, bestehende Webseite/Webserver) und dann veröffentlichen.
