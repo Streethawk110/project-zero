@@ -19,7 +19,10 @@
     "start": "npm run start -w @pz/server",
     "models:build": "python3 tools/blender/build_all.py && node tools/models/optimize.mjs",
     "models:optimize": "node tools/models/optimize.mjs",
-    "icons": "node tools/dev/icons.mjs"
+    "icons": "node tools/dev/icons.mjs",
+    "desktop": "npm --prefix apps/desktop start",
+    "desktop:dist": "npm --prefix apps/desktop run dist",
+    "release": "bash deploy/scripts/package.sh"
   },
   "devDependencies": {
     "@gltf-transform/core": "^4.5.0",

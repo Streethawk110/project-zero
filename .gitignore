@@ -13,3 +13,4 @@ playwright-report/
 .vite/
 *.tsbuildinfo
 tools/blender/__pycache__/
+release/

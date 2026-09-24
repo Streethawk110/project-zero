@@ -57,8 +57,24 @@ Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
   `stop()` schließt jetzt auch Keep-Alive-Verbindungen.
 - GitHub-Releases sind inzwischen erreichbar → Electron-Download möglich.
 
+- Desktop-App (`apps/desktop`, Electron, eigenes `app://`-Protokoll, nicht im
+  npm-Workspace): Linux-Build gebaut und unter Xvfb gestartet (`--smoke`).
+  Windows/macOS nur konfiguriert, nicht getestet.
+- Deployment (`deploy/`): nginx-/Apache-Ausschnitte für die BESTEHENDE Seite
+  (Spiel unter `/spiel/`, Server unter `/pz/`), systemd, Docker,
+  `package.sh`/`install.sh`/`backup.sh`/`restore.sh`. `install.sh` bricht ab,
+  wenn WEB_DIR fremde Dateien enthält, und behält `config.json`.
+  Geprüft: nginx 1.24 lokal + alle 3 E2E-Tests über nginx grün; Docker-
+  Laufzeit-Image gesund; Build-Stufe im Container wegen Proxy ungetestet.
+- Server-Bundle enthält jetzt `ws` → auf dem Server nur Node ≥ 22.5 nötig.
+- Vite-Dev-Server reicht `/pz` an `localhost:8787` weiter.
+- README komplett (Start, Steuerung, Modi, Tests, Modelle, Apps,
+  Veröffentlichung, Konfiguration, ehrliche Grenzen).
+
 **Offen**
-- Desktop-App, Deployment, README.
+- Nutzer nach Serverdaten fragen (Hosting-Art, Node verfügbar?, Domain,
+  Zugang, bestehende Webseite/Webserver) und dann veröffentlichen.
+- Längere Spieltests/Balance; Leistung auf echter GPU messen.
   Serverdaten des Nutzers (Hosting, Domain) noch unbekannt.
 
 ## 2026-09-24 – Cloud-Sitzung (claude.ai/code)

@@ -41,7 +41,8 @@ export default defineConfig({
   resolve: {
     alias: { '@pz/shared': fileURLToPath(new URL('../../packages/shared/src/index.ts', import.meta.url)) },
   },
-  server: { port: 5173, host: true },
+  // Entwicklung: /pz (API + WebSocket) an den lokalen Spielserver weiterreichen – wie später nginx
+  server: { port: 5173, host: true, proxy: { '/pz': { target: 'http://localhost:8787', ws: true } } },
   build: {
     outDir: 'dist',
     target: 'es2022',
