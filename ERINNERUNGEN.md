@@ -145,6 +145,8 @@ Profiler nicht mitgezählt – behoben).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.
+- Auftrag für 1:30: erst Aufgaben planen; Menschen noch deutlich mehr wie im
+  Film/KCD2, alles nochmal besser machen, viele QoL-Funktionen.
 - E2E: Einzelspieler + Offline grün; Mehrspieler im Gesamtlauf einmal im Menü
   hängen geblieben (Last), einzeln grün (4 min).
 - Test-Hinweis: Grafik „hoch“ ist ohne GPU hier so langsam (0,8 s Spielzeit
