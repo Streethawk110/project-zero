@@ -59,6 +59,26 @@ function template(sex: Sex, order: string[], lod: 0 | 1 = 0): Template {
       g.setAttribute(name, new THREE.BufferAttribute(arr, a.itemSize));
     }
     if (src.index) g.setIndex(src.index.clone());
+    // Formziele (Mimik, Gesichtsvarianten, Griffhände): relative Verschiebungen mitdrehen
+    const mp = src.morphAttributes['position'];
+    const names = m.morphTargetDictionary ? Object.entries(m.morphTargetDictionary).sort((a, b) => a[1] - b[1]).map(([n]) => n) : [];
+    if (mp && mp.length) {
+      const rot = new THREE.Matrix3().setFromMatrix4(toRoot);
+      const v3 = new THREE.Vector3();
+      g.morphAttributes['position'] = mp.map((a, k) => {
+        const arr = new Float32Array(a.count * 3);
+        for (let i = 0; i < a.count; i++) {
+          v3.set(a.getX(i), a.getY(i), a.getZ(i));
+          if (!src.morphTargetsRelative) v3.sub(new THREE.Vector3().fromBufferAttribute(src.attributes['position']!, i));
+          v3.applyMatrix3(rot);
+          arr[i * 3] = v3.x; arr[i * 3 + 1] = v3.y; arr[i * 3 + 2] = v3.z;
+        }
+        const out = new THREE.BufferAttribute(arr, 3);
+        out.name = names[k] ?? `m${k}`;
+        return out;
+      });
+      g.morphTargetsRelative = true;
+    }
     g.applyMatrix4(toRoot);
     // Gewichte: Knochen des Modells → Reihenfolge der Rig-Gelenke
     const si = src.attributes['skinIndex'], sw = src.attributes['skinWeight'];
@@ -132,8 +152,12 @@ export function buildHuman(sex: Sex, joints: Record<string, THREE.Object3D>, ord
       // Körperbau: unterhalb des Halses etwas breiter/schmaler
       if (Math.abs(bw - 1) > 1e-3) {
         const p = g.attributes['position']!;
+        const morphs = g.morphAttributes['position'] ?? [];
         for (let i = 0; i < p.count; i++) {
-          if (p.getY(i) < neckY - 0.02) { p.setX(i, p.getX(i) * bw); p.setZ(i, p.getZ(i) * (0.9 + bw * 0.1)); }
+          if (p.getY(i) < neckY - 0.02) {
+            p.setX(i, p.getX(i) * bw); p.setZ(i, p.getZ(i) * (0.9 + bw * 0.1));
+            for (const ma of morphs) { ma.setX(i, ma.getX(i) * bw); ma.setZ(i, ma.getZ(i) * (0.9 + bw * 0.1)); }
+          }
         }
         p.needsUpdate = true;
       }
@@ -141,8 +165,9 @@ export function buildHuman(sex: Sex, joints: Record<string, THREE.Object3D>, ord
       if (g.boundingSphere) g.boundingSphere.radius += 0.6;
       const k = pg.material;
       const mat = k.startsWith('skin') ? mats.skin : k.startsWith('eyeball') ? mats.eye : k === 'hair_curly' ? mats.hairCurly
-        : k.startsWith('hair_cap') ? mats.hairCap : k.startsWith('hair') ? mats.hair : mats.cloth(k);
+        : k.startsWith('hair_cap') ? mats.hairCap : k.startsWith('hair') ? mats.hair : k.startsWith('teeth') ? teethMaterial() : k.startsWith('mouth_inner') ? mouthMaterial() : mats.cloth(k);
       const mesh = new THREE.SkinnedMesh(g, mat);
+      if (g.morphAttributes['position']?.length) mesh.updateMorphTargets();
       mesh.castShadow = !name.startsWith('eyes');
       mesh.receiveShadow = true;
       group.add(mesh);
@@ -156,7 +181,25 @@ export function buildHuman(sex: Sex, joints: Record<string, THREE.Object3D>, ord
   return parts;
 }
 
+/** Alle Netze mit Formzielen einer Figur (für Mimik, Gesichtsform und Griff). */
+export function morphMeshes(parts: Map<string, THREE.Group>) {
+  const out: THREE.Mesh[] = [];
+  for (const g of parts.values()) g.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh && m.morphTargetDictionary) out.push(m); });
+  return out;
+}
+
 // ---------------- Materialien ----------------
+
+let teeth: THREE.MeshStandardMaterial | null = null;
+let mouthInner: THREE.MeshStandardMaterial | null = null;
+function mouthMaterial() {
+  mouthInner ??= new THREE.MeshStandardMaterial({ color: 0x2a0d0b, roughness: 0.6, metalness: 0 });
+  return mouthInner;
+}
+function teethMaterial() {
+  teeth ??= new THREE.MeshStandardMaterial({ color: 0xd9cfbd, roughness: 0.35, metalness: 0 });
+  return teeth;
+}
 
 const skinTex = new Map<Sex, { map: THREE.Texture; normalMap: THREE.Texture; arm: THREE.Texture }>();
 let eyeTex: THREE.Texture | null = null;

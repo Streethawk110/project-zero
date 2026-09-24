@@ -99,6 +99,20 @@ Profiler nicht mitgezählt – behoben).
   umgedreht (auch in `dev/rigPreview.ts`).
 - Web-Artifact Version 6 (gleicher Link), Texturen dort auf 1024 verkleinert
   (sonst über 64 MB je Version).
+- Neuer Nutzerauftrag (Nutzer ist weg, alles selbstständig): Menschen viel besser
+  und lebendig (Blinzeln!), Figuren reden, Waffen in der Hand, Schloss-Mechanik
+  statt überall begehbar, Türen statt Pfosten, Tutorial, bessere Übergänge,
+  viele Komfortfunktionen, VOLLER Grafik-Umbau wie KCD2 (größter Punkt).
+- Asset-Quellen: Poly Haven/ambientCG/Sketchfab gesperrt; GitHub (git + raw),
+  npm, PyPI gehen. Brauchbar: MPFB2-Targets (Mimik `expression/units`,
+  Gesichtsformen), HDRIs in `pmndrs/assets` und `gkjohnson/3d-demo-data`.
+- Menschen: Formziele in `human.py` (`SHAPES`, `grip_deltas`): blink, jaw,
+  smile, frown, brows, lips, 9 Gesichtsvarianten (f_*), gripL/gripR; Zähne +
+  Zunge (`mouth`) und dunkle Mundhöhle (`mouth_cavity`). Client: Morphs in
+  `human.ts` übernommen, `rig.ts` `life()`: Atmen, Gewichtsverlagerung,
+  Blickziel (`rig.lookAt`), Blinzeln, Sprechen (`rig.talking`), Stimmung,
+  Gesicht je `faceSeed`, Faust um Waffen. Waffen sitzen in der Handfläche,
+  Bogen in der linken Hand, Blockhaltung mit Schild vor dem Körper.
 
 ## 2026-09-24 – Cloud-Sitzung: Grafik-Offensive (Fortsetzung)
 

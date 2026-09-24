@@ -9,7 +9,7 @@ import { HAIR_COLORS, SKIN_COLORS, EYE_COLORS, ITEMS, type Appearance } from '@p
 import { getModel, hasModel, namedMaterial } from './models.ts';
 import { TEX } from './textures.ts';
 import { buildSkinnedParts, hasCharacterModel, headPiece, type SkinPart } from './skinned.ts';
-import { buildHuman, eyeMaterial, hairMaterial, hasHumanModel, humanJoints, skinMaterial, type Sex } from './human.ts';
+import { buildHuman, eyeMaterial, hairMaterial, hasHumanModel, humanJoints, morphMeshes, skinMaterial, type Sex } from './human.ts';
 
 export type JointName =
   | 'hips' | 'spine' | 'chest' | 'neck' | 'head'
@@ -55,6 +55,8 @@ function mat(color: number, opts: THREE.MeshStandardMaterialParameters = {}, kin
 
 export interface RigOptions {
   appearance?: Partial<Appearance>;
+  /** Saat für die Gesichtsform (z. B. NSC-Kennung); ohne: aus dem Aussehen abgeleitet */
+  faceSeed?: string;
   outfit?: string;
   echo?: boolean;
   scale?: number;
@@ -113,10 +115,26 @@ export class HumanoidRig {
   appearance: Appearance;
   touch = 0;
   private flinch = 0;
+  // ---- Lebendigkeit: Mimik, Blinzeln, Sprechen, Blick, Atmung ----
+  private morphs: THREE.Mesh[] = [];
+  private face: Record<string, number> = {};
+  private blinkT = 1 + Math.random() * 3;
+  private blinkK = 0;
+  private lifeT = Math.random() * 100;
+  /** > 0: Figur spricht (Sekunden), Kiefer und Lippen bewegen sich */
+  talking = 0;
+  /** Stimmung für die Mimik: -1 (grimmig) … 0 … 1 (freundlich) */
+  mood = 0;
+  /** Blickziel in Weltkoordinaten (Kopf dreht sich hin), null = geradeaus */
+  lookAt: THREE.Vector3 | null = null;
+  private lookYaw = 0;
+  private lookPitch = 0;
+  private faceSeed = '';
 
   constructor(opts: RigOptions = {}) {
     const a: Appearance = { body: 0.5, height: 1, skin: 1, hair: 0, hairColor: 2, beard: 0, eyes: 0, scar: 0, ...opts.appearance };
     this.appearance = a;
+    this.faceSeed = opts.faceSeed ?? JSON.stringify(a);
     const echo = !!opts.echo;
     this.sex = a.sex === 1 ? 'female' : 'male';
     this.human = hasHumanModel(this.sex);
@@ -298,6 +316,8 @@ export class HumanoidRig {
       const hm = { skin: this.skinMat, eye, hair, hairCurly: curly, hairCap: this.humanCap, cloth };
       this.humanParts = buildHuman(this.sex, this.j, JOINTS, this.body, this.humanBw(0.85 + a.body * 0.3), hm);
       this.humanPartsLod1 = buildHuman(this.sex, this.j, JOINTS, this.body, this.humanBw(0.85 + a.body * 0.3), hm, 1);
+      this.morphs = morphMeshes(this.humanParts);
+      this.makeFace();
       this.applyOutfitPieces(outfit);
       return;
     }
@@ -328,7 +348,7 @@ export class HumanoidRig {
       const want = this.humanWant;
       want.clear();
       const vis = (n: string, v: boolean) => { want.set(n, v); };
-      for (const n of ['skin', 'eyes', 'tunic', 'trousers', 'boots']) vis(n, true);
+      for (const n of ['skin', 'eyes', 'mouth', 'mouth_cavity', 'tunic', 'trousers', 'boots']) vis(n, true);
       vis('tunic_skirt', !o.robe);
       vis('belt', !o.robe);
       vis('robe', !!o.robe);
@@ -448,7 +468,13 @@ export class HumanoidRig {
       this.weaponId = weaponId;
       this.weapon?.removeFromParent();
       this.weapon = weaponId ? makeWeapon(weaponId) : null;
-      if (this.weapon) this.j.handR.add(this.weapon);
+      if (this.weapon) {
+        // Griff in der geschlossenen Faust (nicht am Handgelenk)
+        // Bogen wird links gehalten (rechts zieht die Sehne)
+        const bow = ITEMS[weaponId]?.weapon?.type === 'bow';
+        if (this.human) this.weapon.position.add(new THREE.Vector3(bow ? -0.01 : 0.01, -0.085, 0.012));
+        (bow ? this.j.handL : this.j.handR).add(this.weapon);
+      }
     }
     if (offhandId !== this.offhandId) {
       this.offhandId = offhandId;
@@ -457,7 +483,10 @@ export class HumanoidRig {
       if (this.offhand) {
         const kind = ITEMS[offhandId]?.offhand?.type;
         if (kind === 'quiver') { this.offhand.position.set(0.1, 0.15, -0.14); this.offhand.rotation.z = 0.3; this.j.chest.add(this.offhand); }
-        else this.j.handL.add(this.offhand);
+        else {
+          if (this.human) this.offhand.position.add(new THREE.Vector3(-0.01, -0.085, 0.012));
+          this.j.handL.add(this.offhand);
+        }
       }
     }
     if (armorId !== this.armorId && armorId) {
@@ -537,6 +566,104 @@ export class HumanoidRig {
     if (this.flinch > 0) this.j.chest.rotateX(-this.flinch * 1.2);
     this.body.position.set(this.rootOff.x, this.rootOff.y + (grounded ? this.hipsDrop : 0), -this.rootOff.z);
     this.body.rotation.set(this.rootRot.x, 0, this.rootRot.z);
+    this.life(dt, speed, grounded);
+  }
+
+  /** Gesichtsform aus der Saat: jede Figur bekommt eine eigene Mischung der Formvarianten. */
+  private makeFace() {
+    let h = 2166136261;
+    for (let i = 0; i < this.faceSeed.length; i++) { h ^= this.faceSeed.charCodeAt(i); h = Math.imul(h, 16777619); }
+    const rnd = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; };
+    const pairs: [string, string][] = [['f_nose_big', 'f_nose_small'], ['f_jaw_strong', 'f_narrow'], ['f_gaunt', 'f_round']];
+    for (const [a, b] of pairs) { const x = rnd() * 2 - 1; this.face[a] = Math.max(0, x) * 0.9; this.face[b] = Math.max(0, -x) * 0.9; }
+    this.face['f_lips'] = rnd() * (this.sex === 'female' ? 0.8 : 0.4);
+    this.face['f_brow'] = rnd() * (this.sex === 'male' ? 0.8 : 0.3);
+    this.face['f_old'] = Math.max(0, rnd() * 1.4 - 0.6);
+    this.mood = rnd() * 0.6 - 0.2;
+  }
+
+  private setMorph(name: string, v: number) {
+    for (const m of this.morphs) {
+      const i = m.morphTargetDictionary![name];
+      if (i !== undefined) m.morphTargetInfluences![i] = v;
+    }
+  }
+
+  /**
+   * Was eine Figur lebendig wirkt: Atmen, Gewichtsverlagerung, Kopf folgt dem Blickziel,
+   * Blinzeln (auch doppelt), Kiefer und Lippen beim Sprechen, Grundstimmung, Griff um die Waffe.
+   */
+  private life(dt: number, speed: number, grounded: boolean) {
+    this.lifeT += dt;
+    const t = this.lifeT, s = Math.sin;
+    const calm = grounded && speed < 0.3 && (this.anim === 'idle' || this.anim === 'talk' || this.anim === 'recover');
+    // Atmung (Brustkorb hebt sich), in Ruhe langsam, nach Bewegung schneller
+    const br = s(t * (speed > 3 ? 3.2 : 1.7));
+    this.j.chest.rotateX(-br * 0.012);
+    this.j.shoulderL.rotateZ(br * 0.01);
+    this.j.shoulderR.rotateZ(-br * 0.01);
+    if (calm) {
+      // Gewicht verlagert sich langsam von einem Bein aufs andere
+      const w = s(t * 0.23) * 0.5 + s(t * 0.61) * 0.2;
+      this.j.hips.rotateZ(w * 0.035);
+      this.j.spine.rotateZ(-w * 0.025);
+      this.j.thighL.rotateX(Math.max(0, w) * -0.06);
+      this.j.shinL.rotateX(Math.max(0, w) * 0.12);
+      this.j.thighR.rotateX(Math.max(0, -w) * -0.06);
+      this.j.shinR.rotateX(Math.max(0, -w) * 0.12);
+    }
+    // Kopf zum Blickziel (sanft, begrenzt), sonst leichtes Umsehen
+    let yaw = calm ? s(t * 0.31) * 0.12 + s(t * 0.13) * 0.1 : 0, pitch = 0;
+    if (this.lookAt) {
+      const hp = this.j.head.getWorldPosition(new THREE.Vector3());
+      const d = this.lookAt.clone().sub(hp);
+      const inv = this.root.getWorldQuaternion(new THREE.Quaternion()).invert();
+      d.applyQuaternion(inv);
+      const a = Math.atan2(d.x, d.z);
+      if (Math.abs(a) < 1.6) { yaw = THREE.MathUtils.clamp(a, -1.0, 1.0); pitch = THREE.MathUtils.clamp(-Math.atan2(d.y, Math.hypot(d.x, d.z)), -0.4, 0.4); }
+    }
+    const kk = 1 - Math.exp(-dt * 5);
+    this.lookYaw += (yaw - this.lookYaw) * kk;
+    this.lookPitch += (pitch - this.lookPitch) * kk;
+    this.j.neck.rotateY(this.lookYaw * 0.4);
+    this.j.head.rotateY(this.lookYaw * 0.6);
+    this.j.head.rotateX(this.lookPitch * 0.7);
+    if (!this.morphs.length) return;
+    // Blinzeln: alle 2–6 s, manchmal doppelt; Lid schließt schnell und öffnet langsamer
+    this.blinkT -= dt;
+    if (this.blinkT <= 0) { this.blinkK = 0.0001; this.blinkT = Math.random() < 0.15 ? 0.35 : 2 + Math.random() * 4; }
+    let blink = 0;
+    if (this.blinkK > 0) {
+      this.blinkK += dt;
+      const b = this.blinkK;
+      blink = b < 0.07 ? b / 0.07 : b < 0.1 ? 1 : Math.max(0, 1 - (b - 0.1) / 0.12);
+      if (b > 0.22) this.blinkK = 0;
+    }
+    const dead = this.anim === 'dead' || this.anim === 'die' || this.anim === 'downed';
+    this.setMorph('blink', dead ? 0.85 : Math.max(blink, this.flinch > 0 ? 0.7 : 0));
+    // Sprechen: Silbenrhythmus aus überlagerten Schwingungen, dazwischen kurze Pausen
+    this.talking = Math.max(0, this.talking - dt);
+    let jaw = 0, lips = 0;
+    if (this.talking > 0 || this.anim === 'talk') {
+      const syl = Math.max(0, s(t * 13.0) * 0.6 + s(t * 7.3 + 1.3) * 0.4);
+      const pause = s(t * 1.7) > -0.75 ? 1 : 0.1;
+      jaw = syl * pause * 0.55;
+      lips = Math.max(0, s(t * 9.1 + 0.4)) * 0.35 * pause;
+    }
+    const fight = this.anim.startsWith('atk') || this.anim === 'heavy' || this.anim === 'block';
+    if (fight) jaw = Math.max(jaw, 0.12);
+    this.setMorph('jaw', jaw);
+    this.setMorph('lips', lips);
+    const mood = fight ? -1 : this.mood;
+    this.setMorph('smile', Math.max(0, mood) * 0.45);
+    this.setMorph('frown', Math.max(0, -mood) * 0.5 + (fight ? 0.3 : 0));
+    this.setMorph('brows', this.talking > 0 ? Math.max(0, s(t * 2.1)) * 0.3 : 0);
+    for (const [k, v] of Object.entries(this.face)) this.setMorph(k, v);
+    // Griff: Faust um Waffe/Schild/Bogen, sonst locker halb gebeugte Finger
+    const wt = this.weaponType;
+    const offT = ITEMS[this.offhandId]?.offhand?.type;
+    this.setMorph('gripR', wt === 'bow' ? 0.5 : wt !== 'none' ? 1 : 0.22);
+    this.setMorph('gripL', offT === 'shield' || offT === 'focus' || wt === 'bow' ? 1 : 0.22);
   }
 
   private computePose(anim: string, t: number): Pose {
@@ -589,7 +716,7 @@ export class HumanoidRig {
         const k = Math.min(1, t / 0.38);
         return { rootRot: [k * Math.PI * 2, 0, 0], root: [0, -0.35 * s(k * Math.PI), 0], spine: [0.9, 0, 0], chest: [0.5, 0, 0], head: [0.5, 0, 0], thighL: [-1.6, 0, 0], shinL: [2.2, 0, 0], thighR: [-1.6, 0, 0], shinR: [2.2, 0, 0], upperArmL: [-1.2, 0, 0.3], upperArmR: [-1.2, 0, -0.3], foreArmL: [-1.2, 0, 0], foreArmR: [-1.2, 0, 0] };
       }
-      case 'block': return { chest: [0.1, -0.3, 0], upperArmL: [-1.2, 0.3, 0.3], foreArmL: [-1.3, 0.6, 0], upperArmR: [-0.4, 0, -0.3], foreArmR: [-1.1, 0, 0], thighL: [-0.3, 0, 0.1], shinL: [0.4, 0, 0], thighR: [0.2, 0, -0.1], shinR: [0.3, 0, 0], root: [0, -0.08, 0] };
+      case 'block': return { chest: [0.1, -0.3, 0], upperArmL: [-1.0, -0.45, 0.1], foreArmL: [-0.75, -0.55, 0], upperArmR: [-0.4, 0, -0.3], foreArmR: [-1.1, 0, 0], thighL: [-0.3, 0, 0.1], shinL: [0.4, 0, 0], thighR: [0.2, 0, -0.1], shinR: [0.3, 0, 0], root: [0, -0.08, 0] };
       case 'atk1': case 'atk2': case 'atk3': case 'heavy': case 'skill': case 'skill:bash': {
         // Ausholen → Schlag → Zurückziehen
         const wind = 0.4, strike = 0.55;

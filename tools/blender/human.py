@@ -159,6 +159,9 @@ def rot_between(a, b):
     return np.eye(3) + k + k @ k * (1 / (1 + c))
 
 
+FIG_EXTRA = {}
+
+
 def build_figure(kind):
     base = Base()
     v = base.v.copy()
@@ -210,7 +213,162 @@ def build_figure(kind):
         out += w * (v @ world_R[j].T + world_T[j])
     no_w = W.sum(axis=1) < 1e-6
     out[no_w] = v[no_w]
+    # Für Formziele: Maßstab (Target-Einheiten → Meter) und Fingergelenke in der Ruhehaltung
+    fingers = {}
+    for side in ("l", "r"):
+        hj = "hand" + side.upper()
+        for f in range(1, 6):
+            for sgm in range(1, 5):
+                p0 = base.center(v, f"joint-{side}-finger-{f}-{sgm}")
+                fingers[(side, f, sgm)] = world_R[hj] @ p0 + world_T[hj]
+    FIG_EXTRA["scale"] = 0.1 * height / top
+    FIG_EXTRA["fingers"] = fingers
     return base, out, new_pos, W
+
+
+# ---------------------------------------------------------------------------
+# Formziele (Shape Keys): Mimik, Gesichtsvarianten, Griffhände
+# ---------------------------------------------------------------------------
+
+def load_target_gz(rel):
+    """MPFB-Target (gzip, Zeilen „index dx dy dz“ in MakeHuman-Einheiten) → {index: Delta}."""
+    import gzip
+    out = {}
+    with gzip.open(fetch(MPFB + "targets/" + rel), "rt") as f:
+        for line in f:
+            p = line.split()
+            if len(p) == 4 and line[0] not in "#":
+                out[int(p[0])] = np.array([float(p[1]), float(p[2]), float(p[3])])
+    return out
+
+
+EXPR = "expression/units/caucasian/"
+# Mimik (vom Client animiert) und Gesichtsvarianten (je Figur fest eingestellt)
+SHAPES = {
+    "blink": [(EXPR + "eye-left-closure.target.gz", 1.0), (EXPR + "eye-right-closure.target.gz", 1.0)],
+    "jaw": [(EXPR + "mouth-open.target.gz", 1.0)],
+    "smile": [(EXPR + "mouth-corner-puller.target.gz", 1.0)],
+    "frown": [(EXPR + "eyebrows-left-down.target.gz", 1.0), (EXPR + "eyebrows-right-down.target.gz", 1.0),
+              (EXPR + "mouth-depression.target.gz", 0.4)],
+    "brows": [(EXPR + "eyebrows-left-up.target.gz", 1.0), (EXPR + "eyebrows-right-up.target.gz", 1.0)],
+    "lips": [(EXPR + "mouth-pursing.target.gz", 1.0)],
+    "f_nose_big": [("nose/nose-scale-horiz-incr.target.gz", 0.6), ("nose/nose-volume-incr.target.gz", 0.6), ("nose/nose-hump-incr.target.gz", 0.6)],
+    "f_nose_small": [("nose/nose-scale-horiz-decr.target.gz", 0.5), ("nose/nose-volume-decr.target.gz", 0.5), ("nose/nose-point-up.target.gz", 0.5)],
+    "f_jaw_strong": [("chin/chin-prominent-incr.target.gz", 0.7), ("chin/chin-width-incr.target.gz", 0.6), ("head/head-square.target.gz", 0.5)],
+    "f_narrow": [("head/head-scale-horiz-decr.target.gz", 0.6), ("head/head-oval.target.gz", 0.6), ("chin/chin-width-decr.target.gz", 0.4)],
+    "f_gaunt": [("cheek/l-cheek-volume-decr.target.gz", 0.8), ("cheek/r-cheek-volume-decr.target.gz", 0.8),
+                ("cheek/l-cheek-bones-incr.target.gz", 0.6), ("cheek/r-cheek-bones-incr.target.gz", 0.6), ("head/head-fat-decr.target.gz", 0.5)],
+    "f_round": [("head/head-round.target.gz", 0.6), ("head/head-fat-incr.target.gz", 0.6),
+                ("cheek/l-cheek-volume-incr.target.gz", 0.5), ("cheek/r-cheek-volume-incr.target.gz", 0.5)],
+    "f_old": [("head/head-age-incr.target.gz", 0.9), ("mouth/mouth-angles-down.target.gz", 0.5), ("neck/neck-double-incr.target.gz", 0.3)],
+    "f_lips": [("mouth/mouth-upperlip-volume-incr.target.gz", 0.6), ("mouth/mouth-lowerlip-volume-incr.target.gz", 0.6)],
+    "f_brow": [("forehead/forehead-nubian-incr.target.gz", 0.6), ("eyebrows/eyebrows-trans-down.target.gz", 0.5),
+               ("l-eye-bag-incr", 0.0)],
+}
+
+
+def shape_deltas(name, n_verts):
+    d = np.zeros((n_verts, 3))
+    for rel, w in SHAPES[name]:
+        if w == 0.0 or not rel.endswith(".gz"):
+            continue
+        for i, dv in load_target_gz(rel).items():
+            if i < n_verts:
+                d[i] += dv * w
+    return d * FIG_EXTRA["scale"]
+
+
+def _rot(axis, ang):
+    a = axis / np.linalg.norm(axis)
+    k = np.array([[0, -a[2], a[1]], [a[2], 0, -a[0]], [-a[1], a[0], 0]])
+    return np.eye(3) + math.sin(ang) * k + (1 - math.cos(ang)) * (k @ k)
+
+
+_FW = None
+
+
+def finger_weights(n_verts):
+    """Rohgewichte der Fingerknochen (Game-Engine-Rig): {(seite, finger 1-5, glied 1-3): Vektor}."""
+    global _FW
+    if _FW is None:
+        import json
+        data = json.load(open(fetch(MPFB + "rigs/standard/weights.game_engine.json")))["weights"]
+        names = {"thumb": 1, "index": 2, "middle": 3, "ring": 4, "pinky": 5}
+        _FW = {}
+        for bone, pairs in data.items():
+            parts = bone.split("_")
+            if parts[0] not in names:
+                continue
+            key = (parts[2], names[parts[0]], int(parts[1]))
+            w = np.zeros(n_verts)
+            for vi, wt in pairs:
+                w[vi] += wt
+            _FW[key] = w
+    return _FW
+
+
+def grip_deltas(v, side, W):
+    """Faust um einen Griff: Finger je Glied einrollen, Daumen darüberlegen (Vorwärtskinematik)."""
+    F = FIG_EXTRA["fingers"]
+    FW = finger_weights(len(v))
+    s = side
+    wrist = FIG_EXTRA.get("wrist_" + s)
+    hand_dir = F[(s, 3, 1)] - (wrist if wrist is not None else F[(s, 3, 1)] - np.array([0, -0.08, 0]))
+    lateral = F[(s, 5, 1)] - F[(s, 2, 1)]
+    palm = np.cross(lateral, hand_dir)
+    palm /= np.linalg.norm(palm)
+    if np.dot(palm, F[(s, 1, 4)] - F[(s, 2, 1)]) < 0:
+        palm = -palm
+    out = v.copy()
+    total = np.zeros(len(v))
+    for f, angs in ((2, (1.0, 1.35, 0.8)), (3, (1.05, 1.4, 0.8)), (4, (1.1, 1.45, 0.85)), (5, (1.15, 1.5, 0.9)), (1, (0.45, 0.6, 0.7))):
+        axis = lateral if f != 1 else hand_dir
+        # Vorzeichen: Fingerspitze soll zur Handfläche wandern
+        tip = F[(s, f, 4)]
+        test = _rot(axis, 0.3) @ (tip - F[(s, f, 1)])
+        sign = 1.0 if np.dot(test - (tip - F[(s, f, 1)]), palm) > 0 else -1.0
+        Rc = np.eye(3)
+        Tc = np.zeros(3)
+        for sgm in (1, 2, 3):
+            piv = Rc @ F[(s, f, sgm)] + Tc
+            ax = Rc @ (axis if not (f == 1 and sgm > 1) else lateral)
+            if f == 1 and sgm > 1:
+                t2 = _rot(ax, 0.3) @ (Rc @ tip + Tc - piv)
+                sg2 = 1.0 if np.dot(t2 - (Rc @ tip + Tc - piv), palm) > 0 else -1.0
+            else:
+                sg2 = sign
+            Rs = _rot(ax, sg2 * angs[sgm - 1])
+            Rc = Rs @ Rc
+            Tc = Rs @ (Tc - piv) + piv
+            w = FW.get((s, f, sgm))
+            if w is None:
+                continue
+            m = w > 1e-4
+            out[m] += w[m, None] * ((v[m] @ Rc.T + Tc) - v[m])
+            total += w
+    return out - v
+
+
+def add_shape_keys(o, used, v, W, names, hands=False):
+    """Formziele auf ein aus make_mesh erzeugtes Netz (Punkte in derselben Reihenfolge wie used)."""
+    if not o.data.shape_keys:
+        o.shape_key_add(name="Basis", from_mix=False)
+    n = len(v)
+    for nm in names:
+        d = shape_deltas(nm, n)
+        if not np.abs(d[used]).max() > 1e-6:
+            continue
+        k = o.shape_key_add(name=nm, from_mix=False)
+        for j, i in enumerate(used):
+            if d[i].any():
+                k.data[j].co = B(v[i] + d[i])
+    if hands:
+        for side, nm in (("l", "gripL"), ("r", "gripR")):
+            d = grip_deltas(v, side, W)
+            k = o.shape_key_add(name=nm, from_mix=False)
+            for j, i in enumerate(used):
+                if abs(d[i]).max() > 1e-7:
+                    k.data[j].co = B(v[i] + d[i])
 
 
 def B(p):
@@ -719,8 +877,16 @@ def human(kind):
     # Haut: nur, was nie bedeckt ist (Kopf, Hals, Hände) – spart Geometrie, nichts sticht durch
     def skin_keep(c, vs):
         return c[1] > y_neck - 0.045 or (wsum(vs, HAND) > 0.5 and c[1] < y_wrist + 0.03)
-    skin, _ = make_mesh("skin", base, v, W, {"body"}, "skin", skin_keep)
+    skin, used = make_mesh("skin", base, v, W, {"body"}, "skin", skin_keep)
+    FIG_EXTRA["wrist_l"] = J["handL"]
+    FIG_EXTRA["wrist_r"] = J["handR"]
+    add_shape_keys(skin, used, v, W, list(SHAPES), hands=True)
     objs.append(finish_piece(skin, rig, 0))
+    # Zähne und Zunge (sichtbar beim Sprechen), folgen Kiefer und Mimik
+    mouth, mused = make_mesh("mouth", base, v, W, {"helper-upper-teeth", "helper-lower-teeth", "helper-tongue"}, "teeth")
+    add_shape_keys(mouth, mused, v, W, ["jaw", "smile", "lips"])
+    objs.append(finish_piece(mouth, rig, 0))
+    objs.append(finish_piece(mouth_cavity(base, v, J), rig, 0))
     eyes, _ = make_mesh("eyes", base, v, W, {"helper-l-eye", "helper-r-eye"}, "eyeball")
     finish_piece(eyes, rig, 2)
     eye_uvs(eyes, [base.center(v, "helper-l-eye"), base.center(v, "helper-r-eye")])
@@ -784,6 +950,43 @@ def human(kind):
     return objs
 
 
+def mouth_cavity(base, v, J):
+    """Dunkle Mundhöhle hinter den Lippen (sonst sieht man bei offenem Mund durch den Kopf).
+    Unterer Teil folgt dem Kiefer-Formziel, damit die Höhle mitöffnet."""
+    import bmesh
+    c = base.center(v, "joint-mouth")
+    teeth = base.center(v, "helper-upper-teeth")
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=14, v_segments=10, radius=1.0)
+    bmesh.ops.scale(bm, vec=(0.024, 0.026, 0.022), verts=bm.verts)
+    me = bpy.data.meshes.new("mouth_cavity")
+    bm.to_mesh(me)
+    bm.free()
+    # Mittelpunkt etwas hinter die Zähne (Rig-Raum z = vorn)
+    ctr = np.array([c[0], (c[1] + teeth[1]) / 2 - 0.006, teeth[2] - 0.022])
+    for vt in me.vertices:
+        vt.co += B(ctr)
+    # Flächen nach innen zeigen lassen (von vorn sieht man die Innenseite)
+    for poly in me.polygons:
+        poly.flip()
+    me.materials.append(bpy.data.materials.get("mouth_inner") or bpy.data.materials.new("mouth_inner"))
+    o = bpy.data.objects.new("mouth_cavity", me)
+    bpy.context.scene.collection.objects.link(o)
+    vg = o.vertex_groups.new(name="head")
+    vg.add(list(range(len(me.vertices))), 1.0, "REPLACE")
+    # Kiefer: untere Hälfte mit dem Mundöffnen nach unten verschieben
+    jaw = shape_deltas("jaw", len(v))
+    chin_drop = float(np.abs(jaw[:, 1]).max()) * 0.85
+    o.shape_key_add(name="Basis", from_mix=False)
+    k = o.shape_key_add(name="jaw", from_mix=False)
+    for i, vt in enumerate(me.vertices):
+        if vt.co.z < B(ctr).z:
+            k.data[i].co = vt.co + Vector((0, 0, -chin_drop))
+    for p in me.polygons:
+        p.use_smooth = True
+    return o
+
+
 def lod1(objs):
     """Vereinfachte Figur für die Entfernung: Netze auf ~25 %, Haare nur als Grundkappe, keine Bärte."""
     import lib
@@ -797,6 +1000,11 @@ def lod1(objs):
         c.data = o.data.copy()
         bpy.context.scene.collection.objects.link(c)
         # Armatur-Modifikator bleibt, davor vereinfachen
+        if c.data.shape_keys:
+            c.shape_key_clear()
+        if n in ("mouth", "mouth_cavity"):
+            bpy.data.objects.remove(c, do_unlink=True)
+            continue
         arm = [m for m in c.modifiers if m.type == "ARMATURE"]
         for m in arm:
             c.modifiers.remove(m)

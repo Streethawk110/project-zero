@@ -42,18 +42,20 @@ const specs: { outfit: string; hair: number; beard: number; anim: string; t: num
   { outfit: 'armor_robe', hair: 4, beard: 2, anim: 'cast', t: 0.35, speed: 0, weapon: 'staff_oak', skin: 3, body: 0.5 },
   { outfit: 'armor_leather', hair: 1, beard: 0, anim: 'atk1', t: 0.25, speed: 0, weapon: 'sword_rusty', skin: 1, body: 0.6, sex: 1 },
   { outfit: 'guard', hair: 0, beard: 1, anim: 'block', t: 0.5, speed: 0, weapon: 'sword_steel', offhand: 'shield_guard', skin: 0, body: 0.9 },
+  { outfit: 'scholar', hair: 4, beard: 0, anim: 'idle', t: 1, speed: 0, weapon: 'bow_short', skin: 1, body: 0.35, sex: 1 },
 ];
 const only = params.get('only');
 const list = only !== null ? [specs[Number(only)]!] : specs;
 const rigs: HumanoidRig[] = [];
 list.forEach((s, i) => {
-  const rig = new HumanoidRig({ appearance: { skin: s.skin, hair: s.hair, hairColor: i % 6, beard: s.beard, body: s.body, height: 1, eyes: i % 4, scar: 0, sex: s.sex ?? 0 }, outfit: s.outfit });
+  const rig = new HumanoidRig({ faceSeed: params.get('seed') ? params.get('seed')! + i : undefined, appearance: { skin: s.skin, hair: s.hair, hairColor: i % 6, beard: s.beard, body: s.body, height: 1, eyes: i % 4, scar: 0, sex: s.sex ?? 0 }, outfit: s.outfit });
   rig.setEquipment(s.weapon ?? '', s.offhand ?? '', s.outfit);
   rig.root.position.set((i - (list.length - 1) / 2) * 1.25, 0, 0);
   rig.root.rotation.y = Math.PI + Number(params.get('turn') ?? 0.35);
   rig.play(s.anim, 0.8);
   // Pose bis zum gewünschten Zeitpunkt vorspulen
   for (let k = 0; k < 40; k++) rig.update(s.t / 40 + (k < 20 ? 0.02 : 0), s.speed);
+  if (params.get('talk')) { rig.talking = 5; rig.update(Number(params.get('talk')), 0); }
   if (params.get('lod') === '1') rig.setLod(1);
   scene.add(rig.root);
   rigs.push(rig);
