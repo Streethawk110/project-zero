@@ -28,6 +28,16 @@ Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
   stürzt ab → GTAO rendert eigenen G-Buffer.
 - Testen ohne GPU: `tools/dev/shot-game.mjs` (klickt per JS; mit
   `fpsCap` 2–4 und Schatten „niedrig“, sonst zu langsam).
+- Bäume: Kronen aus Blattkarten mit Wind (`render/foliage.ts`), Blatt-
+  Atlanten per Canvas; Kiefernstamm gekürzt. Wasser: Rausch-Normalen,
+  Himmelsspiegelung, Durchleuchten.
+- Texturen: Poly Haven/ambientCG sind per Netzwerkrichtlinie gesperrt
+  (Nutzer kann Domains freigeben). Stattdessen `tools/blender/textures.py`:
+  18 prozedurale Blender-Materialien, 4D-Torus-kachelbar, gebacken zu
+  2K-WebP (color/normal/arm = AO,Rauheit,Höhe) in
+  `public/assets/textures`. Vorschau: `tools/blender/preview_tex.py`.
+  Gelände-Shader v3: Höhen-Überblendung, echte Tangenten-Normalen, AO,
+  Kachelbruch. Laden: `loadBakedTextures(settings.textureQuality)`.
 
 ## 2026-09-24 – Cloud-Sitzung: Start „Project Zero“
 

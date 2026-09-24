@@ -143,6 +143,21 @@ npm run models:optimize                              # meshopt-Kompression (~2,7
 eine einfache Ersatzform – es bleibt also immer spielbar. Materialnamen aus Blender (z. B. `wood`, `plaster`,
 `stone_moss`, `crystal`) werden im Client durch prozedurale PBR-Materialien ersetzt.
 
+## Texturen (Blender)
+
+Alle Oberflächen sind nahtlos kachelbare 2K-PBR-Texturen, gebacken aus prozeduralen Blender-Materialien
+(`tools/blender/textures.py`): 8 Bodenarten (Wiese, Erde, Fels, Sand, Waldboden, Glasnarbe, Schnee,
+Kopfsteinpflaster) und 10 Bau-/Objektmaterialien (Holzbohlen, Kalkputz, Stroh, Tonziegel, Mauerwerk, Rinde,
+Eisen, Stoff, Leder, Haut). Je Material: Farbe, Normalen, sowie R = Umgebungsverdeckung, G = Rauheit,
+B = Höhe. Das Gelände mischt die Schichten höhenbasiert (Gras in Pflasterfugen, Sand in Felsspalten) und
+bricht die Kachelwiederholung auf.
+
+```bash
+python3 tools/blender/textures.py              # alle (2048 px, ~20 min auf der CPU)
+PZ_TEX_SIZE=1024 python3 tools/blender/textures.py grass rock   # einzelne, kleiner
+python3 tools/blender/preview_tex.py apps/client/public/assets/textures vorschau.png grass rock
+```
+
 ## Installierbare App (PWA) und Desktop-App
 
 **PWA:** Der Web-Build ist installierbar (Manifest, Symbole, Service Worker). Nach dem ersten Besuch sind

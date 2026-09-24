@@ -54,7 +54,72 @@ type Gen = (u: number, v: number) => { r: number; g: number; b: number; h: numbe
 export interface PBRSet {
   map: THREE.Texture;
   normalMap: THREE.Texture;
+  /** Bei gebackenen Texturen: R = Umgebungsverdeckung, G = Rauheit, B = Höhe */
   roughnessMap: THREE.Texture;
+  aoMap?: THREE.Texture;
+  /** Gebackene Bilder (bereits vertikal gespiegelt: Zeile 0 = unten) für das Gelände-Array */
+  bitmaps?: { size: number; color: ImageBitmap; normal: ImageBitmap; arm: ImageBitmap };
+}
+
+// ---------- Gebackene Blender-Texturen (tools/blender/textures.py) ----------
+
+export const BAKED_NAMES = ['grass', 'dirt', 'rock', 'sand', 'forest', 'glass', 'snow', 'cobble', 'wood', 'plaster', 'thatch', 'roof', 'stone', 'bark', 'metal', 'cloth', 'leather', 'skin'] as const;
+const baked = new Map<string, PBRSet>();
+
+async function bitmap(url: string, size: number) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${url}: ${r.status}`);
+  const blob = await r.blob();
+  // Gespiegelt laden (entspricht flipY), ohne Farbraum-Umrechnung (wichtig für Normalen)
+  return createImageBitmap(blob, { resizeWidth: size, resizeHeight: size, resizeQuality: 'high', colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'flipY' });
+}
+
+let scratch: HTMLCanvasElement | null = null;
+/** Pixel eines Bildes lesen (für das Gelände-Array; Speicher nur kurz belegt). */
+export function bitmapPixels(bmp: ImageBitmap) {
+  scratch ??= document.createElement('canvas');
+  scratch.width = bmp.width;
+  scratch.height = bmp.height;
+  const g = scratch.getContext('2d', { willReadFrequently: true })!;
+  g.clearRect(0, 0, bmp.width, bmp.height);
+  g.drawImage(bmp, 0, 0);
+  return g.getImageData(0, 0, bmp.width, bmp.height).data;
+}
+
+function bitmapTex(bmp: ImageBitmap, srgb: boolean) {
+  const t = new THREE.Texture(bmp);
+  t.flipY = false;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.magFilter = THREE.LinearFilter;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.generateMipmaps = true;
+  t.anisotropy = settings.graphics === 'ultra' || settings.graphics === 'hoch' ? 16 : 8;
+  t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  t.needsUpdate = true;
+  return t;
+}
+
+/** Lädt alle gebackenen Texturen in der gewählten Größe; fehlende Dateien fallen auf prozedurale zurück. */
+export async function loadBakedTextures(size: number, onProgress?: (p: number) => void, base = './assets/textures/') {
+  let done = 0;
+  await Promise.all(BAKED_NAMES.map(async (name) => {
+    try {
+      const sz = ['cloth', 'leather', 'skin', 'metal'].includes(name) ? Math.min(size, 1024) : size;
+      const [c, n, a] = await Promise.all(['color', 'normal', 'arm'].map((k) => bitmap(`${base}${name}_${k}.webp`, sz)));
+      const arm = bitmapTex(a!, false);
+      baked.set(name, { map: bitmapTex(c!, true), normalMap: bitmapTex(n!, false), roughnessMap: arm, aoMap: arm, bitmaps: { size: sz, color: c!, normal: n!, arm: a! } });
+    } catch (e) {
+      console.warn('Textur fehlt, nutze prozedurale:', name, e);
+    }
+    done++;
+    onProgress?.(done / BAKED_NAMES.length);
+  }));
+  return baked.size;
+}
+
+/** Gebackene Textur, falls vorhanden. */
+export function bakedSet(name: string) {
+  return baked.get(name);
 }
 
 const cache = new Map<string, PBRSet>();
@@ -112,7 +177,13 @@ function build(name: string, gen: Gen, normalStrength = 2, size = texSize): PBRS
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 const sat = (v: number) => Math.max(0, Math.min(1, v));
 
-export const TEX = {
+const withBaked = <T extends Record<string, () => PBRSet>>(t: T): T => {
+  const out = {} as Record<string, () => PBRSet>;
+  for (const [k, fn] of Object.entries(t)) out[k] = () => baked.get(k) ?? fn();
+  return out as T;
+};
+
+export const TEX = withBaked({
   grass: () => build('grass', (u, v) => {
     const n = tfbm(u, v, 8, 5, 1);
     const blades = tfbm(u * 1, v * 1, 64, 2, 2);
@@ -238,7 +309,7 @@ export const TEX = {
     const k = 0.92 + n * 0.1;
     return { r: k, g: k, b: k, h: n * 0.3, rough: 0.6 };
   }, 0.6, 256),
-};
+});
 
 /** Blattstruktur mit Alpha für Laub und Farn. */
 export function leafTexture(kind: 'pine' | 'oak' | 'grass'): THREE.Texture {

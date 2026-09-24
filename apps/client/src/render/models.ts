@@ -34,7 +34,8 @@ export function namedMaterial(name: string, fallbackColor?: THREE.Color): THREE.
   const std = (o: THREE.MeshStandardMaterialParameters) => new THREE.MeshStandardMaterial(o);
   const tex = (set: ReturnType<typeof TEX.grass>, rep = 1, extra: THREE.MeshStandardMaterialParameters = {}) => {
     const c = (t: THREE.Texture) => { const x = t.clone(); x.repeat.set(rep, rep); x.needsUpdate = true; return x; };
-    return std({ map: c(set.map), normalMap: c(set.normalMap), roughnessMap: c(set.roughnessMap), ...extra });
+    const ao = set.aoMap ? { aoMap: c(set.aoMap), aoMapIntensity: 0.9 } : {};
+    return std({ map: c(set.map), normalMap: c(set.normalMap), roughnessMap: c(set.roughnessMap), ...ao, ...extra });
   };
   let m: THREE.Material;
   switch (true) {

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { clamp, getHeightfield, roadFactor, smoothstep, VILLAGE, WORLD_HALF, riverDistance, RIVER_WIDTH, shoreLine, type Heightfield } from '@pz/shared';
-import { TEX, type PBRSet } from './textures.ts';
+import { TEX, bitmapPixels, type PBRSet } from './textures.ts';
 import { settings } from '../settings.ts';
 
 export const LAYERS = ['grass', 'dirt', 'rock', 'sand', 'forest', 'glass', 'snow', 'cobble'] as const;
@@ -37,27 +37,52 @@ export function splatAt(hf: Heightfield, x: number, z: number): number[] {
   return w.map((v) => v / sum);
 }
 
-function arrayTexture(sets: PBRSet[], key: 'map' | 'normalMap', packRough: boolean) {
-  const first = sets[0]![key].image as { width: number; height: number; data: Uint8Array };
-  const size = first.width;
-  const data = new Uint8Array(size * size * 4 * sets.length);
+/**
+ * Zwei Textur-Arrays für alle Bodenschichten:
+ *   A: RGB = Farbe, A = Rauheit
+ *   N: RG = Normale (xy), B = Höhe, A = Umgebungsverdeckung
+ * Gebackene Blender-Texturen, wenn alle vorhanden sind; sonst prozedural.
+ */
+function arrayTextures(sets: PBRSet[]) {
+  const useRaw = sets.every((s) => s.bitmaps && s.bitmaps.size === sets[0]!.bitmaps?.size);
+  const size = useRaw ? sets[0]!.bitmaps!.size : (sets[0]!.map.image as { width: number }).width;
+  const px = size * size;
+  const A = new Uint8Array(px * 4 * sets.length);
+  const N = new Uint8Array(px * 4 * sets.length);
   sets.forEach((s, i) => {
-    const img = s[key].image as { data: Uint8Array };
-    data.set(img.data, i * size * size * 4);
-    if (packRough) {
-      const r = (s.roughnessMap.image as { data: Uint8Array }).data;
-      for (let p = 0; p < size * size; p++) data[i * size * size * 4 + p * 4 + 3] = r[p * 4]!;
+    const o = i * px * 4;
+    if (useRaw) {
+      // Schicht für Schicht lesen, damit nie alle Pixel gleichzeitig im Speicher liegen
+      const b = s.bitmaps!;
+      const col = bitmapPixels(b.color);
+      for (let p = 0; p < px; p++) { const q = p * 4; A[o + q] = col[q]!; A[o + q + 1] = col[q + 1]!; A[o + q + 2] = col[q + 2]!; }
+      const arm = bitmapPixels(b.arm);
+      for (let p = 0; p < px; p++) { const q = p * 4; A[o + q + 3] = arm[q + 1]!; N[o + q + 2] = arm[q + 2]!; N[o + q + 3] = arm[q]!; }
+      const nrm = bitmapPixels(b.normal);
+      for (let p = 0; p < px; p++) { const q = p * 4; N[o + q] = nrm[q]!; N[o + q + 1] = nrm[q + 1]!; }
+    } else {
+      const c = (s.map.image as { data: Uint8Array }).data, n = (s.normalMap.image as { data: Uint8Array }).data, rg = (s.roughnessMap.image as { data: Uint8Array }).data;
+      for (let p = 0; p < px; p++) {
+        const q = p * 4;
+        A[o + q] = c[q]!; A[o + q + 1] = c[q + 1]!; A[o + q + 2] = c[q + 2]!; A[o + q + 3] = rg[q]!;
+        N[o + q] = n[q]!; N[o + q + 1] = n[q + 1]!; N[o + q + 2] = 128; N[o + q + 3] = 255;
+      }
     }
   });
-  const t = new THREE.DataArrayTexture(data, size, size, sets.length);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.magFilter = THREE.LinearFilter;
-  t.minFilter = THREE.LinearMipmapLinearFilter;
-  t.generateMipmaps = true;
-  t.anisotropy = settings.graphics === 'ultra' || settings.graphics === 'hoch' ? 16 : 8;
-  if (key === 'map') t.colorSpace = THREE.SRGBColorSpace;
-  t.needsUpdate = true;
-  return t;
+  const mk = (data: Uint8Array<ArrayBuffer>, srgb: boolean) => {
+    const t = new THREE.DataArrayTexture(data, size, size, sets.length);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.magFilter = THREE.LinearFilter;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.generateMipmaps = true;
+    t.anisotropy = settings.graphics === 'ultra' || settings.graphics === 'hoch' ? 16 : 8;
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    t.needsUpdate = true;
+    // Nach dem Hochladen auf die Grafikkarte die (großen) Pixeldaten im Browser freigeben
+    t.onUpdate = () => { (t.image as { data: Uint8Array | null }).data = null; };
+    return t;
+  };
+  return { albedo: mk(A, true), normals: mk(N, false), baked: useRaw };
 }
 
 export class Terrain {
@@ -69,9 +94,8 @@ export class Terrain {
   constructor() {
     const hf = getHeightfield();
     const sets = [TEX.grass(), TEX.dirt(), TEX.rock(), TEX.sand(), TEX.forest(), TEX.glass(), TEX.snow(), TEX.cobble()];
-    const albedo = arrayTexture(sets, 'map', true);
-    const normals = arrayTexture(sets, 'normalMap', false);
-    this.material = makeTerrainMaterial(albedo, normals);
+    const { albedo, normals, baked } = arrayTextures(sets);
+    this.material = makeTerrainMaterial(albedo, normals, baked);
 
     // Höhen- und Splat-Texturen (für Wasser, Gras und Minikarte)
     const hs = hf.size;
@@ -154,8 +178,10 @@ export class Terrain {
   }
 }
 
-function makeTerrainMaterial(albedo: THREE.DataArrayTexture, normals: THREE.DataArrayTexture) {
+function makeTerrainMaterial(albedo: THREE.DataArrayTexture, normals: THREE.DataArrayTexture, baked: boolean) {
   const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
+  // Maßstab: gebackene Kacheln entsprechen ~2,5 m, die prozeduralen ~4,5 m
+  const scale = baked ? 0.4 : 0.22;
   mat.onBeforeCompile = (shader) => {
     shader.uniforms['tAlbedo'] = { value: albedo };
     shader.uniforms['tNormal'] = { value: normals };
@@ -172,45 +198,86 @@ function makeTerrainMaterial(albedo: THREE.DataArrayTexture, normals: THREE.Data
         precision highp sampler2DArray;
         uniform sampler2DArray tAlbedo; uniform sampler2DArray tNormal;
         varying vec4 vS0; varying vec4 vS1; varying vec3 vWPos; varying vec3 vWNorm;
-        vec4 tri(sampler2DArray t, float layer, vec3 p, vec3 n, float sc) {
-          vec3 b = pow(abs(n), vec3(4.0)); b /= (b.x + b.y + b.z);
-          return texture(t, vec3(p.zy * sc, layer)) * b.x + texture(t, vec3(p.xz * sc, layer)) * b.y + texture(t, vec3(p.xy * sc, layer)) * b.z;
-        }
-        vec4 layerA(float l, vec2 uv, float far) {
-          vec4 a = texture(tAlbedo, vec3(uv, l));
-          vec4 b = texture(tAlbedo, vec3(uv * 0.23, l));
-          return mix(a, b, 0.35 + far * 0.4);
-        }
-        vec3 layerN(float l, vec2 uv) { return texture(tNormal, vec3(uv, l)).xyz * 2.0 - 1.0; }
+        const float TS = ${scale.toFixed(3)};
         float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+        float vnoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(hash12(i), hash12(i + vec2(1, 0)), f.x), mix(hash12(i + vec2(0, 1)), hash12(i + vec2(1, 1)), f.x), f.y); }
+        // Kachelbruch: zwei gegeneinander verdrehte/versetzte Abtastungen, per Rauschen überblendet
+        vec2 rot(vec2 uv, float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c) * uv; }
+        void sampleLayer(float l, vec2 uv, float breakT, out vec4 a, out vec4 n) {
+          vec2 uv2 = rot(uv, 1.3) * 0.87 + vec2(0.37, 0.61);
+          vec4 a1 = texture(tAlbedo, vec3(uv, l)), a2 = texture(tAlbedo, vec3(uv2, l));
+          vec4 n1 = texture(tNormal, vec3(uv, l)), n2 = texture(tNormal, vec3(uv2, l));
+          // Normalen der zweiten Abtastung zurückdrehen
+          vec2 n2xy = rot(n2.xy * 2.0 - 1.0, -1.3) * 0.5 + 0.5;
+          n2 = vec4(n2xy, n2.b, n2.a);
+          a = mix(a1, a2, breakT);
+          n = mix(n1, n2, breakT);
+        }
+        vec4 triA(float layer, vec3 p, vec3 nrm, float sc) {
+          vec3 b = pow(abs(nrm), vec3(4.0)); b /= (b.x + b.y + b.z);
+          return texture(tAlbedo, vec3(p.zy * sc, layer)) * b.x + texture(tAlbedo, vec3(p.xz * sc, layer)) * b.y + texture(tAlbedo, vec3(p.xy * sc, layer)) * b.z;
+        }
+        vec4 triN(float layer, vec3 p, vec3 nrm, float sc) {
+          vec3 b = pow(abs(nrm), vec3(4.0)); b /= (b.x + b.y + b.z);
+          return texture(tNormal, vec3(p.zy * sc, layer)) * b.x + texture(tNormal, vec3(p.xz * sc, layer)) * b.y + texture(tNormal, vec3(p.xy * sc, layer)) * b.z;
+        }
       `)
       .replace('#include <map_fragment>', `
-        vec2 tuv = vWPos.xz * 0.22;
+        vec2 tuv = vWPos.xz * TS;
         float camDist = length(vWPos - cameraPosition);
-        float far = smoothstep(20.0, 120.0, camDist);
+        float far = smoothstep(25.0, 160.0, camDist);
+        float breakT = smoothstep(0.35, 0.65, vnoise(vWPos.xz * 0.045));
         float w[8]; w[0]=vS0.x; w[1]=vS0.y; w[2]=vS0.z; w[3]=vS0.w; w[4]=vS1.x; w[5]=vS1.y; w[6]=vS1.z; w[7]=vS1.w;
-        vec4 acc = vec4(0.0); vec3 nacc = vec3(0.0);
+        vec4 la[8]; vec4 ln[8];
+        float hmax = -10.0;
         for (int i = 0; i < 8; i++) {
-          if (w[i] < 0.02) continue;
+          la[i] = vec4(0.0); ln[i] = vec4(0.5, 0.5, 0.0, 1.0);
+          if (w[i] < 0.015) continue;
           float l = float(i);
-          vec4 a; vec3 nn;
-          if (i == 2) { a = tri(tAlbedo, 2.0, vWPos, vWNorm, 0.12); nn = layerN(2.0, vWPos.xz * 0.12 + vWPos.y * 0.07); }
-          else { a = layerA(l, tuv * (i == 7 ? 1.4 : 1.0), far); nn = layerN(l, tuv); }
-          acc += a * w[i]; nacc += nn * w[i];
+          if (i == 2) { la[i] = triA(2.0, vWPos, vWNorm, TS * 0.55); ln[i] = triN(2.0, vWPos, vWNorm, TS * 0.55); }
+          else {
+            vec2 uv = tuv * (i == 7 ? 1.25 : 1.0);
+            sampleLayer(l, uv, breakT, la[i], ln[i]);
+            // In der Ferne zusätzlich gröbere Abtastung gegen Kachelmuster
+            if (far > 0.0) {
+              vec4 fa = texture(tAlbedo, vec3(uv * 0.21, l));
+              la[i].rgb = mix(la[i].rgb, (la[i].rgb + fa.rgb) * 0.5, far);
+            }
+          }
+          hmax = max(hmax, ln[i].b + w[i]);
         }
-        // Großflächige Farbvariation gegen Kachelwiederholung
-        float macro = texture(tAlbedo, vec3(vWPos.xz * 0.004, 0.0)).g;
-        acc.rgb *= mix(0.82, 1.12, macro);
+        // Höhenbasierte Überblendung: die „höhere“ Schicht setzt sich an Übergängen durch
+        vec4 acc = vec4(0.0); vec4 nacc = vec4(0.0); float wsum = 0.0;
+        for (int i = 0; i < 8; i++) {
+          if (w[i] < 0.015) continue;
+          float hw = max(ln[i].b + w[i] - hmax + 0.22, 0.0);
+          acc += la[i] * hw; nacc += ln[i] * hw; wsum += hw;
+        }
+        acc /= max(wsum, 1e-4); nacc /= max(wsum, 1e-4);
+        // Großflächige Farbvariation gegen Wiederholung
+        float macro = vnoise(vWPos.xz * 0.012) * 0.6 + vnoise(vWPos.xz * 0.05) * 0.4;
+        acc.rgb *= mix(0.84, 1.1, macro);
         diffuseColor.rgb *= acc.rgb;
         float terrainRough = acc.a;
-        vec3 terrainN = normalize(vec3(nacc.x, nacc.y, 1.0));
+        float terrainAO = mix(1.0, nacc.a, 0.85);
+        vec2 tnXY = nacc.xy * 2.0 - 1.0;
       `)
-      .replace('#include <roughnessmap_fragment>', `float roughnessFactor = clamp(terrainRough, 0.3, 1.0);`)
+      .replace('#include <roughnessmap_fragment>', `float roughnessFactor = clamp(terrainRough, 0.25, 1.0);`)
       .replace('#include <normal_fragment_maps>', `
-        vec3 wN = normalize(vWNorm + vec3(terrainN.x, 0.0, terrainN.y) * 0.55 * (1.0 - far * 0.7));
+        // Tangentenraum der Weltebene (u = x, v = z), an die Geländenormale angepasst
+        vec3 Ng = normalize(vWNorm);
+        vec3 T = normalize(vec3(1.0, 0.0, 0.0) - Ng * Ng.x);
+        vec3 B = cross(T, Ng);
+        float nStrength = mix(1.0, 0.45, far);
+        vec3 wN = normalize(T * tnXY.x * nStrength + B * tnXY.y * nStrength + Ng * sqrt(max(0.0, 1.0 - dot(tnXY, tnXY))));
         normal = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
+      `)
+      .replace('#include <aomap_fragment>', `
+        reflectedLight.indirectDiffuse *= terrainAO;
+        reflectedLight.directDiffuse *= mix(1.0, terrainAO, 0.35);
       `);
   };
-  mat.customProgramCacheKey = () => 'pz-terrain-v2';
+  mat.customProgramCacheKey = () => `pz-terrain-v3-${baked}`;
   return mat;
 }

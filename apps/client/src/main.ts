@@ -3,7 +3,7 @@ import { createCharacter, getWorldLayout, type Appearance, type OriginId } from 
 import { applyUiScale, settings } from './settings.ts';
 import { loadRuntimeConfig } from './config.ts';
 import { loadManifest, preloadModels } from './render/models.ts';
-import { setTextureSize, TEX } from './render/textures.ts';
+import { loadBakedTextures, setTextureSize, TEX } from './render/textures.ts';
 import { loadCloudNoise } from './render/clouds.ts';
 import { AudioEngine } from './audio/audio.ts';
 import { Game } from './game/game.ts';
@@ -46,8 +46,10 @@ async function boot() {
   await preloadModels((p) => { fill.style.transform = `scaleX(${0.1 + p * 0.3})`; });
   await progress(0.42, 'Gelände und Welt …');
   getWorldLayout();
-  await progress(0.55, 'Texturen …');
+  await progress(0.5, 'Texturen …');
   setTextureSize(Math.min(settings.textureQuality, 1024));
+  // Gebackene Blender-Texturen (fehlende werden prozedural ersetzt)
+  await loadBakedTextures(settings.textureQuality, (p) => { fill.style.transform = `scaleX(${0.5 + p * 0.2})`; });
   for (const k of Object.keys(TEX) as (keyof typeof TEX)[]) { TEX[k](); }
   await progress(0.75, 'Wolken …');
   await loadCloudNoise();
