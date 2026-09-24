@@ -126,6 +126,13 @@ Profiler nicht mitgezählt – behoben).
   Dietrich (`lockpick`) bei Pell, Truhen in Häusern (`hchest_i`, Loot
   `chest_home`, `owned` → Zeugen, Wachen verhängen Strafe).
   Minispiel `ui/lockpick.ts`. Im Spiel geprüft (Tür öffnen, Minispiel).
+- Einführung `ui/tutorial.ts` (10 Schritte, wartet auf echte Handlungen,
+  zeigt belegte Tasten, überspringbar; `settings.tutorialDone`, Schalter in
+  den Einstellungen). Spielstart blendet aus Schwarz auf + Ortstitel
+  (`showLocationTitle`), neue Gegend → Titel „Entdeckt“, weite Teleports →
+  Schwarzblende (`fadeThrough`).
+- E2E: Einzelspieler + Offline grün; Mehrspieler im Gesamtlauf einmal im Menü
+  hängen geblieben (Last), einzeln grün (4 min).
 - Test-Hinweis: Grafik „hoch“ ist ohne GPU hier so langsam (0,8 s Spielzeit
   in 30 s), dass Abläufe noch nicht begonnen haben → für Ablauf-Tests
   „niedrig“/„mittel“ nehmen.

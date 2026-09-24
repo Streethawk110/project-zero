@@ -9,6 +9,7 @@ import { MapWin } from './win_map.ts';
 import { CraftWin, RestWin, ShopWin, SteleWin, TradeWin } from './win_misc.ts';
 import { settingsPanel } from './settingsPanel.ts';
 import { LockpickUI } from './lockpick.ts';
+import { Tutorial } from './tutorial.ts';
 import type { Win } from './win.ts';
 import type { Game } from '../game/game.ts';
 import type { GameConnection } from '../net/connection.ts';
@@ -53,6 +54,8 @@ export class GameUI {
   private duelFrom: number | null = null;
   private lastInteractLabel = '';
   private lockpick: LockpickUI | null = null;
+  private tutorial: Tutorial | null = null;
+  private titleEl = h('div', { class: 'location-title' });
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -89,9 +92,46 @@ export class GameUI {
     this.chatEl.classList.toggle('hidden', conn.mode !== 'mp');
     this.hud.setChar(char);
     if (conn.mode === 'mp') this.chatMessage('System', `Willkommen online. ${keyLabel(settings.keys.chat[0] ?? 'Enter')} öffnet den Chat.`, 'system');
+    this.root.append(this.titleEl);
+    // Aus dem Schwarz aufblenden, Ortstitel einblenden
+    this.fadeEl.style.transition = 'none';
+    this.fadeEl.classList.add('on');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      this.fadeEl.style.transition = 'opacity 2.2s ease';
+      this.fadeEl.classList.remove('on');
+      setTimeout(() => { this.fadeEl.style.transition = ''; }, 2400);
+    }));
+    const z = ZONES.find((zz) => { const dx = char.pos.x - zz.x, dz = char.pos.z - zz.z; return dx * dx + dz * dz < zz.r * zz.r; });
+    this.showLocationTitle(z?.name ?? 'Tal von Haldenbruck', conn.mode === 'mp' ? 'Online' : 'Einzelspieler');
+    this.tutorial?.el.remove();
+    this.tutorial = null;
+    if (!settings.tutorialDone) {
+      setTimeout(() => {
+        if (!this.game || this.tutorial) return;
+        this.tutorial = new Tutorial(this.game, this, () => { this.tutorial = null; });
+        this.root.append(this.tutorial.el);
+      }, 3500);
+    }
+  }
+
+  /** Großer Ortstitel (Spielstart, neue Gegend), blendet von selbst aus. */
+  showLocationTitle(name: string, sub = '') {
+    this.titleEl.replaceChildren(h('div', { class: 'lt-name' }, name), sub ? h('div', { class: 'lt-sub' }, sub) : '');
+    this.titleEl.classList.remove('show');
+    void this.titleEl.offsetWidth;
+    this.titleEl.classList.add('show');
+  }
+
+  /** Kurze Schwarzblende (Schnellreise, Wiederbelebung, Instanzwechsel). */
+  fadeThrough(ms = 700) {
+    this.fadeEl.style.transition = `opacity ${ms / 2000}s ease`;
+    this.fadeEl.classList.add('on');
+    setTimeout(() => { this.fadeEl.classList.remove('on'); setTimeout(() => { this.fadeEl.style.transition = ''; }, ms / 2 + 50); }, ms / 2 + 80);
   }
 
   unmount() {
+    this.tutorial?.el.remove();
+    this.tutorial = null;
     this.game = null;
     this.conn = null;
     this.current?.close();
@@ -163,7 +203,7 @@ export class GameUI {
       }
       case 'codex': this.hud.feedLine(`Kodex: ${CODEX[e.id]?.title ?? e.id.replace('beast_', 'Bestiarium: ')}`, '#c6b3ff'); break;
       case 'achieve': { const ac = ACHIEVEMENTS[e.id]; if (ac) { this.hud.toast(`${ac.icon} Erfolg: ${ac.name}`, 'good', 6); a?.ui('achieve'); } break; }
-      case 'zone': { if (e.first) { const z = ZONES.find((x) => x.id === e.id); if (z) this.hud.toast(`Entdeckt: ${z.name}`, 'story', 4); } break; }
+      case 'zone': { if (e.first) { const z = ZONES.find((x) => x.id === e.id); if (z) { this.hud.toast(`Entdeckt: ${z.name}`, 'story', 4); this.showLocationTitle(z.name, 'Entdeckt'); } } break; }
       case 'interact_progress': this.hud.startProgress(e.name, e.dur); break;
       case 'interact_end': this.hud.endProgress(); break;
       case 'dialogue': this.showDialogue(e); break;
@@ -452,6 +492,7 @@ export class GameUI {
 
   frame(dt: number, g: Game) {
     this.hud.frame(dt, g);
+    this.tutorial?.frame(dt);
     const it = g.interactTarget;
     const label = it && !this.blocksGameInput() ? it.label : '';
     if (label !== this.lastInteractLabel) {

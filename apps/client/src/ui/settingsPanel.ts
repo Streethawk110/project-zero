@@ -66,6 +66,7 @@ export function settingsPanel(onClose: () => void, capture: (fn: (code: string) 
         ...row('Umgebung', range(() => settings.volAmbient, (v) => (settings.volAmbient = v), 0, 1, 0.05)),
         ...row('Stimmen & Oberfläche', range(() => settings.volVoice, (v) => (settings.volVoice = v), 0, 1, 0.05)),
         ...row('Sprachausgabe (Dialoge vorlesen)', toggle(() => settings.voiceOutput, (v) => (settings.voiceOutput = v))),
+        ...row('Einführung beim nächsten Spielstart zeigen', toggle(() => !settings.tutorialDone, (v) => (settings.tutorialDone = !v))),
       );
       body.append(grid);
       return;

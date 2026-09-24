@@ -124,6 +124,8 @@ export interface Settings {
   serverUrl: string;
   lastAccount: string;
   firstRun: boolean;
+  /** Einführung abgeschlossen/übersprungen */
+  tutorialDone: boolean;
 }
 
 const KEY = 'pz.settings.v1';
@@ -171,6 +173,7 @@ function defaults(): Settings {
     serverUrl: '',
     lastAccount: '',
     firstRun: true,
+    tutorialDone: false,
   };
 }
 

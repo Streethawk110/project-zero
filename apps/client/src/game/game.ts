@@ -336,6 +336,8 @@ export class Game {
         }
         case 'sfx': this.audio.sfx(e.id, e.x !== undefined ? new THREE.Vector3(e.x, e.y, e.z) : undefined); break;
         case 'teleport':
+          // Weite Sprünge (Schnellreise, Wiederbelebung) mit kurzer Schwarzblende statt hartem Schnitt
+          if (Math.hypot(e.x - this.pred.x, e.z - this.pred.z) > 25) this.ui.fadeThrough(900);
           this.pred.x = e.x; this.pred.y = e.y; this.pred.z = e.z; this.pred.vx = this.pred.vy = this.pred.vz = 0;
           this.prevPred = copyMoveState(this.pred);
           this.pending = [];
