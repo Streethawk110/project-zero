@@ -12,6 +12,35 @@ function disc(x: number, z: number, cx: number, cz: number, r: number, blend: nu
   return 1 - smoothstep(r, r + blend, d);
 }
 
+/**
+ * Gebirge: verzerrtes Grat-Multifraktal (scharfe Kämme, Seitengrate, Gipfel) mit
+ * Erosionsrinnen an den Flanken. 0 … ~1.
+ */
+function mountains(x: number, z: number) {
+  // Leichter Domain-Warp: Kämme verlaufen geschwungen statt in Rauschgitter-Richtungen
+  const wx = x + fbm(nDetail, x / 300, z / 300, 2) * 40;
+  const wz = z + fbm(nDetail, x / 300 + 7.1, z / 300 + 3.3, 2) * 40;
+  // Massive: großräumige Erhebungen, auf denen die Grate sitzen
+  const massif = smoothstep(-0.35, 0.6, fbm(nBase, wx / 230 + 11, wz / 230 - 5, 2));
+  let amp = 1, freq = 1 / 210, sum = 0, norm = 0, weight = 1;
+  for (let o = 0; o < 5; o++) {
+    let n = 1 - Math.abs(nRidge(wx * freq + o * 17.3, wz * freq - o * 9.1));
+    n *= n;
+    n *= weight;
+    // Feinere Grate nur dort, wo schon ein Kamm ist (Multifraktal)
+    weight = clamp(n * 1.6, 0, 1);
+    sum += n * amp;
+    norm += amp;
+    amp *= 0.45;
+    freq *= 2.1;
+  }
+  let m = (sum / norm) * (0.45 + massif * 0.75);
+  // Rinnen: gestreckte Erosionstäler an den Flanken
+  const g = Math.abs(nGlass(wx / 30 + wz / 80, wz / 30 - wx / 95));
+  m -= (1 - smoothstep(0, 0.22, g)) * 0.035 * smoothstep(0.2, 0.5, m);
+  return clamp(m * 1.2, 0, 1.05);
+}
+
 /** Wie stark ein Punkt auf einem Weg liegt (1 = Wegmitte). */
 export function roadFactor(x: number, z: number): number {
   let best = Infinity;
@@ -38,8 +67,7 @@ export function heightRaw(x: number, z: number): number {
   const west = smoothstep(-270, -400, x);
   const east = smoothstep(300, 410, x) * smoothstep(250, 150, z);
   const rim = Math.max(north, west, east);
-  const ridge = 1 - Math.abs(nRidge(x / 90, z / 90));
-  h += rim * (40 + ridge * ridge * 55);
+  if (rim > 0) h += rim * (34 + mountains(x, z) * 105 * smoothstep(0, 0.85, rim));
 
   // Nordhänge vor der Grube
   h += disc(x, z, 250, -270, 40, 90) * 22;

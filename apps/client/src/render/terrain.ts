@@ -6,7 +6,7 @@ import { settings } from '../settings.ts';
 export const LAYERS = ['grass', 'dirt', 'rock', 'sand', 'forest', 'glass', 'snow', 'cobble'] as const;
 
 /** Mischgewichte der Bodentexturen an einer Stelle. */
-export function splatAt(hf: Heightfield, x: number, z: number): number[] {
+export function splatAt(hf: Heightfield, x: number, z: number, rockSnow = true): number[] {
   const h = hf.height(x, z);
   const slope = hf.slope(x, z);
   const w = [1, 0, 0, 0, 0, 0, 0, 0];
@@ -30,12 +30,21 @@ export function splatAt(hf: Heightfield, x: number, z: number): number[] {
     set(1, 0.35);
     set(7, road);
   } else set(1, road * 0.95);
-  set(2, smoothstep(0.22, 0.42, slope));
-  set(6, smoothstep(62, 80, h) * (1 - smoothstep(0.35, 0.6, slope)));
+  // Fels und Schnee setzt im Freien der Pixel-Shader (feiner als das 2-m-Raster); hier nur für Masken
+  if (rockSnow) {
+    set(2, smoothstep(0.22, 0.42, slope));
+    set(6, snowAt(h, slope));
+  }
   if (x > 1000) { w.fill(0); w[2] = 1; }
   const sum = w.reduce((a, b) => a + b, 0) || 1;
   return w.map((v) => v / sum);
 }
+
+/** Schneeanteil (gleiche Formel wie im Geländeshader, ohne Rauschen) */
+export function snowAt(h: number, slope: number) {
+  return smoothstep(SNOW_LO, SNOW_HI, h) * (1 - smoothstep(0.32, 0.55, slope));
+}
+const SNOW_LO = 96, SNOW_HI = 118;
 
 /**
  * Zwei Textur-Arrays für alle Bodenschichten:
@@ -114,7 +123,7 @@ export class Terrain {
       const k = j * n + i;
       let s = splatCache.get(k);
       if (!s) {
-        s = splatAt(hf, -WORLD_HALF + i * hf.step, -WORLD_HALF + j * hf.step);
+        s = splatAt(hf, -WORLD_HALF + i * hf.step, -WORLD_HALF + j * hf.step, false);
         splatCache.set(k, s);
       }
       return s;
@@ -165,12 +174,17 @@ export class Terrain {
     // Grasmaske (Kanal R) und Waldboden (G) für Vegetationsshader und Karte
     for (let j = 0; j < splatRes; j++)
       for (let i = 0; i < splatRes; i++) {
-        const sp = getSplat(Math.min(i * 2, n - 1), Math.min(j * 2, n - 1));
+        const ii = Math.min(i * 2, n - 1), jj = Math.min(j * 2, n - 1);
+        const sp = getSplat(ii, jj);
+        // Fels/Schnee wie im Shader (ohne Rauschen) – verdrängen Gras und Waldboden
+        const x = -WORLD_HALF + ii * hf.step, z = -WORLD_HALF + jj * hf.step;
+        const slope = hf.slope(x, z), h = hf.data[jj * n + ii]!;
+        const rs = Math.min(1, Math.max(smoothstep(0.22, 0.42, slope), snowAt(h, slope)));
         const o = (j * splatRes + i) * 4;
-        splatData[o] = sp[0]! * 255;
-        splatData[o + 1] = sp[4]! * 255;
+        splatData[o] = sp[0]! * (1 - rs) * 255;
+        splatData[o + 1] = sp[4]! * (1 - rs) * 255;
         splatData[o + 2] = (sp[3]! + sp[5]!) * 255;
-        splatData[o + 3] = (sp[2]! + sp[6]!) * 255;
+        splatData[o + 3] = rs * 255;
       }
     this.splatTex = new THREE.DataTexture(splatData, splatRes, splatRes, THREE.RGBAFormat);
     this.splatTex.magFilter = THREE.LinearFilter;
@@ -229,6 +243,21 @@ function makeTerrainMaterial(albedo: THREE.DataArrayTexture, normals: THREE.Data
         float far = smoothstep(25.0, 160.0, camDist);
         float breakT = smoothstep(0.35, 0.65, vnoise(vWPos.xz * 0.045));
         float w[8]; w[0]=vS0.x; w[1]=vS0.y; w[2]=vS0.z; w[3]=vS0.w; w[4]=vS1.x; w[5]=vS1.y; w[6]=vS1.z; w[7]=vS1.w;
+        // Fels an steilen Flanken und Schnee auf Gipfeln pro Pixel (Rauschen bricht die Grenzen auf)
+        float mountainMask = 0.0;
+        if (vWPos.x < 1000.0) {
+          float slopeF = 1.0 - normalize(vWNorm).y;
+          float nz = vnoise(vWPos.xz * 0.09) * 0.55 + vnoise(vWPos.xz * 0.37) * 0.3 + vnoise(vWPos.xz * 1.3) * 0.15;
+          float rockF = smoothstep(0.2, 0.34, slopeF + (nz - 0.5) * 0.14);
+          rockF = max(rockF, smoothstep(${(SNOW_LO - 40).toFixed(1)}, ${(SNOW_LO - 5).toFixed(1)}, vWPos.y + (nz - 0.5) * 20.0) * 0.85);
+          float snowF = smoothstep(${SNOW_LO.toFixed(1)}, ${SNOW_HI.toFixed(1)}, vWPos.y + (nz - 0.5) * 22.0)
+                      * (1.0 - smoothstep(0.34, 0.6, slopeF + (nz - 0.5) * 0.25));
+          for (int i = 0; i < 8; i++) w[i] *= 1.0 - rockF;
+          w[2] = max(w[2], rockF);
+          for (int i = 0; i < 8; i++) w[i] *= 1.0 - snowF;
+          w[6] = max(w[6], snowF);
+          mountainMask = rockF;
+        }
         vec4 la[8]; vec4 ln[8];
         float hmax = -10.0;
         for (int i = 0; i < 8; i++) {
@@ -258,6 +287,13 @@ function makeTerrainMaterial(albedo: THREE.DataArrayTexture, normals: THREE.Data
         // Großflächige Farbvariation gegen Wiederholung
         float macro = vnoise(vWPos.xz * 0.012) * 0.6 + vnoise(vWPos.xz * 0.05) * 0.4;
         acc.rgb *= mix(0.84, 1.1, macro);
+        // Gesteinsschichten und Verwitterung an den Bergflanken (großräumig, gegen Kachelwirkung)
+        if (mountainMask > 0.0) {
+          float strata = sin(vWPos.y * 0.55 + vnoise(vWPos.xz * 0.02) * 6.0) * 0.5 + 0.5;
+          float stain = vnoise(vWPos.xz * 0.006 + vWPos.y * 0.01);
+          vec3 tint = mix(vec3(0.92, 0.9, 0.86), vec3(1.08, 1.0, 0.9), stain) * mix(0.86, 1.06, strata);
+          acc.rgb = mix(acc.rgb, acc.rgb * tint, mountainMask * (1.0 - w[6]));
+        }
         diffuseColor.rgb *= acc.rgb;
         float terrainRough = acc.a;
         float terrainAO = mix(1.0, nacc.a, 0.85);
@@ -278,6 +314,6 @@ function makeTerrainMaterial(albedo: THREE.DataArrayTexture, normals: THREE.Data
         reflectedLight.directDiffuse *= mix(1.0, terrainAO, 0.35);
       `);
   };
-  mat.customProgramCacheKey = () => `pz-terrain-v3-${baked}`;
+  mat.customProgramCacheKey = () => `pz-terrain-v4-${baked}`;
   return mat;
 }

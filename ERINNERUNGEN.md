@@ -125,6 +125,10 @@ Profiler nicht mitgezählt – behoben).
   (`Game.interiorAt`, `env.indoor`); Herdlichter per `light` (jetzt auch
   Liste mit ox/oz). Gras wird in Innenräumen ausgeblendet (`uRooms`).
   Im Spiel geprüft (Gasthaus, Wohnhaus). Vorschau: `preview_interior.py`.
+- Gebirge neu (`mountains()` in `packages/shared/src/world/terrain.ts`):
+  Massive + verzerrtes Grat-Multifraktal + Erosionsrinnen, Gipfel bis
+  ~180 m. Fels/Schnee setzt jetzt der Geländeshader pro Pixel (Neigung,
+  Höhe, Rauschen, Gesteinsschichten); Schneegrenze 96–118 m (`snowAt`).
 
 ## 2026-09-24 – Cloud-Sitzung: Start „Project Zero“
 
