@@ -131,6 +131,17 @@ Profiler nicht mitgezählt – behoben).
   den Einstellungen). Spielstart blendet aus Schwarz auf + Ortstitel
   (`showLocationTitle`), neue Gegend → Titel „Entdeckt“, weite Teleports →
   Schwarzblende (`fadeThrough`).
+- Kleidung neu (`garment()` in rig.ts): Stoff mit Sheen + feiner Webung
+  (Wiederholung 12), Leder, Kettenhemd (`chain`-Textur), Plattenstahl
+  (`plate`, nur Outfits mit `plate: true`), Stoffkapuze neu (Falten, Zipfel,
+  runder Ausschnitt), Haarkappe mit Strähnen-Maserung (`hairCapMaterial`).
+- OFFEN (Stand 20:57 UTC): Bart-Umbau in human.py (`beard_area`,
+  `beard_follow_jaw`) ist geschrieben/committet, aber noch NICHT gebaut/geprüft
+  → `build_all.py human_male`, Vorschau prüfen. Danach: Komfortfunktionen
+  (Aufgabe 27), voller Grafik-Umbau (HDRI-Umgebungslicht aus
+  gkjohnson/3d-demo-data, Figuren im Spiel prüfen), Web-Artifact aktualisieren.
+  Nutzer lässt die Cloud-Sitzung laufen und hat um Fortsetzung um 1:30 Uhr
+  (dt. Zeit) gebeten.
 - E2E: Einzelspieler + Offline grün; Mehrspieler im Gesamtlauf einmal im Menü
   hängen geblieben (Last), einzeln grün (4 min).
 - Test-Hinweis: Grafik „hoch“ ist ohne GPU hier so langsam (0,8 s Spielzeit
