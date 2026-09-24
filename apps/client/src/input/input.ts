@@ -50,6 +50,8 @@ export class Input {
       this.down.add(e.code);
       this.lastDevice = 'kbm';
       if (['Tab', 'Space', 'AltLeft', 'ArrowUp', 'ArrowDown'].includes(e.code) && !this.uiCaptureTyping(e)) e.preventDefault();
+      // Belegte Funktionstasten nicht an den Browser weitergeben (F5 lädt sonst die Seite neu, F1 öffnet die Hilfe)
+      if (/^F\d+$/.test(e.code) && e.code !== 'F12' && Object.values(settings.keys).some((ks) => ks.includes(e.code))) e.preventDefault();
     });
     window.addEventListener('keyup', (e) => {
       this.down.delete(e.code);

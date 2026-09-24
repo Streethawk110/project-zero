@@ -135,13 +135,18 @@ Profiler nicht mitgezählt – behoben).
   (Wiederholung 12), Leder, Kettenhemd (`chain`-Textur), Plattenstahl
   (`plate`, nur Outfits mit `plate: true`), Stoffkapuze neu (Falten, Zipfel,
   runder Ausschnitt), Haarkappe mit Strähnen-Maserung (`hairCapMaterial`).
-- OFFEN (Stand 20:57 UTC): Bart-Umbau in human.py (`beard_area`,
-  `beard_follow_jaw`) ist geschrieben/committet, aber noch NICHT gebaut/geprüft
-  → `build_all.py human_male`, Vorschau prüfen. Danach: Komfortfunktionen
-  (Aufgabe 27), voller Grafik-Umbau (HDRI-Umgebungslicht aus
-  gkjohnson/3d-demo-data, Figuren im Spiel prüfen), Web-Artifact aktualisieren.
-  Nutzer lässt die Cloud-Sitzung laufen und hat um Fortsetzung um 1:30 Uhr
-  (dt. Zeit) gebeten.
+- Bart gebaut und geprüft (Koteletten nur seitlich/unten, Mund = Mitte der
+  Zahnreihen, `beard_follow_jaw`). Stimmen: `voiceProfile()` (Geschlecht,
+  Größe/Statur → hell/dunkel, graues Haar → alt), Laute für Schmerz/Anstrengung/
+  Tod per Formant-Synthese (`audio.vocal`). Filmkamera: `DofPass`
+  (Tiefenschärfe) + Kinobalken, `renderer.setCinematic` im Dialog.
+  Kein Gras mehr auf Pflaster/Wegen.
+- Komfort (Aufgabe 27), im Spiel geprüft: Autolauf [O], Schnellspeichern [F5],
+  Schnellladen [F9], Anzeigen aus [F1], Fotomodus [F10] (freie Kamera, Schärfe
+  per Mausrad, Balken, Linksklick speichert PNG), Wegmarke per Doppelklick auf
+  der Karte (Kompass ⚑, verschwindet bei Ankunft), Pause beim Fensterwechsel
+  (Einstellung). Belegte F-Tasten werden nicht mehr an den Browser gegeben
+  (F5 hätte sonst die Seite neu geladen).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

@@ -283,8 +283,9 @@ export class Game {
   private sampleInput(): MoveInput {
     const i = this.input;
     let fx = 0, fz = 0;
-    if (!this.ui.blocksGameInput()) {
-      fz = (i.isDown('forward') ? 1 : 0) - (i.isDown('back') ? 1 : 0);
+    if (!this.ui.blocksGameInput() && !this.photo) {
+      if (i.isDown('forward') || i.isDown('back')) this.autoRun = false;
+      fz = (i.isDown('forward') || this.autoRun ? 1 : 0) - (i.isDown('back') ? 1 : 0);
       fx = (i.isDown('right') ? 1 : 0) - (i.isDown('left') ? 1 : 0);
       if (i.padMoveX || i.padMoveY) { fx = i.padMoveX; fz = -i.padMoveY; }
     }
@@ -574,8 +575,11 @@ export class Game {
     const room = this.inDungeon ? null : this.interiorAt(ppos.x, ppos.z);
     const ceil = this.inDungeon ? this.dungeonCeil(ppos.x, ppos.z) : room ? room.ceil : null;
     this.cam.fovBoost = this.me && this.playerRig?.anim === 'sprint' ? 6 : 0;
-    this.updateGaze(ppos);
-    this.cam.update(dt, ppos, this.inDungeon, ceil);
+    if (this.photo) this.photoFrame(dt);
+    else {
+      this.updateGaze(ppos);
+      this.cam.update(dt, ppos, this.inDungeon, ceil);
+    }
     this.env.update(this.dayTime, this.weather, this.snap?.wInt ?? 0, ppos, this.camera.position, dt, this.inDungeon, room ? 1 : 0);
     const skyCol = this.env.fog.color;
     this.water.update(this.time, this.env.sunDir, this.env.sun.color, skyCol, this.env.nightFactor, this.weather === 'rain' ? this.snap?.wInt ?? 0 : 0, this.env.skyTop, this.env.skyHorizon);
@@ -613,6 +617,7 @@ export class Game {
     this.footsteps(dt, ppos);
 
     this.renderer.render(this.scene, this.camera, dt);
+    if (this.shotPending) this.takeScreenshot();
     this.ui.frame(dt, this);
     i.endFrame();
   }
@@ -880,9 +885,80 @@ export class Game {
   }
 
   /** Aktionen pro Frame (Angriffe, Skills, Interaktion …). */
+  /** Automatisch geradeaus laufen (bis Vor/Zurück gedrückt wird) */
+  autoRun = false;
+
+  /** Fotomodus: freie Kamera, Welt angehalten (Einzelspieler), Tiefenschärfe und Balken einstellbar */
+  photo: { pos: THREE.Vector3; yaw: number; pitch: number; focus: number; bars: boolean; wasPaused: boolean } | null = null;
+  private shotPending = false;
+
+  togglePhoto() {
+    if (this.photo) {
+      const was = this.photo.wasPaused;
+      this.photo = null;
+      this.renderer.setCinematic(null, false);
+      if (!was) this.setPaused(false);
+      this.ui.setPhotoMode(false);
+      return;
+    }
+    this.photo = { pos: this.camera.position.clone(), yaw: this.cam.yaw, pitch: this.cam.pitch, focus: 4, bars: false, wasPaused: this.paused };
+    this.setPaused(true);
+    this.ui.setPhotoMode(true);
+    this.input.requestLock();
+  }
+
+  private photoFrame(dt: number) {
+    const ph = this.photo!;
+    const i = this.input;
+    if (i.locked) {
+      ph.yaw -= i.mouseDX * 0.0022 * settings.mouseSens;
+      ph.pitch = Math.max(-1.45, Math.min(1.45, ph.pitch - i.mouseDY * 0.0022 * settings.mouseSens * (settings.invertY ? -1 : 1)));
+    }
+    const sp = (i.isDown('sprint') ? 7 : 2.5) * dt;
+    const fwd = new THREE.Vector3(-Math.sin(ph.yaw) * Math.cos(ph.pitch), Math.sin(ph.pitch), -Math.cos(ph.yaw) * Math.cos(ph.pitch));
+    const right = new THREE.Vector3(Math.cos(ph.yaw), 0, -Math.sin(ph.yaw));
+    const mv = new THREE.Vector3();
+    if (i.isDown('forward')) mv.add(fwd);
+    if (i.isDown('back')) mv.sub(fwd);
+    if (i.isDown('right')) mv.add(right);
+    if (i.isDown('left')) mv.sub(right);
+    if (i.isDown('interact')) mv.y += 1;
+    if (i.isDown('quick')) mv.y -= 1;
+    const next = ph.pos.clone().addScaledVector(mv, sp);
+    // Nicht zu weit vom Spieler weg und nicht unter den Boden
+    const me = this.playerPos;
+    if (next.distanceTo(me) < 30) ph.pos.copy(next);
+    ph.pos.y = Math.max(ph.pos.y, getWorldLayout().hf.height(ph.pos.x, ph.pos.z) + 0.3);
+    if (i.wheel) ph.focus = Math.max(0.6, Math.min(60, ph.focus * (i.wheel > 0 ? 1.15 : 1 / 1.15)));
+    if (i.pressed('block')) ph.bars = !ph.bars;
+    if (i.pressed('attack')) this.shotPending = true;
+    this.camera.position.copy(ph.pos);
+    this.camera.lookAt(ph.pos.clone().add(fwd));
+    this.renderer.setCinematic(ph.focus, ph.bars);
+    this.ui.photoInfo(ph.focus, ph.bars);
+  }
+
+  /** Nach dem Rendern: Bild als PNG speichern (Fotomodus). */
+  private takeScreenshot() {
+    this.shotPending = false;
+    try {
+      const url = this.renderer.renderer.domElement.toDataURL('image/png');
+      const a = document.createElement('a');
+      const d = new Date();
+      a.download = `project-zero-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}${String(d.getSeconds()).padStart(2, '0')}.png`;
+      a.href = url;
+      a.click();
+      this.audio.ui('click');
+      this.ui.hud.toast('Foto gespeichert.', 'good', 2);
+    } catch {
+      this.ui.hud.toast('Foto konnte nicht gespeichert werden.', 'bad', 3);
+    }
+  }
+
   private handleActions(dt: number) {
     const i = this.input;
-    if (this.ui.blocksGameInput()) { this.attackDownT = -1; return; }
+    if (this.ui.blocksGameInput() || this.photo) { this.attackDownT = -1; return; }
+    if (i.pressed('autorun')) this.autoRun = !this.autoRun;
     if (i.pressed('jump')) this.latchJump = true;
     if (i.pressed('dodge')) this.latchDodge = true;
     if (i.isDown('sprint')) this.sprintDownT += dt; else {

@@ -342,3 +342,7 @@ h3 { font-size: 1.1em; color: var(--gold); }
 /* Gespräche: Anzeigen weich ausblenden (Kinoeinstellung) */
 #hud > * { transition: opacity 0.6s ease; }
 #hud.cinematic > * { opacity: 0 !important; pointer-events: none; }
+
+/* Anzeigen ausgeblendet (F1) / Fotomodus */
+#hud.hidden-all { display: none; }
+.photo-help { position: absolute; left: 50%; bottom: 1.2em; transform: translateX(-50%); padding: 0.5em 1em; background: rgba(0,0,0,0.55); color: #ddd4c2; border-radius: 4px; font-size: 0.85em; white-space: nowrap; pointer-events: none; }

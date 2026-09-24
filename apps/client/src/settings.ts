@@ -35,6 +35,11 @@ export const ACTIONS = {
   emote: 'Emotes',
   companion: 'Begleiterin: Befehl',
   pause: 'Pause / Menü',
+  autorun: 'Automatisch laufen (umschalten)',
+  quicksave: 'Schnellspeichern',
+  quickload: 'Schnellladen',
+  hideHud: 'Anzeigen aus-/einblenden',
+  photo: 'Fotomodus',
 } as const;
 export type Action = keyof typeof ACTIONS;
 
@@ -71,6 +76,11 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   emote: ['KeyT'],
   companion: ['KeyR'],
   pause: ['Escape'],
+  autorun: ['KeyO'],
+  quicksave: ['F5'],
+  quickload: ['F9'],
+  hideHud: ['F1'],
+  photo: ['F10'],
 };
 
 export type Quality = 'aus' | 'niedrig' | 'mittel' | 'hoch' | 'ultra';
@@ -126,6 +136,8 @@ export interface Settings {
   firstRun: boolean;
   /** Einführung abgeschlossen/übersprungen */
   tutorialDone: boolean;
+  /** Einzelspieler: beim Wechsel in ein anderes Fenster pausieren */
+  pauseOnBlur: boolean;
 }
 
 const KEY = 'pz.settings.v1';
@@ -174,6 +186,7 @@ function defaults(): Settings {
     lastAccount: '',
     firstRun: true,
     tutorialDone: false,
+    pauseOnBlur: true,
   };
 }
 

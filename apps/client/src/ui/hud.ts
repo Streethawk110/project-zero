@@ -57,6 +57,8 @@ export class Hud {
   char: CharacterData | null = null;
   snap: Snapshot | null = null;
   private markers: { x: number; z: number; t: number; from: string }[] = [];
+  /** Eigene Wegmarke (Karte: Doppelklick); verschwindet bei Ankunft */
+  waypoint: { x: number; z: number } | null = null;
   private lastHp = 1;
 
   constructor() {
@@ -362,6 +364,10 @@ export class Hud {
       }
     }
     for (const m of this.markers) addMark(m.x, m.z, '📍', '#8fd0ff');
+    if (this.waypoint) {
+      if (Math.hypot(this.waypoint.x - g.pred.x, this.waypoint.z - g.pred.z) < 5) { this.waypoint = null; this.toast('Wegmarke erreicht.', 'good', 2); }
+      else addMark(this.waypoint.x, this.waypoint.z, '⚑', '#ffe28a');
+    }
     const k = html.join('');
     if (this.compass.dataset['h'] !== k) {
       this.compass.innerHTML = `<div class="center"></div>${k}`;

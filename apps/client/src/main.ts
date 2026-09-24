@@ -102,6 +102,25 @@ async function boot() {
   };
 
   gameUi.onSave = save;
+  // Schnellladen: letzten Stand dieses Spielstands neu laden (mit Blende)
+  gameUi.onQuickLoad = () => {
+    try {
+      const f = readSlot(slot);
+      gameUi.fadeThrough(900);
+      setTimeout(() => {
+        clearInterval(autosaveT);
+        game.detach();
+        gameUi.unmount();
+        local = null;
+        startLocal(f.char, f.world);
+        gameUi.hud.toast('Schnellgeladen.', 'good', 2.5);
+      }, 450);
+    } catch (e) {
+      gameUi.hud.toast(`Kein Spielstand zum Laden: ${(e as Error).message}`, 'bad', 4);
+    }
+  };
+  // Einzelspieler: beim Wechsel in ein anderes Fenster pausieren
+  window.addEventListener('blur', () => { if (local && settings.pauseOnBlur && !game.paused) gameUi.openPause(); });
   gameUi.onMenu = toMenu;
   gameUi.onLoadMenu = () => { save(false); toMenu(); };
 

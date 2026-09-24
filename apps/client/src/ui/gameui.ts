@@ -55,6 +55,11 @@ export class GameUI {
   private lastInteractLabel = '';
   private lockpick: LockpickUI | null = null;
   private tutorial: Tutorial | null = null;
+  private photoEl = h('div', { class: 'photo-help hidden' });
+  private hudHidden = false;
+  /** Eigene Wegmarke (Karte: Doppelklick), wird im Kompass angezeigt */
+  waypoint: { x: number; z: number } | null = null;
+  onQuickLoad: (() => void) | null = null;
   private titleEl = h('div', { class: 'location-title' });
 
   constructor(root: HTMLElement) {
@@ -112,6 +117,19 @@ export class GameUI {
         this.root.append(this.tutorial.el);
       }, 3500);
     }
+  }
+
+  /** Fotomodus: Anzeigen aus, Hinweise zur Bedienung ein. */
+  setPhotoMode(on: boolean) {
+    this.hud.root.classList.toggle('hidden-all', on || this.hudHidden);
+    this.photoEl.classList.toggle('hidden', !on);
+    if (on && !this.photoEl.isConnected) this.root.append(this.photoEl);
+  }
+
+  photoInfo(focus: number, bars: boolean) {
+    const k = (a: keyof typeof settings.keys) => keyLabel(settings.keys[a][0] ?? '');
+    const txt = `Fotomodus · ${k('forward')}${k('left')}${k('back')}${k('right')} bewegen · ${k('interact')}/${k('quick')} hoch/runter · ${k('sprint')} schneller · Mausrad: Schärfe ${focus.toFixed(1)} m · ${k('block')}: Balken ${bars ? 'aus' : 'an'} · ${k('attack')}: Foto speichern · ${k('photo')}/Esc: beenden`;
+    if (this.photoEl.textContent !== txt) this.photoEl.textContent = txt;
   }
 
   /** Großer Ortstitel (Spielstart, neue Gegend), blendet von selbst aus. */
@@ -306,6 +324,27 @@ export class GameUI {
 
   handleHotkeys(i: Input) {
     if (this.lockpick) { i.pressed('pause', true); return; }
+    if (this.game?.input.typing) return;
+    // Fotomodus: nur eigene Tasten
+    if (this.game?.photo) {
+      if (i.pressed('photo', true) || i.pressed('pause', true)) this.game.togglePhoto();
+      return;
+    }
+    if (i.pressed('quicksave', true)) {
+      if (this.mode === 'sp') this.onSave?.(true); else this.hud.toast('Online wird automatisch auf dem Server gespeichert.', 'info', 3);
+      return;
+    }
+    if (i.pressed('quickload', true)) {
+      if (this.mode === 'sp') this.onQuickLoad?.(); else this.hud.toast('Schnellladen gibt es nur im Einzelspieler.', 'warn', 3);
+      return;
+    }
+    if (i.pressed('hideHud', true)) {
+      this.hudHidden = !this.hudHidden;
+      this.hud.root.classList.toggle('hidden-all', this.hudHidden);
+      if (this.hudHidden) this.hud.toast(`Anzeigen ausgeblendet – ${keyLabel(settings.keys.hideHud[0] ?? 'F1')} blendet sie wieder ein.`, 'info', 2.5);
+      return;
+    }
+    if (i.pressed('photo', true) && !this.blocksGameInput()) { this.game?.togglePhoto(); return; }
     // Dialogauswahl per Zifferntasten
     if (this.dialogueOpen) {
       for (let k = 0; k < 6; k++) {

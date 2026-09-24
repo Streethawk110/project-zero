@@ -30,8 +30,13 @@ export class MapWin extends Win {
     this.canvas.addEventListener('wheel', (e) => { this.zoom = Math.max(0.8, Math.min(8, this.zoom * (e.deltaY > 0 ? 0.85 : 1.18))); this.draw(); e.preventDefault(); }, { passive: false });
     this.canvas.addEventListener('dblclick', (e) => {
       const w = this.toWorld(e);
-      this.ui.conn?.marker?.(w.x, w.z, 'ping');
-      this.ui.hud.addMarker('Du', w.x, w.z);
+      // Eigene Wegmarke setzen (erneuter Doppelklick in der Nähe entfernt sie)
+      const cur = this.ui.hud.waypoint;
+      if (cur && Math.hypot(cur.x - w.x, cur.z - w.z) < 12 / Math.max(0.5, this.zoom)) this.ui.hud.waypoint = null;
+      else {
+        this.ui.hud.waypoint = { x: w.x, z: w.z };
+        if (this.ui.mode === 'mp') this.ui.conn?.marker?.(w.x, w.z, 'ping');
+      }
       this.draw();
     });
   }
@@ -72,7 +77,7 @@ export class MapWin extends Win {
     this.legend.append(
       h('h3', null, 'Legende'),
       h('div', null, '▲ Du'), h('div', { style: { color: '#ffb070' } }, '🔥 Ruhepunkt'), h('div', { style: { color: '#f1d59a' } }, '◆ Questziel'), h('div', { style: { color: '#8fd0ff' } }, '📍 Markierung'), h('div', { style: { color: '#6fb8ff' } }, '● Gruppe'),
-      h('div', { class: 'dim small', style: { margin: '0.6em 0' } }, 'Ziehen: verschieben · Mausrad: zoomen · Doppelklick: Markierung setzen (für die Gruppe sichtbar)'),
+      h('div', { class: 'dim small', style: { margin: '0.6em 0' } }, 'Ziehen: verschieben · Mausrad: zoomen · Doppelklick: Wegmarke setzen/entfernen (im Mehrspieler auch für die Gruppe)'),
       h('h3', null, 'Schnellreise'),
       near ? h('div', { class: 'small' }, `Du rastest an: ${near.name}`) : h('div', { class: 'dim small' }, 'Nur von einem Ruhepunkt aus möglich.'),
       ...REST_POINTS.filter((r) => c.flags['rest_' + r.id]).map((r) => h('button', { class: 'btn small', style: { margin: '0.2em 0', width: '100%' }, disabled: !near || near.id === r.id, onClick: () => { this.ui.cmd({ t: 'travel', rest: r.id }); this.ui.closeWindow(); } }, r.name)),
@@ -145,6 +150,8 @@ export class MapWin extends Win {
     for (const o of st?.objectives ?? []) if (o.marker && o.marker.x < 1000 && (qs!.progress[o.id] ?? 0) < (o.count ?? 1)) icon(o.marker.x, o.marker.z, '◆', '#f1d59a', 18);
     for (const ev of this.ui.snap?.ev ?? []) icon(ev.x, ev.z, '⚠', '#ff8a70', 18);
     for (const m of this.ui.markers) icon(m.x, m.z, '📍', '#8fd0ff');
+    const wp = this.ui.hud.waypoint;
+    if (wp) icon(wp.x, wp.z, '⚑', '#ffe28a', 20);
     for (const pm of this.ui.party?.members ?? []) if (pm.online && pm.eid !== this.ui.conn?.eid) icon(pm.x, pm.z, '●', '#6fb8ff', 14);
     const gm = this.ui.game;
     if (gm && gm.pred.x < 1000) {
