@@ -17,12 +17,34 @@ describe('Ruf in Haldenbruck (KCD2-artig)', () => {
     const price0 = inv.buyPrice(p.char, 'pell', 'bread');
     w.witness(p, 'Einbruch');
     expect(p.char.rep.folk).toBe(-8);
+    // Die Wache stellt den Spieler: Gespräch mit offener Strafe
+    expect(p.dialogue?.node).toBe('caught_root');
+    expect(p.char.flags['fine']).toBe(25);
+    const choice = (text: string) => {
+      const ev = p.outbox.filter((e) => e.e === 'dialogue').pop() as { choices: { text: string; idx: number }[] };
+      const c = ev.choices.find((x) => x.text.startsWith(text))!;
+      w.command('p1', { t: 'dialogue_choose', idx: c.idx });
+    };
+    choice('Schon gut, ich zahle');
     expect(p.char.gold).toBe(75);
-    // Verrufen: doppelte Strafe
+    expect(p.char.flags['fine']).toBe(0);
+    // Verrufen: doppelte Strafe; Davonlaufen → Kopfgeld und Ruf sinkt weiter
     p.char.rep.folk = -40;
     w.witness(p, 'Diebstahl');
-    expect(p.char.gold).toBe(45);
+    expect(p.char.flags['fine']).toBe(30);
     expect(p.char.rep.folk).toBe(-45);
+    choice('[Davonlaufen]');
+    expect(p.char.flags['bounty']).toBe(60);
+    expect(p.char.rep.folk).toBe(-55);
+    expect(p.dialogue).toBeFalsy();
+    // Beim nächsten Treffen stellt die Wache den Gesuchten; Kerker tilgt die Schuld
+    for (let i = 0; i < 30 && !p.dialogue; i++) { w.teleport(p, guard.m.x + 2, guard.m.z); w.step(0.05); }
+    expect(p.dialogue?.node).toBe('caught_root');
+    expect(p.char.flags['fine']).toBe(60);
+    choice('So viel hab ich nicht');
+    expect(p.char.flags['fine']).toBe(0);
+    expect(p.char.flags['bounty']).toBe(0);
+    expect(p.char.rep.folk).toBe(-60);
     expect(inv.buyPrice(p.char, 'pell', 'bread')).toBeGreaterThanOrEqual(price0);
     // Geachtet: günstiger
     p.char.rep.folk = 60;

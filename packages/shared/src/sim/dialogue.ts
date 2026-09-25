@@ -17,7 +17,8 @@ function fill(text: string, p: PlayerEnt) {
   return text
     .replaceAll('{name}', p.char.name)
     .replaceAll('{origin}', ORIGINS[p.char.origin].name)
-    .replaceAll('{gold}', String(p.char.gold));
+    .replaceAll('{gold}', String(p.char.gold))
+    .replaceAll('{fine}', String(p.char.flags['fine'] ?? 0));
 }
 
 export function startDialogue(w: World, p: PlayerEnt, e: NpcEnt | CompanionEnt) {
@@ -34,8 +35,14 @@ export function startDialogue(w: World, p: PlayerEnt, e: NpcEnt | CompanionEnt) 
   gotoNode(w, p, npcId, root);
 }
 
+/** Gespräch direkt an einem Knoten öffnen (z. B. Wache stellt den Spieler). */
+export function openDialogueAt(w: World, p: PlayerEnt, npc: string, nodeId: string) {
+  gotoNode(w, p, npc, nodeId);
+}
+
 function gotoNode(w: World, p: PlayerEnt, npc: string, nodeId: string | null | undefined) {
   if (!nodeId) {
+    w.dialogueClosed(p);
     p.dialogue = null;
     w.emit(p, { e: 'dialogue_end' });
     return;
@@ -66,6 +73,7 @@ export function chooseDialogue(w: World, p: PlayerEnt, idx: number) {
   const d = p.dialogue;
   if (!d) return;
   if (idx === -1 || d.node === '__end') {
+    w.dialogueClosed(p);
     p.dialogue = null;
     w.emit(p, { e: 'dialogue_end' });
     return;
@@ -78,8 +86,8 @@ export function chooseDialogue(w: World, p: PlayerEnt, idx: number) {
   // NSC muss noch in der Nähe sein
   if (d.npc !== 'isra' || w.opts.mode === 'mp') {
     let near = false;
-    for (const e of w.ents.values()) if (e.kind === 'npc' && e.def.id === d.npc && Math.hypot(e.m.x - p.m.x, e.m.z - p.m.z) < 8) near = true;
-    if (!near && d.npc !== 'isra') { p.dialogue = null; w.emit(p, { e: 'dialogue_end' }); return; }
+    for (const e of w.ents.values()) if (e.kind === 'npc' && e.def.id === d.npc && Math.hypot(e.m.x - p.m.x, e.m.z - p.m.z) < ((p.char.flags['fine'] ?? 0) > 0 ? 16 : 8)) near = true;
+    if (!near && d.npc !== 'isra') { w.dialogueClosed(p); p.dialogue = null; w.emit(p, { e: 'dialogue_end' }); return; }
   }
   if (ch.effects) w.applyEffects(p, ch.effects);
   gotoNode(w, p, d.npc, ch.next);

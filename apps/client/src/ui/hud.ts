@@ -138,7 +138,9 @@ export class Hud {
         const cls = v < 8 ? 'crit' : v < 25 ? 'low' : '';
         return `<span class="need ${cls}" title="${label}: ${v} %${cls ? ' – ' + (cls === 'crit' ? crit : low) : ''}">${icon}<i style="width:${Math.max(2, Math.round(v * 0.4))}px"></i></span>`;
       };
-      const html = need('🍞', 'Sättigung', me.fd, 'hungrig (weniger Ausdauer)', 'ausgehungert') + need('💤', 'Ausgeruht', me.rs, 'müde (Ausdauer erholt sich langsamer)', 'erschöpft');
+      const bounty = this.char?.flags['bounty'] ?? 0;
+      const wanted = bounty > 0 ? `<span class="need wanted" title="Gesucht: ${bounty} Gold Kopfgeld. Jede Wache stellt dich.">⚖ Gesucht · ${bounty}</span>` : '';
+      const html = need('🍞', 'Sättigung', me.fd, 'hungrig (weniger Ausdauer)', 'ausgehungert') + need('💤', 'Ausgeruht', me.rs, 'müde (Ausdauer erholt sich langsamer)', 'erschöpft') + wanted;
       if (this.needsEl.dataset['h'] !== html) { this.needsEl.innerHTML = html; this.needsEl.dataset['h'] = html; }
     }
     this.vignette.classList.toggle('low', hpf < 0.3);

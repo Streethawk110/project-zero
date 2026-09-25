@@ -3,7 +3,7 @@
 // Bedingungen:  "flag:x & !quest:mq1:done | rep:order>=10"
 //   Atome: flag:NAME[op N], quest:ID[=STAGE|:done|:any|:failed], item:ID[op N], rep:FAC op N,
 //          touch op N, level op N, gold op N, attr:str op N, origin:ID, mode:sp|mp, night, day,
-//          world:FLAG, companion op N, choice:NAME (Alias für flag)
+//          world:FLAG, companion op N, choice:NAME (Alias für flag), canpay (Gold ≥ offene Strafe)
 //   '&' bindet stärker als '|', '!' negiert ein Atom.
 
 import type { Attr, CharacterData, FactionId } from '../types.ts';
@@ -85,6 +85,8 @@ function evalAtom(ctx: ScriptCtx, s: string): boolean {
       return cmp(v, op ?? '>=', n);
     }
     case 'origin': return c.origin === rest;
+    // Genug Gold für die offene Strafe (flag:fine)
+    case 'canpay': return c.gold >= (c.flags['fine'] ?? 0);
     case 'mode': return ctx.mode === rest;
     case 'touch': case 'level': case 'gold': case 'companion': {
       const [, op, n] = splitOp(s);
@@ -129,6 +131,7 @@ export type Effect =
   | { t: 'need'; food?: number; rest?: number }
   | { t: 'sleep' }
   | { t: 'dice'; bet: number }
+  | { t: 'fine'; op: 'pay' | 'talk' | 'scare' | 'jail' }
   | { t: 'respec' }
   | { t: 'toast'; text: string };
 
@@ -184,6 +187,7 @@ function parseEffectRaw(s: string): Effect {
     case 'need': return parts[0] === 'rest' ? { t: 'need', rest: num(parts[1]) } : { t: 'need', food: num(parts[1]) };
     case 'sleep': return { t: 'sleep' };
     case 'dice': return { t: 'dice', bet: num(a, 10) };
+    case 'fine': return { t: 'fine', op: a as 'pay' };
     case 'restore': return { t: 'restore' };
     case 'respec': return { t: 'respec' };
     case 'toast': return { t: 'toast', text: a };

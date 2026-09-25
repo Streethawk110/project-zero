@@ -211,6 +211,11 @@ Profiler nicht mitgezählt – behoben).
   jede Auswahl (`World.diceCmd`, Befehl `dice` roll/bank/quit, validate.ts), Gewinn = doppelter
   Einsatz. Client `ui/dice.ts` (Holztisch, anklickbare Würfel, Tasten 1–6/Leertaste/Enter/Esc,
   Gegnerzüge werden Wurf für Wurf gezeigt), Klang `dice_roll`. Test `dice.test.ts` (37 Unit-Tests).
+- KCD2-Umbau Teil 6: ERTAPPT. Wache stellt den Spieler (`World.confront`, Dialog `caught_root`):
+  zahlen (`canpay`), [Überreden] (Int/Ges/Ruf), [Einschüchtern] (Stärke ≥ 6, Fehlschlag = ×1,5),
+  Kerker (`jail`: 12 h im SP, Hunger, Ruf −5, vor dem Vogthaus), Davonlaufen → Kopfgeld = 2× Strafe
+  (`flags.bounty`, Ruf −10); Wachen erkennen Gesuchte beim Vorbeigehen. HUD „⚖ Gesucht“.
+  Hook `World.dialogueClosed` (alle Wege, die ein Gespräch beenden).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

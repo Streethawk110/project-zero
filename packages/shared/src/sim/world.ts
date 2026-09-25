@@ -22,12 +22,12 @@ import { fogDecode, fogEncode, fogReveal } from './character.ts';
 import type { Area, CompanionEnt, EnemyEnt, Ent, LootEnt, NpcEnt, PlayerEnt, ProjEnt, StatusInst, ZoneEnt } from './entities.ts';
 import { EMPTY_INPUT, MOVE, newMoveState, stepMovement, TICK_DT, type MoveEnv, type MoveInput, groundHeight } from './movement.ts';
 import { evalCond, parseEffect, type ScriptCtx } from './script.ts';
-import { computeStats, weaponDamage, xpToNext, ATTR_PER_LEVEL, SKILL_PER_LEVEL, damageReduction, rank } from './stats.ts';
+import { computeStats, weaponDamage, xpToNext, ATTR_PER_LEVEL, SKILL_PER_LEVEL, damageReduction, rank, totalAttrs } from './stats.ts';
 import * as inv from './inventory.ts';
 import { updateEnemy } from './ai.ts';
 import { castSkill, updateZone, tryGleichklang } from './skills.ts';
 import { questEvent, startQuest, completeQuest, checkCollectObjectives, checkFlagObjectives, setQuestStage } from './quests.ts';
-import { startDialogue, chooseDialogue } from './dialogue.ts';
+import { startDialogue, chooseDialogue, openDialogueAt } from './dialogue.ts';
 import { updateCompanion, spawnCompanion } from './companion.ts';
 import { WorldEvents } from './worldEvents.ts';
 import { ACHIEVEMENTS } from '../content/achievements.ts';
@@ -277,6 +277,7 @@ export class World {
         chooseDialogue(this, p, cmd.idx);
         return;
       case 'dialogue_end':
+        if (p.dialogue) this.dialogueClosed(p);
         p.dialogue = null;
         this.emit(p, { e: 'dialogue_end' });
         return;
@@ -1548,6 +1549,9 @@ export class World {
         case 'dice':
           if (p.dialogue) this.startDice(p, p.dialogue.npc, ef.bet);
           break;
+        case 'fine':
+          this.fineEffect(p, ef.op);
+          break;
         case 'respec':
           this.emit(p, { e: 'respec_open' });
           break;
@@ -1636,13 +1640,77 @@ export class World {
     if (guard) {
       // Wer im Ort geachtet ist, kommt glimpflicher davon; Verrufene zahlen doppelt
       const base = what === 'Einbruch' ? 25 : 15;
-      const fine = Math.min(p.char.gold, Math.round(base * (rep >= 40 ? 0.5 : rep <= -30 ? 2 : 1)));
-      p.char.gold -= fine;
-      p.charDirty = true;
-      this.toast(p, `${best.def.name} hat dich erwischt: ${fine} Gold Strafe.`, 'bad');
+      this.confront(p, best, Math.round(base * (rep >= 40 ? 0.5 : rep <= -30 ? 2 : 1)));
     } else {
       this.toast(p, `${best.def.name} hat dich gesehen.`, 'warn');
     }
+  }
+
+  // ======================= Ertappt: Strafe, Ausreden, Kerker =======================
+
+  /** Wache stellt den Spieler: zahlen, herausreden, einschüchtern oder in den Kerker (wie in KCD2). */
+  confront(p: PlayerEnt, guard: NpcEnt, amount: number) {
+    const f = p.char.flags;
+    f['fine'] = Math.max(1, Math.round(amount + (f['bounty'] ?? 0)));
+    f['bounty'] = 0;
+    f['fine_try'] = 0;
+    p.charDirty = true;
+    if (p.dialogue) p.dialogue = null;
+    openDialogueAt(this, p, guard.def.id, 'caught_root');
+  }
+
+  /** Gespräch endet; war die Strafe noch offen, ist der Spieler davongelaufen → Kopfgeld. */
+  dialogueClosed(p: PlayerEnt) {
+    const f = p.char.flags;
+    const fine = f['fine'] ?? 0;
+    if (fine <= 0) return;
+    f['fine'] = 0;
+    f['bounty'] = Math.min(300, fine * 2);
+    p.charDirty = true;
+    this.applyEffects(p, ['rep:folk-10']);
+    this.toast(p, `Du bist der Wache davongelaufen. Kopfgeld: ${f['bounty']} Gold – jede Wache hält jetzt nach dir Ausschau.`, 'bad');
+  }
+
+  private fineEffect(p: PlayerEnt, op: 'pay' | 'talk' | 'scare' | 'jail') {
+    const c = p.char, f = c.flags;
+    const fine = f['fine'] ?? 0;
+    if (fine <= 0) return;
+    const a = totalAttrs(c);
+    const rep = c.rep.folk ?? 0;
+    const cleared = () => { f['fine'] = 0; f['bounty'] = 0; p.charDirty = true; };
+    if (op === 'pay') {
+      const n = Math.min(c.gold, fine);
+      c.gold -= n;
+      cleared();
+      this.emit(p, { e: 'sfx', id: 'coins' });
+      this.toast(p, `Strafe bezahlt: ${n} Gold.`, 'warn');
+    } else if (op === 'talk') {
+      f['fine_try'] = 1;
+      const chance = clamp(0.3 + (a.int - 6) * 0.06 + (a.dex - 6) * 0.02 + rep / 150, 0.08, 0.85);
+      f['fine_ok'] = this.rand.next() < chance ? 1 : 0;
+      if (f['fine_ok']) cleared();
+    } else if (op === 'scare') {
+      f['fine_try'] = 1;
+      const chance = clamp(0.25 + (a.str - 6) * 0.07 + (c.level - 1) * 0.03, 0.05, 0.8);
+      f['fine_ok'] = this.rand.next() < chance ? 1 : 0;
+      if (f['fine_ok']) { cleared(); this.applyEffects(p, ['rep:folk-3']); }
+      else { f['fine'] = Math.round(fine * 1.5); p.charDirty = true; }
+    } else {
+      cleared();
+      this.jail(p);
+    }
+  }
+
+  /** Eine Nacht im Kerker des Vogthauses: Zeit vergeht, Hunger, Ruf sinkt – die Strafe ist abgegolten. */
+  private jail(p: PlayerEnt) {
+    const n = needsOf(p.char);
+    n.food = Math.max(0, n.food - 30);
+    n.rest = Math.min(100, n.rest + 40);
+    this.applyEffects(p, ['rep:folk-5']);
+    if (this.opts.mode === 'sp') this.dayTime = (this.dayTime + 0.5) % 1;
+    this.teleport(p, 7, 66.5);
+    this.toast(p, this.opts.mode === 'sp' ? 'Zwölf Stunden im Kerker des Vogthauses. Hungrig, aber frei.' : 'Du sitzt deine Strafe im Kerker des Vogthauses ab.', 'bad');
+    p.charDirty = true;
   }
 
   // ======================= Würfeln =======================
@@ -1731,6 +1799,13 @@ export class World {
     for (const p of this.players.values()) {
       if (p.area !== n.area || p.dialogue || this.time < (p.greetAt ?? 0)) continue;
       if (dist2(n.m.x, n.m.z, p.m.x, p.m.z) > 3.2 * 3.2) continue;
+      // Gesucht: die Wache stellt den Spieler statt zu grüßen
+      if (isGuard(def.id) && (p.char.flags['bounty'] ?? 0) > 0 && !(p.char.flags['fine'] ?? 0)) {
+        n.greetAt = this.time + 20;
+        this.emit(p, { e: 'bark', eid: n.id, name: def.name, text: 'Dich kenn ich doch! Stehen bleiben!', dur: 2.5 });
+        this.confront(p, n, 0);
+        return;
+      }
       const rep = p.char.rep.folk ?? 0;
       const name = p.char.name;
       const night = this.isNight;

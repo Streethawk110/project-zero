@@ -351,6 +351,36 @@ const nodes: DialogueNode[] = [
     { text: 'Ist es sicher im Dorf?', next: 'watch_safe' },
     end('Nichts.'),
   ]),
+  // Ertappt (Wache stellt den Spieler; Strafe in flag:fine, Probe-Ergebnis in flag:fine_ok)
+  N('caught_root', 'Stehen bleiben! Ich hab genau gesehen, was du da getrieben hast. Das macht {fine} Gold – oder du kommst mit ins Loch.', [
+    { text: 'Schon gut, ich zahle. ({fine} Gold)', cond: 'canpay', effects: ['fine:pay'], next: 'caught_paid' },
+    { text: '[Überreden] Das ist ein Missverständnis. Ich wollte nur nach dem Rechten sehen …', cond: '!flag:fine_try', effects: ['fine:talk'], next: 'caught_talk' },
+    { text: '[Einschüchtern] Überleg dir gut, mit wem du dich anlegst.', cond: '!flag:fine_try & attr:str>=6', effects: ['fine:scare'], next: 'caught_scare' },
+    { text: 'So viel hab ich nicht. Dann steck mich eben ein.', effects: ['fine:jail'], next: 'caught_jail' },
+    end('[Davonlaufen]'),
+  ]),
+  N('caught_paid', 'Na also. Und jetzt Finger weg von fremdem Eigentum, sonst wird’s teurer.', [end('Verstanden.')]),
+  N('caught_talk', 'Die Wache mustert dich lange.', [
+    { text: '[Weiter]', cond: 'flag:fine_ok', next: 'caught_talk_ok' },
+    { text: '[Weiter]', cond: '!flag:fine_ok', next: 'caught_talk_fail' },
+  ]),
+  N('caught_talk_ok', 'Hm. Na gut. Diesmal glaub ich dir. Aber ich hab dein Gesicht gesehen.', [end('Danke.')]),
+  N('caught_talk_fail', 'Nach dem Rechten sehen, ja? Netter Versuch. {fine} Gold. Jetzt.', [
+    { text: 'Schon gut, ich zahle. ({fine} Gold)', cond: 'canpay', effects: ['fine:pay'], next: 'caught_paid' },
+    { text: 'So viel hab ich nicht. Dann steck mich eben ein.', effects: ['fine:jail'], next: 'caught_jail' },
+    end('[Davonlaufen]'),
+  ]),
+  N('caught_scare', 'Die Wache greift zum Schwert – und zögert.', [
+    { text: '[Weiter]', cond: 'flag:fine_ok', next: 'caught_scare_ok' },
+    { text: '[Weiter]', cond: '!flag:fine_ok', next: 'caught_scare_fail' },
+  ]),
+  N('caught_scare_ok', 'Schon gut, schon gut … Verschwinde einfach. Und lass dich hier nicht so schnell wieder blicken.', [end('Klug von dir.')]),
+  N('caught_scare_fail', 'Du drohst mir? Einer Wache? Das kostet jetzt {fine} Gold, und zwar sofort.', [
+    { text: 'Schon gut, ich zahle. ({fine} Gold)', cond: 'canpay', effects: ['fine:pay'], next: 'caught_paid' },
+    { text: 'So viel hab ich nicht. Dann steck mich eben ein.', effects: ['fine:jail'], next: 'caught_jail' },
+    end('[Davonlaufen]'),
+  ]),
+  N('caught_jail', 'Dann komm. Eine Nacht bei Wasser und Brot hat noch keinem geschadet.', [end('[Mitgehen]')]),
   N('watch_safe', 'Sicher? Tagsüber ja. Nachts gehen wir Streife, zwei Runden, Fackeln an. Wer nachts in fremde Häuser steigt, zahlt – oder sitzt. Merk dir das.', [end('Verstanden.')]),
 
   // ============================ JORUN ============================
