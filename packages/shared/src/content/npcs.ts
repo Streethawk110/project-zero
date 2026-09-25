@@ -1,4 +1,5 @@
 import type { NpcDef } from '../types.ts';
+import type { RoutineStep } from '../world/routines.ts';
 
 export const NPCS: NpcDef[] = [
   {
@@ -98,5 +99,127 @@ export const NPCS: NpcDef[] = [
     bark: ['Das Dorf atmet jetzt mit dem Wald.'],
   },
 ];
+
+// ============================ Tagesabläufe ============================
+// Uhrzeiten in Stunden. Schlafen = im Haus verschwinden; Mahlzeiten im Gasthaus „Letzte Laterne“.
+
+const PATROL_A = ['gate_w', 'x_west', 'x_nw', 'x_north', 'gate_n', 'x_north', 'x_ne', 'x_east', 'gate_e', 'x_east', 'x_e', 'plaza', 'x_w', 'x_west'];
+const PATROL_B = ['gate_s', 'x_south', 'x_se', 'x_east', 'gate_e', 'x_east', 'x_e', 'plaza', 'x_w', 'x_sw', 'gate_s'];
+const FIELDS = ['field_a', 'field_b', 'field_c'];
+const MARKET = ['market_pell', 'market_n', 'market_e', 'market_w', 'well'];
+const SQUARE = ['plaza', 'well', 'bench_n', 'bench_e'];
+
+const ROUTINES: Record<string, RoutineStep[]> = {
+  vogt: [
+    { from: 22, to: 7, act: 'sleep', at: 'vogthaus' },
+    { from: 7, to: 11, act: 'work', at: 'vogthaus', rot: -Math.PI / 2 },
+    { from: 11, to: 12, act: 'wander', route: ['plaza', 'market_pell', 'well'] },
+    { from: 12, to: 13, act: 'sit', at: 'inn_seat_a' },
+    { from: 13, to: 18, act: 'work', at: 'vogthaus', rot: -Math.PI / 2 },
+    { from: 18, to: 22, act: 'sit', at: 'inn_seat_b' },
+  ],
+  oswin: [
+    { from: 22, to: 6, act: 'sleep', at: 'smithy' },
+    { from: 6, to: 12, act: 'work', at: 'smithy', rot: Math.PI },
+    { from: 12, to: 13, act: 'sit', at: 'inn_seat_c' },
+    { from: 13, to: 19, act: 'work', at: 'smithy', rot: Math.PI },
+    { from: 19, to: 22, act: 'talk', at: 'plaza', rot: 0.8 },
+  ],
+  pell: [
+    { from: 22, to: 7, act: 'sleep', at: 'h5_in' },
+    { from: 7, to: 19, act: 'work', at: 'market_pell', rot: 0 },
+    { from: 19, to: 22, act: 'sit', at: 'inn_seat_a' },
+  ],
+  hedda: [
+    { from: 0, to: 6, act: 'sleep', at: 'inn_counter' },
+    { from: 6, to: 24, act: 'work', at: 'inn_counter', rot: -2.4 },
+  ],
+  brann: [
+    { from: 22, to: 6, act: 'sleep', at: 'h1_in' },
+    { from: 6, to: 14, act: 'idle', at: 'gate_w', rot: Math.PI / 2 },
+    { from: 14, to: 22, act: 'patrol', route: PATROL_A },
+  ],
+  lina: [
+    { from: 20, to: 8, act: 'sleep', at: 'h2_in' },
+    { from: 8, to: 20, act: 'wander', route: ['well', 'plaza', 'bench_n', 'market_n', 'cart', 'x_n'] },
+  ],
+  ute: [
+    { from: 21, to: 6, act: 'sleep', at: 'h2_in' },
+    { from: 6, to: 11, act: 'work', at: 'well', rot: -2.3 },
+    { from: 11, to: 13, act: 'wander', route: MARKET },
+    { from: 13, to: 18, act: 'work', at: 'well', rot: -2.3 },
+    { from: 18, to: 21, act: 'talk', at: 'bench_n', rot: 0 },
+  ],
+  ysolde: [
+    { from: 23, to: 5, act: 'sleep', at: 'chapel' },
+    { from: 5, to: 23, act: 'work', at: 'chapel', rot: -Math.PI / 2 },
+  ],
+  aldric: [
+    { from: 22, to: 8, act: 'sleep', at: 'kontor' },
+    { from: 8, to: 18, act: 'work', at: 'kontor', rot: 0 },
+    { from: 18, to: 22, act: 'talk', at: 'bench_e', rot: -1.5 },
+  ],
+  tam: [
+    { from: 21, to: 5, act: 'sleep', at: 'h4_in' },
+    { from: 5, to: 12, act: 'work', route: FIELDS },
+    { from: 12, to: 13, act: 'sit', at: 'inn_seat_b' },
+    { from: 13, to: 19, act: 'work', route: FIELDS },
+    { from: 19, to: 21, act: 'talk', at: 'plaza', rot: -2.4 },
+  ],
+};
+for (const n of NPCS) if (ROUTINES[n.id]) n.routine = ROUTINES[n.id];
+
+// ============================ Dorfbewohner und Wachen ============================
+// Keine Questfiguren: Sie leben im Dorf, arbeiten, essen, reden und schlafen – und erzählen Gerüchte.
+
+interface Folk { id: string; name: string; title: string; sex: 0 | 1; home: number; outfit: string; work: string[]; dialogue: string; evening: string; bark: string[]; hair: number; hairColor: number; beard?: number; skin: number; height: number; body: number; shift: number }
+const FOLK: Folk[] = [
+  { id: 'folk_grete', name: 'Grete', title: 'Bäuerin', sex: 1, home: 9, outfit: 'peasant', work: FIELDS, dialogue: 'folk_a', evening: 'bench_n', bark: ['Die Ernte wird schlecht. Die Ähren glühen nachts.', 'Hast du den Himmel gesehen? Zu hell für die Jahreszeit.'], hair: 2, hairColor: 3, skin: 1, height: 0.97, body: 0.55, shift: 0.3 },
+  { id: 'folk_jost', name: 'Jost', title: 'Knecht', sex: 0, home: 9, outfit: 'peasant', work: FIELDS, dialogue: 'folk_b', evening: 'plaza', bark: ['Heu machen, Heu fahren, Heu machen …', 'Einer von uns hat Tam die Rüben geklaut. Ich war’s nicht.'], hair: 0, hairColor: 2, beard: 1, skin: 2, height: 1.02, body: 0.75, shift: -0.2 },
+  { id: 'folk_anna', name: 'Anna', title: 'Magd im Gasthaus', sex: 1, home: 0, outfit: 'maid', work: ['inn_seat_a', 'inn_seat_b', 'inn_seat_c', 'h0_in'], dialogue: 'folk_c', evening: 'inn_seat_c', bark: ['Noch ein Bier? Oder zwei?', 'Hedda zahlt schlecht, aber pünktlich.'], hair: 1, hairColor: 6, skin: 0, height: 0.95, body: 0.4, shift: 0.1 },
+  { id: 'folk_ulf', name: 'Ulf', title: 'Holzfäller', sex: 0, home: 9, outfit: 'woodsman', work: ['woodpile', 'workbench', 'x_nw'], dialogue: 'folk_a', evening: 'inn_seat_b', bark: ['Im Nordwald splittern die Bäume von innen.', 'Axt, Rücken, Bier. Mehr brauch ich nicht.'], hair: 5, hairColor: 1, beard: 2, skin: 2, height: 1.06, body: 0.95, shift: 0.5 },
+  { id: 'folk_kuno', name: 'Kuno', title: 'Fischer', sex: 0, home: 7, outfit: 'fisher', work: ['x_south', 'x_se', 'gate_s'], dialogue: 'folk_b', evening: 'bench_e', bark: ['Die Fische kommen in Schwärmen, die man nie gesehen hat.', 'Salz und Netze, Netze und Salz.'], hair: 3, hairColor: 5, beard: 2, skin: 3, height: 0.98, body: 0.6, shift: -0.4 },
+  { id: 'folk_veit', name: 'Veit', title: 'Tagelöhner', sex: 0, home: 3, outfit: 'peasant', work: ['cart', 'woodpile', 'x_n', 'smithy'], dialogue: 'folk_c', evening: 'plaza', bark: ['Arbeit gibt’s genug. Lohn nicht.', 'Der Kontor zahlt in Nullglas. Wer will das schon?'], hair: 0, hairColor: 0, beard: 1, skin: 1, height: 1.0, body: 0.5, shift: 0.2 },
+  { id: 'folk_elsa', name: 'Elsa', title: 'Weberin', sex: 1, home: 6, outfit: 'maid', work: ['h6_out', 'market_e', 'market_n'], dialogue: 'folk_a', evening: 'bench_e', bark: ['Leinen ist ehrlich. Seide lügt.', 'Meine Schwester sagt, im Moor singt etwas.'], hair: 4, hairColor: 2, skin: 1, height: 0.96, body: 0.45, shift: 0.6 },
+  { id: 'folk_bodo', name: 'Bodo', title: 'Hirte', sex: 0, home: 4, outfit: 'woodsman', work: ['field_b', 'x_north', 'gate_n'], dialogue: 'folk_b', evening: 'inn_seat_a', bark: ['Drei Schafe weg. Keine Spuren. Keine Wölfe.', 'Die Hunde bellen den Mond an. Jede Nacht.'], hair: 1, hairColor: 3, beard: 1, skin: 2, height: 0.99, body: 0.5, shift: -0.6 },
+  { id: 'folk_mats', name: 'Mats', title: 'Junge', sex: 0, home: 3, outfit: 'child', work: SQUARE, dialogue: 'folk_c', evening: 'well', bark: ['Wetten, ich bin schneller als du?', 'Lina sagt, Glimmer ist ein Geist. Ich glaub ihr nicht.'], hair: 1, hairColor: 4, skin: 0, height: 0.64, body: 0.2, shift: 0.4 },
+  { id: 'folk_berta', name: 'Berta', title: 'Alte Frau', sex: 1, home: 6, outfit: 'peasant', work: ['bench_n', 'well', 'market_w'], dialogue: 'folk_a', evening: 'bench_n', bark: ['Früher war der Himmel dunkler. Und die Leute freundlicher.', 'Setz dich, Kind. Oder geh. Aber steh nicht so rum.'], hair: 2, hairColor: 5, skin: 1, height: 0.92, body: 0.5, shift: -0.3 },
+];
+
+for (const f of FOLK) {
+  const s = f.shift;
+  NPCS.push({
+    id: f.id, name: f.name, title: f.title, x: 20 + (FOLK.indexOf(f) % 5) * 2, z: 38 + Math.floor(FOLK.indexOf(f) / 5) * 2, rot: 0, dialogue: f.dialogue,
+    appearance: { sex: f.sex, outfit: f.outfit, skin: f.skin, hair: f.hair, hairColor: f.hairColor, beard: f.beard ?? 0, height: f.height, body: f.body },
+    bark: f.bark,
+    routine: [
+      { from: 21.5 + s, to: 6 + s, act: 'sleep', at: `h${f.home}_in` },
+      { from: 6 + s, to: 12, act: 'work', route: f.work },
+      { from: 12, to: 13 + s * 0.5, act: 'wander', route: MARKET },
+      { from: 13 + s * 0.5, to: 18 + s, act: 'work', route: f.work },
+      { from: 18 + s, to: 21.5 + s, act: f.evening.startsWith('inn') ? 'sit' : 'talk', at: f.evening },
+    ],
+  });
+}
+
+const NODES_POS: Record<string, [number, number]> = { gate_n: [20, 88.5], gate_s: [8, -10], gate_e: [69, 24], x_west: [-16, 38] };
+// Dorfwache: tagsüber an den Toren, nachts zwei Streifen mit Fackeln
+const WATCH: { id: string; name: string; day: string; rot: number; night: string[] | null; home: number; sex: 0 | 1; hairColor: number; beard: number }[] = [
+  { id: 'watch_1', name: 'Dorfwache Harm', day: 'gate_n', rot: Math.PI, night: PATROL_A, home: 0, sex: 0, hairColor: 1, beard: 1 },
+  { id: 'watch_2', name: 'Dorfwache Lutz', day: 'gate_s', rot: 0, night: PATROL_B, home: 8, sex: 0, hairColor: 2, beard: 2 },
+  { id: 'watch_3', name: 'Dorfwache Irmel', day: 'gate_e', rot: -Math.PI / 2, night: null, home: 5, sex: 1, hairColor: 3, beard: 0 },
+  { id: 'watch_4', name: 'Dorfwache Konz', day: 'x_west', rot: Math.PI / 2, night: null, home: 1, sex: 0, hairColor: 5, beard: 1 },
+];
+for (const w of WATCH) {
+  const g = NODES_POS[w.day]!;
+  NPCS.push({
+    id: w.id, name: w.name, title: 'Dorfwache von Haldenbruck', x: g[0], z: g[1], rot: w.rot, dialogue: 'watch_root', torch: true, gear: ['sword_guard', ''],
+    appearance: { sex: w.sex, outfit: 'guard', skin: 1, hair: w.sex ? 4 : 0, hairColor: w.hairColor, beard: w.beard, height: 1.02, body: 0.75 },
+    bark: ['Weitergehen. Nichts zu sehen.', 'Nachts bleibt man drinnen, wenn man klug ist.', 'Ich hab ein Auge auf dich.'],
+    routine: w.night
+      ? [{ from: 6, to: 19, act: 'idle', at: w.day, rot: w.rot }, { from: 19, to: 6, act: 'patrol', route: w.night }]
+      : [{ from: 6, to: 20, act: 'patrol', route: w.id === 'watch_3' ? PATROL_B : PATROL_A }, { from: 20, to: 6, act: 'sleep', at: `h${w.home}_in` }],
+  });
+}
 
 export const NPC_BY_ID: Record<string, NpcDef> = Object.fromEntries(NPCS.map((n) => [n.id, n]));

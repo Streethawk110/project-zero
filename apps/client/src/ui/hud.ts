@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getWorldLayout, ITEMS, QUEST_BY_ID, SKILL_BY_ID, xpToNext, zoneAt, ZONES, INTERACTABLES, countItem, REST_POINTS, type CharacterData, type GameEvent, type Snapshot } from '@pz/shared';
+import { getWorldLayout, ITEMS, NPC_BY_ID, QUEST_BY_ID, SKILL_BY_ID, xpToNext, zoneAt, ZONES, INTERACTABLES, countItem, REST_POINTS, type CharacterData, type GameEvent, type Snapshot } from '@pz/shared';
 import { h, clear, itemIcon, tooltip } from './dom.ts';
 import { keyLabel, settings } from '../settings.ts';
 import { mapImage, worldToMap, MAP_RES } from './mapimage.ts';
@@ -355,7 +355,9 @@ export class Hud {
       for (const o of st?.objectives ?? []) {
         if (!o.marker || (qs!.progress[o.id] ?? 0) >= (o.count ?? 1)) continue;
         if ((o.marker.x > 1000) !== g.inDungeon) continue;
-        addMark(o.marker.x, o.marker.z, '◆', '#f1d59a');
+        // Markierung am Arbeitsplatz eines NSC: folgt dem NSC, wenn er gerade zu sehen ist (Tagesablauf)
+        const live = liveNpcMarker(g, o.marker.x, o.marker.z);
+        addMark(live?.x ?? o.marker.x, live?.z ?? o.marker.z, '◆', '#f1d59a');
       }
       for (const ev of this.snap?.ev ?? []) addMark(ev.x, ev.z, '⚠', '#ff8a70');
       // Tobins Kompass zeigt versteckte Truhen
@@ -436,4 +438,14 @@ export class Hud {
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+}
+
+/** Position eines sichtbaren NSC, dessen Stammplatz bei (x, z) liegt – sonst null. */
+function liveNpcMarker(g: { ents: { views: Map<number, { kind: string; npcId?: string; pos: { x: number; z: number } }> } }, x: number, z: number) {
+  for (const v of g.ents.views.values()) {
+    if (v.kind !== 'n' || !v.npcId) continue;
+    const d = NPC_BY_ID[v.npcId];
+    if (d && Math.hypot(d.x - x, d.z - z) < 7) return v.pos;
+  }
+  return null;
 }

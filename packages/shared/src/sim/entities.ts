@@ -155,6 +155,13 @@ export interface NpcEnt extends BaseEnt {
   wanderT: number;
   wanderTo: { x: number; z: number } | null;
   talkT: number;
+  /** Tagesablauf: Weg (Wegpunkte), Ziel, zuletzt erreichter Wegpunkt, im Haus verschwunden */
+  path?: string[];
+  pathTarget?: string | null;
+  lastNode?: string | null;
+  hidden?: boolean;
+  patrolIdx?: number;
+  stuckT?: number;
 }
 
 export interface CompanionEnt extends BaseEnt {

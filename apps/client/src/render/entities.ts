@@ -43,6 +43,11 @@ export class EntityView {
   height = 1.8;
   flying = 0;
   appearance?: Appearance;
+  /** Fackel der Nachtwache (nur nachts sichtbar) */
+  torch?: THREE.Object3D;
+  torchLight?: VLight;
+  /** NSC-Kennung (für Questmarkierungen, die dem NSC folgen) */
+  npcId?: string;
 
   constructor(id: number, kind: SnapEntity['k']) {
     this.id = id;
@@ -130,7 +135,28 @@ export class EntityManager {
       }
       case 'n': {
         const def = NPC_BY_ID[s.d ?? ''];
+        v.npcId = def?.id;
         const rig = new HumanoidRig({ appearance: def?.appearance, outfit: def?.appearance.outfit ?? 'villager', faceSeed: def?.id });
+        if (def?.gear) rig.setEquipment(def.gear[0], def.gear[1], '');
+        if (def?.torch) {
+          // Fackel in der linken Hand: Holzstiel, Pechkopf, Flamme mit Licht
+          const torch = new THREE.Group();
+          const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.55, 6), namedMaterial('wood_dark'));
+          stick.position.y = 0.12;
+          const head = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.028, 0.1, 7), namedMaterial('metal_dark'));
+          head.position.y = 0.42;
+          const flame = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.2, 7), namedMaterial('fire'));
+          flame.position.y = 0.55;
+          torch.add(stick, head, flame);
+          const l = new VLight(0xff9a48, 5, 11);
+          l.position.y = 0.6;
+          torch.add(l);
+          torch.rotation.x = -0.35;
+          rig.j.handL.add(torch);
+          torch.visible = false;
+          v.torch = torch;
+          v.torchLight = l;
+        }
         if (def?.id === 'oswin') rig.setEquipment('mace_order', '', '');
         if (def?.id === 'brann' || def?.id === 'order_guard') rig.setEquipment('sword_guard', 'shield_guard', '');
         if (def?.id === 'ysolde') rig.setEquipment('mace_order', '', '');
@@ -278,6 +304,8 @@ export class EntityManager {
 
   /** Kameraposition (für Detailstufen der Figuren), von Game gesetzt. */
   camPos = new THREE.Vector3();
+  /** 0 = Tag … 1 = Nacht (für Fackeln) */
+  night = 0;
 
   update(dt: number, renderTime: number, groundAt: (x: number, z: number) => number, time: number) {
     for (const v of this.views.values()) {
@@ -296,6 +324,11 @@ export class EntityManager {
         const gr = groundAt(v.pos.x - Math.cos(v.yaw) * 0.12, v.pos.z + Math.sin(v.yaw) * 0.12) - v.pos.y;
         v.rig.update(dt, hSpeed, clampG(gl), clampG(gr));
         v.rig.setLod(v.pos.distanceToSquared(this.camPos) > 16 * 16 ? 1 : 0);
+        if (v.torch) {
+          const on = this.night > 0.45;
+          v.torch.visible = on;
+          if (v.torchLight) v.torchLight.intensity = on ? 4.2 + Math.sin(time * 13 + v.id) * 0.5 + Math.sin(time * 29 + v.id * 3) * 0.35 : 0;
+        }
         if (v.shieldBubble) {
           v.shieldBubble.visible = v.status.includes('shielded') || v.anim === 'shielded';
           v.shieldBubble.rotation.y += dt;

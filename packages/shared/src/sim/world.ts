@@ -7,6 +7,7 @@ import { ITEMS } from '../content/items.ts';
 import { LOOT } from '../content/loot.ts';
 import { NPCS } from '../content/npcs.ts';
 import { HOUSES, doorLockLevel } from '../world/houses.ts';
+import { findPath, navNode, nearestNode, routineStep, type RoutineStep } from '../world/routines.ts';
 import { SKILL_BY_ID } from '../content/skills.ts';
 import { SPAWNS, type SpawnGroup } from '../content/spawns.ts';
 import { clamp, dist2, rng, yawDir, yawTo, angleDiff, type Rng } from '../math.ts';
@@ -1283,7 +1284,7 @@ export class World {
       if (!e) return;
       if (dist2(e.m.x, e.m.z, p.m.x, p.m.z) > 4.5) return;
       if (e.kind === 'npc') {
-        if (!this.cond(p, e.def.cond)) return;
+        if (e.hidden || !this.cond(p, e.def.cond)) return;
         startDialogue(this, p, e);
         return;
       }
@@ -1457,10 +1458,19 @@ export class World {
         case 'achieve':
           this.achieve(p, ef.id);
           break;
-        case 'shop':
+        case 'shop': {
+          // Händler handeln nur während ihrer Arbeitszeit am Stand (Tagesablauf)
+          const npc = [...this.ents.values()].find((e): e is NpcEnt => e.kind === 'npc' && e.def.shop === ef.id && dist2(e.m.x, e.m.z, p.m.x, p.m.z) < 8 * 8);
+          const step = npc ? this.npcStep(npc.def) : null;
+          if (npc?.def.routine && step?.act !== 'work') {
+            const w = npc.def.routine.find((r) => r.act === 'work');
+            this.toast(p, w ? `${npc.def.name} handelt nur am Stand – zwischen ${Math.floor(w.from)} und ${Math.floor(w.to)} Uhr.` : `${npc.def.name} handelt gerade nicht.`, 'info');
+            break;
+          }
           p.lastShop = ef.id;
           this.emit(p, { e: 'shop', id: ef.id });
           break;
+        }
         case 'craft':
           p.lastCraft = 'bench';
           this.emit(p, { e: 'craft_open', station: 'bench', name: 'Werkbank' });
@@ -1554,7 +1564,7 @@ export class World {
     let best: NpcEnt | null = null;
     let bd = 12 * 12;
     for (const e of this.ents.values()) {
-      if (e.kind !== 'npc' || e.area !== p.area) continue;
+      if (e.kind !== 'npc' || e.area !== p.area || e.hidden) continue;
       const d = dist2(e.m.x, e.m.z, p.m.x, p.m.z);
       if (d >= bd) continue;
       // Sichtlinie: keine Wand dazwischen
@@ -1564,7 +1574,7 @@ export class World {
       best = e; bd = d;
     }
     if (!best) return;
-    const guard = best.def.id === 'brann' || best.def.id === 'order_guard';
+    const guard = best.def.id === 'brann' || best.def.id === 'order_guard' || best.def.id.startsWith('watch_');
     const lines = what === 'Einbruch' ? ['He! Was machst du da an der Tür?', 'Einbrecher! Haltet ihn!', 'Das ist nicht dein Haus!'] : ['Dieb! Leg das zurück!', 'Haltet den Dieb!', 'Das gehört dir nicht!'];
     this.emitNear(best.m.x, best.m.z, { e: 'bark', eid: best.id, name: best.def.name, text: lines[Math.floor(Math.random() * lines.length)]!, dur: 3 }, 30);
     if (guard) {
@@ -1619,6 +1629,7 @@ export class World {
     this.tick++;
     this.time += dt;
     this.dayTime = (this.dayTime + dt / DAY_LENGTH) % 1;
+    if (this.npcDoors.size) this.closeNpcDoors();
     this.updateWeather(dt);
     for (const p of this.players.values()) this.updatePlayer(p, dt);
     this.spawnCheckT -= dt;
@@ -2059,9 +2070,46 @@ export class World {
 
   // ======================= NSC =======================
 
+  /** Türen, die NSCs geöffnet haben, und wann sie wieder zufallen. */
+  private npcDoors = new Map<string, number>();
+
+  /** Stunde des Tages (0–24). */
+  get hour() {
+    return this.dayTime * 24;
+  }
+
+  /** Aktueller Schritt im Tagesablauf eines NSC (oder null ohne Tagesablauf). */
+  npcStep(def: { routine?: RoutineStep[] }): RoutineStep | null {
+    return def.routine ? routineStep(def.routine, this.hour) : null;
+  }
+
+  private npcOpenDoor(door: string, x: number, z: number) {
+    if (!this.doorsOpen.has(door)) {
+      this.doorsOpen.add(door);
+      this.emitNear(x, z, { e: 'sfx', id: 'door_open', x, y: this.layout.hf.height(x, z) + 1, z }, 30);
+      this.npcDoors.set(door, this.time + 3.5);
+    } else if (this.npcDoors.has(door)) this.npcDoors.set(door, this.time + 3.5);
+  }
+
+  private closeNpcDoors() {
+    for (const [door, t] of this.npcDoors) {
+      if (this.time < t) continue;
+      // nicht zuschlagen, solange jemand in der Tür steht
+      const it = INTERACTABLE_BY_ID[door];
+      let busy = false;
+      if (it) {
+        for (const e of this.ents.values()) if ((e.kind === 'npc' || e.kind === 'player') && !(e.kind === 'npc' && e.hidden) && dist2(e.m.x, e.m.z, it.x, it.z) < 1.6 * 1.6) busy = true;
+      }
+      if (busy) { this.npcDoors.set(door, this.time + 1); continue; }
+      this.npcDoors.delete(door);
+      if (this.doorsOpen.delete(door) && it) this.emitNear(it.x, it.z, { e: 'sfx', id: 'door_close', x: it.x, y: this.layout.hf.height(it.x, it.z) + 1, z: it.z }, 30);
+    }
+  }
+
   private updateNpc(n: NpcEnt, dt: number) {
     n.talkT = Math.max(0, n.talkT - dt);
     const def = n.def;
+    if (def.routine) { this.updateRoutine(n, dt); return; }
     const home = this.isNight && def.night ? def.night : { x: def.x, z: def.z };
     let tx = home.x, tz = home.z;
     if (def.wander && !this.isNight) {
@@ -2085,6 +2133,93 @@ export class World {
       n.anim = n.talkT > 0 ? 'talk' : 'idle';
       if (d <= 0.6 && n.talkT <= 0) n.m.yaw = import_turnToward(n.m.yaw, def.rot, dt * 2);
     }
+  }
+
+  /**
+   * Tagesablauf: Ziel aus dem aktuellen Schritt, Weg über das Wegenetz (Türen werden geöffnet und
+   * fallen wieder zu), am Ziel die Tätigkeit (arbeiten, sitzen, reden, schlafen = im Haus verschwinden).
+   */
+  private updateRoutine(n: NpcEnt, dt: number) {
+    const def = n.def;
+    const step = this.npcStep(def);
+    if (!step) return;
+    // Gespräch hat Vorrang: stehen bleiben und den Spieler ansehen
+    for (const p of this.players.values()) if (p.dialogue?.npc === def.id) { n.m.vx = n.m.vz = 0; n.m.yaw = yawTo(n.m.x, n.m.z, p.m.x, p.m.z); n.talkT = 1; }
+    if (n.talkT > 0) { n.anim = 'talk'; return; }
+    // Ziel bestimmen
+    let target = step.at ?? null;
+    if (step.act === 'patrol' && step.route?.length) {
+      n.patrolIdx = (n.patrolIdx ?? 0) % step.route.length;
+      target = step.route[n.patrolIdx]!;
+    } else if (step.route?.length) {
+      // Umhergehen bzw. Tätigkeit an wechselnden Orten (Feldarbeit, Markt, Platz)
+      n.wanderT -= dt;
+      if (n.wanderT <= 0 || !n.pathTarget || !step.route.includes(n.pathTarget)) {
+        n.wanderT = 25 + this.rand.next() * 35;
+        target = step.route[Math.floor(this.rand.next() * step.route.length)]!;
+      } else target = n.pathTarget;
+    }
+    if (!target) return;
+    // neuen Weg planen
+    if (n.pathTarget !== target) {
+      let start = n.lastNode ?? null;
+      const cur = start ? navNode(start) : undefined;
+      if (!start || !cur || dist2(cur.x, cur.z, n.m.x, n.m.z) > 4 * 4) start = nearestNode(n.m.x, n.m.z, cur?.inside ? cur.door : undefined);
+      n.pathTarget = target;
+      n.path = start ? (start === target ? [target] : [start, ...findPath(start, target)]) : [target];
+      if (n.path.length > 1 && n.path[0] === n.lastNode) n.path.shift();
+      if (n.hidden) {
+        // aus dem Haus kommen: am Innenpunkt wieder auftauchen
+        n.hidden = false;
+        const c = start ? navNode(start) : undefined;
+        if (c) { n.m.x = c.x; n.m.z = c.z; n.m.y = groundHeight(this.moveEnv(null), c.x, c.z, this.layout.hf.height(c.x, c.z) + 1); }
+      }
+    }
+    if (n.hidden) {
+      if (step.act === 'sleep') return;
+      // Schlaf- und Arbeitsort gleich (Werkstatt, Amtsstube): wieder herauskommen
+      n.hidden = false;
+      const c = navNode(target);
+      if (c) { n.m.x = c.x; n.m.z = c.z; n.m.y = groundHeight(this.moveEnv(null), c.x, c.z, this.layout.hf.height(c.x, c.z) + 1); }
+    }
+    const next = n.path?.[0];
+    if (next) {
+      const nn = navNode(next)!;
+      const prev = n.lastNode ? navNode(n.lastNode) : undefined;
+      // Tür auf dem Weg zwischen innen und außen öffnen
+      const door = nn.inside !== prev?.inside ? (nn.door ?? prev?.door) : undefined;
+      if (door && dist2(n.m.x, n.m.z, nn.x, nn.z) < 5 * 5) this.npcOpenDoor(door, n.m.x, n.m.z);
+      const d = Math.sqrt(dist2(n.m.x, n.m.z, nn.x, nn.z));
+      if (d < 0.7) {
+        n.lastNode = next;
+        n.path!.shift();
+        n.stuckT = 0;
+        if (step.act === 'patrol' && !n.path!.length && step.route) { n.patrolIdx = ((n.patrolIdx ?? 0) + 1) % step.route.length; }
+      } else {
+        const env = this.moveEnv(null);
+        const bx = n.m.x, bz = n.m.z;
+        import_stepAgent(n.m, nn.x, nn.z, step.act === 'patrol' ? 1.3 : 1.45, dt, env);
+        n.anim = 'walk';
+        // festgelaufen (Tür zu, jemand im Weg): nach einer Weile neu planen
+        const moved = Math.hypot(n.m.x - bx, n.m.z - bz);
+        n.stuckT = moved < dt * 0.3 ? (n.stuckT ?? 0) + dt : 0;
+        if ((n.stuckT ?? 0) > 4) { n.pathTarget = null; n.lastNode = null; n.stuckT = 0; }
+      }
+      return;
+    }
+    // am Ziel: Tätigkeit
+    n.m.vx = n.m.vz = 0;
+    const here = navNode(target);
+    if (step.act === 'sleep') {
+      // ins Haus gehen (Innenpunkt) bzw. in Amtsgebäude/Werkstatt ohne Innenraum: verschwinden
+      n.hidden = true;
+      n.anim = 'idle';
+      void here;
+      return;
+    }
+    n.anim = step.act === 'work' ? 'work' : step.act === 'sit' ? 'sit' : step.act === 'talk' ? 'talk' : 'idle';
+    if (step.act === 'wander' || step.act === 'patrol') n.anim = 'idle';
+    if (step.rot !== undefined) n.m.yaw = import_turnToward(n.m.yaw, step.rot, dt * 2);
   }
 
   // ======================= Druckplatten =======================
@@ -2223,7 +2358,7 @@ export class World {
       if (e === p || e.area !== p.area) continue;
       if (dist2(e.m.x, e.m.z, p.m.x, p.m.z) > INTEREST_RADIUS) continue;
       if (e.kind === 'loot' && e.owner !== p.id) continue;
-      if (e.kind === 'npc' && !this.cond(p, e.def.cond)) continue;
+      if (e.kind === 'npc' && (e.hidden || !this.cond(p, e.def.cond))) continue;
       if (e.kind === 'companion' && e.owner !== p.id && this.opts.mode === 'sp') continue;
       const s = this.snapEntity(e, !p.known.has(e.id));
       ents.push(s);

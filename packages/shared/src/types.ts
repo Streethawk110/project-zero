@@ -320,4 +320,10 @@ export interface NpcDef {
   wander?: number;
   shop?: string;
   bark?: string[];
+  /** Tagesablauf (Uhrzeiten, Orte, Tätigkeiten) – siehe world/routines.ts */
+  routine?: import('./world/routines.ts').RoutineStep[];
+  /** Trägt nachts eine Fackel (Wachen) */
+  torch?: boolean;
+  /** Ausrüstung für die Darstellung (Waffe, Nebenhand) */
+  gear?: [string, string];
 }

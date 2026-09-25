@@ -180,6 +180,15 @@ Profiler nicht mitgezählt – behoben).
   (Figuren jetzt ~16/12 MB). Porträt-Vorschau: `rig-preview.html?only=N&face=1&seed=x`, `hide=teil,…`.
 - NUTZER-AUFTRAG danach (Aufgabe 31): KCD2-Umbau mit ausgewählten Features, u. a. NSCs laufen in
   Dorf/Burg umher (Tagesabläufe), nicht alles, nur was passt.
+- KCD2-Umbau Teil 1 (Aufgabe 31): Tagesabläufe. `world/routines.ts`: Wegpunkte im Dorf (Platz, Markt,
+  Werkstätten, Tore, Felder, je Haus außen/innen, Gasthausplätze), Wegenetz automatisch per Sichtlinie
+  (Knie-/Brusthöhe über Boden inkl. Dielen), Dijkstra-Wege, `routineStep`. Sim (`updateRoutine`): Wege
+  laufen, Türen selbst öffnen/schließen (`npcDoors`), Schlafen = im Haus verschwinden (`hidden`, nicht im
+  Snapshot/Interaktion), Arbeit/Sitzen/Reden als Animation (`work`, `sit` im Rig), Festlauf-Erkennung.
+  Benannte NSCs mit Plänen (Vogt, Oswin, Pell 7–19 am Stand → Händler handeln nur dann, Hedda, Brann,
+  Lina, Ute, Ysolde, Aldric, Tam), 10 Dorfbewohner (eigene Häuser, Arbeit, Gerüchte-Dialoge folk_a/b/c)
+  und 4 Dorfwachen (Tore, zwei Nachtstreifen mit Fackeln `torch`, verhängen Strafen). Questmarkierungen
+  folgen sichtbaren NSCs (`liveNpcMarker`). Test `routines.test.ts` (kein Festlaufen, nachts schlafen).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

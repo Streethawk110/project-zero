@@ -6,6 +6,7 @@ export * from './world/terrain.ts';
 export * from './world/collision.ts';
 export * from './world/props.ts';
 export * from './world/houses.ts';
+export * from './world/routines.ts';
 export * from './world/layout.ts';
 export * from './sim/movement.ts';
 export * from './sim/stats.ts';

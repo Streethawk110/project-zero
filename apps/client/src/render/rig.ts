@@ -36,6 +36,9 @@ export const OUTFITS: Record<string, { body: number; legs: number; accent: numbe
   priest: { body: 0xd8d2c2, legs: 0xb8b0a0, accent: 0xc9a14a, robe: true },
   merchant: { body: 0x7a5a2a, legs: 0x4a3a26, accent: 0x2a5a4a },
   villager: { body: 0x7a6a50, legs: 0x4a4034, accent: 0x6a4a30 },
+  peasant: { body: 0x6e5c42, legs: 0x3e362c, accent: 0x5a4028 },
+  maid: { body: 0x8a7e6a, legs: 0x4e3a2e, accent: 0x7a2e28 },
+  woodsman: { body: 0x4a5236, legs: 0x3a3228, accent: 0x5c3f28, hood: true },
   smith: { body: 0x4a3a2a, legs: 0x3a3028, accent: 0x2a2a2a },
   fisher: { body: 0x3a4a5a, legs: 0x3a3a3a, accent: 0xd8c27a, hood: true },
   child: { body: 0x9a6a5a, legs: 0x5a4a3a, accent: 0xd8c27a },
@@ -819,6 +822,14 @@ export class HumanoidRig {
         const g = s(t * 2.3);
         return { head: [s(t * 1.7) * 0.08, s(t * 0.9) * 0.15, 0], upperArmR: [-0.4 - g * 0.2, 0, -0.2], foreArmR: [-1.0 + g * 0.3, 0, 0], upperArmL: [0, 0, 0.12], foreArmL: [-0.2, 0, 0] };
       }
+      case 'work': {
+        // Handwerk: vorgebeugt, rechter Arm schlägt/zieht im Takt, linker hält das Werkstück
+        const k = s(t * 3.1), hit = Math.max(0, k);
+        return { spine: [0.18, 0, 0], chest: [0.12 + hit * 0.05, s(t * 1.55) * 0.05, 0], head: [0.25, s(t * 0.5) * 0.1, 0],
+          upperArmR: [-0.9 - k * 0.55, 0, -0.25], foreArmR: [-0.9 + k * 0.4, 0, 0], upperArmL: [-0.55, 0, 0.25], foreArmL: [-1.1, 0, 0],
+          thighL: [0.08, 0, 0.06], thighR: [-0.08, 0, -0.06], root: [0, -0.02, 0] };
+      }
+      case 'sit': return ready({ root: [0, -0.5, 0], thighL: [-1.45, 0, 0.12], shinL: [1.45, 0, 0], thighR: [-1.45, 0, -0.12], shinR: [1.45, 0, 0], upperArmL: [-0.55, 0, 0.2], upperArmR: [-0.6, 0, -0.2], foreArmL: [-1.0, 0, 0], foreArmR: [-0.9 + s(t * 0.7) * 0.15, 0, 0], spine: [0.12, 0, 0], head: [0.05, s(t * 0.4) * 0.2, 0] });
       case 'walk': return ready(locomotion(0.55, 0.5, 0.03, 0.03));
       case 'run': return ready(locomotion(0.85, 0.8, 0.12, 0.06));
       case 'sprint': { const p = locomotion(1.15, 1.1, 0.3, 0.09); return p; }

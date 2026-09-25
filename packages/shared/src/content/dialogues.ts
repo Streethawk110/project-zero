@@ -308,6 +308,34 @@ const nodes: DialogueNode[] = [
   ]),
   N('tam2', 'Sie schmecken nach Kupfer und machen komische Träume. Meine Frau isst sie trotzdem. Sagt, sie träumt vom Meer.', [end()]),
 
+  // ============================ DORFBEWOHNER ============================
+  N('folk_a', 'Hm? Ich hab zu tun. Aber sag schon.', [
+    { text: 'Was gibt es Neues im Dorf?', next: 'folk_a_news' },
+    { text: 'Wo finde ich hier was?', next: 'folk_where' },
+    end('Nichts. Mach weiter.'),
+  ]),
+  N('folk_a_news', 'Seit die Expedition kam, schläft keiner mehr richtig. Nachts leuchtet es über dem Nordwald, und der Vogt tut, als wäre nichts. Frag ihn mal, ob er selbst noch schläft.', [back('folk_a', 'Und sonst?'), end()]),
+  N('folk_b', 'Na, Fremder. Suchst du Arbeit oder Ärger?', [
+    { text: 'Gerüchte?', next: 'folk_b_news' },
+    { text: 'Wo finde ich hier was?', next: 'folk_where' },
+    end('Weder noch.'),
+  ]),
+  N('folk_b_news', 'Rotbarts Leute sind am Fluss gesehen worden. Und der Kontor kauft jedes Stück Nullglas, das man ihm bringt – zu Preisen, die zu gut sind, um ehrlich zu sein.', [back('folk_b', 'Noch was?'), end()]),
+  N('folk_c', 'Oh – hallo. Brauchst du was?', [
+    { text: 'Was erzählt man sich?', next: 'folk_c_news' },
+    { text: 'Wo finde ich hier was?', next: 'folk_where' },
+    end('Nein, danke.'),
+  ]),
+  N('folk_c_news', 'Hedda sagt, im Keller der Laterne kratzt es nachts. Die Wachen gehen jetzt mit Fackeln Streife, jede Nacht zwei Runden ums Dorf. Hilft es? Wer weiß.', [back('folk_c', 'Noch etwas?'), end()]),
+  N('folk_where', 'Oswin schmiedet an der Esse bis zum Abend, mittags isst er in der Laterne. Pell steht tagsüber am Markt, nachts ist sein Laden zu. Den Vogt findest du am Vogthaus im Norden – abends sitzt er meist im Gasthaus. Und nachts schlafen anständige Leute.', [end('Danke.')]),
+  // ============================ DORFWACHE ============================
+  N('watch_root', 'Halt. Was willst du?', [
+    { text: 'Nur vorbei.', next: null },
+    { text: 'Ist es sicher im Dorf?', next: 'watch_safe' },
+    end('Nichts.'),
+  ]),
+  N('watch_safe', 'Sicher? Tagsüber ja. Nachts gehen wir Streife, zwei Runden, Fackeln an. Wer nachts in fremde Häuser steigt, zahlt – oder sitzt. Merk dir das.', [end('Verstanden.')]),
+
   // ============================ JORUN ============================
   N('jorun_root', 'Salz in den Taschen? Gut. Dann kannst du bleiben.', [
     { text: 'Kann ich helfen?', cond: '!quest:s_nets:any', next: 'jo_quest' },
