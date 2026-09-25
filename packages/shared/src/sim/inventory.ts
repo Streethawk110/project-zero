@@ -185,6 +185,20 @@ export function priceFactor(c: CharacterData, shopId: string) {
   if (grime > 50) f += 0.1;
   return Math.max(0.6, f);
 }
+/**
+ * Feilschen (wie in KCD): Wahrscheinlichkeit, dass der Händler ein Angebot annimmt.
+ * ratio = Angebot / Preis (0,5–1). Verstand, Ruf und ein gepflegtes Äußeres helfen.
+ */
+export function haggleChance(c: CharacterData, shopId: string, ratio: number) {
+  if (ratio >= 1) return 1;
+  if (ratio < 0.5) return 0;
+  const shop = SHOPS[shopId];
+  const rep = shop?.faction ? c.rep[shop.faction] ?? 0 : 0;
+  const grime = Math.max(c.needs?.dirt ?? 0, c.needs?.blood ?? 0);
+  const base = (ratio - 0.5) / 0.5; // 0 … 1
+  const v = base * 1.15 - 0.2 + (c.attrs.int - 6) * 0.04 + rep / 250 - (grime > 50 ? 0.15 : 0);
+  return Math.max(0.02, Math.min(0.97, v));
+}
 export function buyPrice(c: CharacterData, shopId: string, itemId: string) {
   const def = ITEMS[itemId];
   return Math.max(1, Math.round((def?.value ?? 0) * 1.5 * priceFactor(c, shopId)));

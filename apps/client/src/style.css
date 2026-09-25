@@ -382,3 +382,4 @@ h3 { font-size: 1.1em; color: var(--gold); }
 .dice-buttons { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.6em; }
 .dice-help { color: #857c6b; font-size: 0.78em; text-align: center; line-height: 1.4; }
 #hud .needs .need.wanted { color: #ff8a70; opacity: 1; font-weight: 600; letter-spacing: 0.02em; }
+.recipe .haggle { gap: 0.6em; margin-top: 0.3em; align-items: center; } .haggle-slider { width: 140px; accent-color: #d9b47a; } .btn.small.active { border-color: #d9b47a; color: #f0dcae; }

@@ -107,3 +107,33 @@ describe('Übungskampf auf der Burg', () => {
     expect(p.char.freeSkill).toBe(sp0 + 1 + (p.char.level - lv0) * SKILL_PER_LEVEL);
   });
 });
+
+describe('Feilschen', () => {
+  it('Angebot angenommen → günstiger; abgelehnt → Händler feilscht eine Weile nicht', () => {
+    const w = makeWorld('sp');
+    const p = addPlayer(w);
+    const pell = [...(w as unknown as { ents: Map<number, NpcEnt> }).ents.values()].find((e) => e.kind === 'npc' && e.def.id === 'pell')!;
+    w.teleport(p, pell.m.x + 1.2, pell.m.z);
+    p.lastShop = 'pell';
+    p.char.gold = 1000;
+    const unit = inv.buyPrice(p.char, 'pell', 'potion_heal');
+    expect(inv.haggleChance(p.char, 'pell', 0.95)).toBeGreaterThan(inv.haggleChance(p.char, 'pell', 0.6));
+    let won = 0, blocked = false;
+    for (let i = 0; i < 60 && !(won && blocked); i++) {
+      const g0 = p.char.gold;
+      if (p.haggleBlock) p.haggleBlock['pell'] = 0;
+      w.command('p1', { t: 'buy', shop: 'pell', item: 'potion_heal', n: 1, offer: Math.floor(unit * 0.9) });
+      if (p.char.gold === g0 - Math.floor(unit * 0.9)) won++;
+      else if (p.char.gold === g0) blocked ||= (p.haggleBlock?.['pell'] ?? 0) > 0;
+    }
+    if (!(p.haggleBlock?.['pell'])) { p.haggleBlock = { pell: Date.now() + 60000 }; }
+    expect(won).toBeGreaterThan(0);
+    expect(blocked).toBe(true);
+    // Gesperrt: weiteres Feilschen wird abgelehnt, normaler Kauf geht
+    const g1 = p.char.gold;
+    w.command('p1', { t: 'buy', shop: 'pell', item: 'potion_heal', n: 1, offer: unit - 1 });
+    expect(p.char.gold).toBe(g1);
+    w.command('p1', { t: 'buy', shop: 'pell', item: 'potion_heal', n: 1 });
+    expect(p.char.gold).toBe(g1 - unit);
+  });
+});

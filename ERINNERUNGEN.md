@@ -223,6 +223,9 @@ Profiler nicht mitgezählt – behoben).
   Ruhelage-Position (`vGPos`, Meter): Dreck von unten, Blutspritzer oben. Vorschau `?grime=N`.
 - KCD2-Umbau Teil 8: ÜBUNGSKAMPF beim Hauptmann (5 Gold, 1× pro Spieltag über `flags.train_next`,
   EP, erschöpft/dreckig, jede 3. Übung +1 Skillpunkt, max. 3). 39 Unit-Tests.
+- KCD2-Umbau Teil 9: FEILSCHEN im Händlerfenster (Regler 50–95 %, Chance `haggleChance`: Angebot,
+  Verstand, Ruf, Äußeres). Abgelehnt → Händler 3 min beleidigt (`p.haggleBlock`), Dorfhändler Ruf −1.
+  Befehl `buy` mit `offer`. Burg im Spiel geprüft (Tor mit Wache, Hof mit Übung/Magd/Köchin).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

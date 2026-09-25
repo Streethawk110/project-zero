@@ -28,7 +28,7 @@ export type GameCommand =
   | { t: 'attr'; attr: Attr }
   | { t: 'craft'; recipe: string }
   | { t: 'upgrade'; uid: string }
-  | { t: 'buy'; shop: string; item: string; n: number }
+  | { t: 'buy'; shop: string; item: string; n: number; /** Feilschen: angebotener Stückpreis */ offer?: number }
   | { t: 'sell'; shop: string; uid: string; n: number }
   | { t: 'rest' }
   | { t: 'lockpick'; id: string; ok: boolean }

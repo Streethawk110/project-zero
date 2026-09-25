@@ -1,4 +1,4 @@
-import { buyPrice, countItem, isEquipped, ITEMS, RECIPES, SHOPS, sellPrice, upgradeCost, MAX_UPGRADE, REST_POINTS, respecCost, RARITY_COLORS, type GameEvent } from '@pz/shared';
+import { buyPrice, haggleChance, countItem, isEquipped, ITEMS, RECIPES, SHOPS, sellPrice, upgradeCost, MAX_UPGRADE, REST_POINTS, respecCost, RARITY_COLORS, type GameEvent } from '@pz/shared';
 import { h, itemIcon, itemTooltip, tooltip } from './dom.ts';
 import { Win } from './win.ts';
 import type { GameUI } from './gameui.ts';
@@ -6,6 +6,9 @@ import type { GameUI } from './gameui.ts';
 // ======================= Händler =======================
 export class ShopWin extends Win {
   shopId = '';
+  /** Ware, um die gerade gefeilscht wird, und angebotener Anteil vom Preis */
+  private haggle: string | null = null;
+  private ratio = 0.8;
   constructor(ui: GameUI) { super(ui, 'Händler'); }
 
   render() {
@@ -24,8 +27,23 @@ export class ShopWin extends Win {
         h('div', { class: 'row' }, h('span', { style: { fontSize: '1.4em' } }, itemIcon(def)), h('span', { style: { color: RARITY_COLORS[def.rarity] } }, def.name), !available ? h('span', { class: 'dim small' }, ' (Ruf zu niedrig)') : null),
         h('div', { class: 'row' }, h('span', { class: 'gold' }, `${price} G`),
           h('button', { class: 'btn small', disabled: !available || c.gold < price, onClick: () => this.ui.cmd({ t: 'buy', shop: this.shopId, item: e.item, n: 1 }) }, 'Kaufen'),
-          def.stack && def.stack > 1 ? h('button', { class: 'btn small', disabled: !available || c.gold < price * 5, onClick: () => this.ui.cmd({ t: 'buy', shop: this.shopId, item: e.item, n: 5 }) }, '×5') : null),
+          def.stack && def.stack > 1 ? h('button', { class: 'btn small', disabled: !available || c.gold < price * 5, onClick: () => this.ui.cmd({ t: 'buy', shop: this.shopId, item: e.item, n: 5 }) }, '×5') : null,
+          price >= 4 ? h('button', { class: `btn small ghost${this.haggle === e.item ? ' active' : ''}`, disabled: !available, title: 'Weniger bieten – der Händler kann ablehnen und ist dann eine Weile beleidigt.', onClick: () => { this.haggle = this.haggle === e.item ? null : e.item; this.render(); } }, 'Feilschen') : null),
       );
+      if (this.haggle === e.item && available) {
+        const offerOf = () => Math.max(1, Math.floor(price * this.ratio));
+        const label = h('span', { class: 'small' });
+        const upd = () => {
+          const o = offerOf();
+          const ch = haggleChance(c, this.shopId, o / price);
+          label.textContent = `${o} G bieten · Chance ≈ ${Math.round(ch * 100)} %`;
+        };
+        const slider = h('input', { type: 'range', min: '50', max: '95', step: '1', value: String(Math.round(this.ratio * 100)), class: 'haggle-slider' }) as HTMLInputElement;
+        slider.addEventListener('input', () => { this.ratio = Number(slider.value) / 100; upd(); });
+        upd();
+        row.append(h('div', { class: 'row haggle' }, slider, label,
+          h('button', { class: 'btn small primary', disabled: c.gold < offerOf(), onClick: () => { this.ui.cmd({ t: 'buy', shop: this.shopId, item: e.item, n: 1, offer: offerOf() }); this.haggle = null; } }, 'Anbieten')));
+      }
       tooltip(row, () => itemTooltip({ id: e.item }, c, { buy: `Preis: ${price} Gold` }));
       buy.append(row);
     }
@@ -44,7 +62,7 @@ export class ShopWin extends Win {
       tooltip(row, () => itemTooltip(inst, c, { sell: `Verkauf: ${p} Gold` }));
       sell.append(row);
     }
-    this.body.append(h('div', { class: 'row', style: { marginBottom: '0.6em' } }, h('span', { class: 'gold' }, `Dein Gold: ${c.gold}`), h('span', { class: 'dim small' }, 'Preise hängen von deinem Ruf bei der Fraktion und deiner Berührung ab.')),
+    this.body.append(h('div', { class: 'row', style: { marginBottom: '0.6em' } }, h('span', { class: 'gold' }, `Dein Gold: ${c.gold}`), h('span', { class: 'dim small' }, 'Preise hängen von Ruf, Berührung und deinem Äußeren ab (Blut und Dreck schrecken ab). Feilschen: Verstand und Ruf helfen.')),
       h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5em' } }, buy, sell));
   }
 }

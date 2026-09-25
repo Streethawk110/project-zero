@@ -100,6 +100,8 @@ export interface PlayerEnt extends BaseEnt {
   bond: { target: number; t: number } | null;
   plate: string | null;
   lastShop: string | null;
+  /** Feilschen gesperrt bis (ms) je Händler – beleidigte Händler feilschen eine Weile nicht */
+  haggleBlock?: Record<string, number>;
   lastCraft: 'camp' | 'bench' | null;
   steleWait: boolean;
   trade: TradeState | null;

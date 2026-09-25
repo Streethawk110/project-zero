@@ -30,7 +30,7 @@ export function validCommand(c: unknown): c is GameCommand {
     case 'learn_skill': return isId(c['id']);
     case 'attr': return ['str', 'dex', 'int', 'con'].includes(c['attr'] as string);
     case 'craft': return isId(c['recipe']);
-    case 'buy': return isId(c['shop']) && isId(c['item']) && isNum(c['n'], 1, 20);
+    case 'buy': return isId(c['shop']) && isId(c['item']) && isNum(c['n'], 1, 20) && (c['offer'] === undefined || isNum(c['offer'], 0, 1e6));
     case 'sell': return isId(c['shop']) && isId(c['uid']) && isNum(c['n'], 1, 999);
     case 'travel': return isId(c['rest']);
     case 'sight': return isBool(c['on']);

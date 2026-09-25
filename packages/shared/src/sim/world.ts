@@ -376,7 +376,7 @@ export class World {
         this.refreshStats(p);
         return;
       }
-      case 'buy': return this.buy(p, cmd.shop, cmd.item, cmd.n);
+      case 'buy': return this.buy(p, cmd.shop, cmd.item, cmd.n, cmd.offer);
       case 'sell': return this.sell(p, cmd.shop, cmd.uid, cmd.n);
       case 'rest':
         if (!this.nearRest(p)) return;
@@ -1100,16 +1100,33 @@ export class World {
     this.refreshStats(p);
   }
 
-  buy(p: PlayerEnt, shopId: string, itemId: string, n: number) {
+  buy(p: PlayerEnt, shopId: string, itemId: string, n: number, offer?: number) {
     if (!this.shopAccessible(p, shopId)) return this.emit(p, { e: 'error', text: 'Der Händler ist nicht in der Nähe.' });
     const shop = (this.shopDef(shopId))!;
     const entry = shop.stock.find((s) => s.item === itemId);
     if (!entry || !this.cond(p, entry.cond)) return this.emit(p, { e: 'error', text: 'Diese Ware ist nicht verfügbar.' });
     if (shop.faction === 'order' && p.char.touch >= 60) return this.emit(p, { e: 'error', text: 'Der Orden handelt nicht mit Berührten wie dir.' });
     n = clamp(Math.floor(n), 1, 20);
-    const price = inv.buyPrice(p.char, shopId, itemId) * n;
-    if (p.char.gold < price) return this.emit(p, { e: 'error', text: `Nicht genug Gold (${price} benötigt).` });
+    const unit = inv.buyPrice(p.char, shopId, itemId);
+    let price = unit * n;
     if (!inv.canAdd(p.char, [{ id: itemId, n }])) return this.emit(p, { e: 'error', text: 'Dein Inventar ist voll.' });
+    // Feilschen: Angebot unter Preis – der Händler nimmt an oder ist eine Weile beleidigt
+    if (offer !== undefined && Number.isFinite(offer) && Math.floor(offer) < unit) {
+      const o = Math.max(1, Math.floor(offer));
+      const now = this.now();
+      p.haggleBlock ??= {};
+      if ((p.haggleBlock[shopId] ?? 0) > now) return this.emit(p, { e: 'error', text: 'Der Händler will mit dir gerade nicht mehr feilschen.' });
+      if (p.char.gold < o * n) return this.emit(p, { e: 'error', text: `Nicht genug Gold (${o * n} angeboten).` });
+      if (this.rand.next() >= inv.haggleChance(p.char, shopId, o / unit)) {
+        p.haggleBlock[shopId] = now + 3 * 60 * 1000;
+        if (shop.faction === 'folk') this.applyEffects(p, ['rep:folk-1']);
+        const lines = ['Für den Preis? Nie im Leben.', 'Willst du mich beleidigen?', 'Dann kauf woanders. Ich hab zu tun.'];
+        return this.toast(p, `${shop.name}: „${lines[Math.floor(this.rand.next() * lines.length)]}“ (feilscht vorerst nicht mehr)`, 'bad');
+      }
+      price = o * n;
+      this.toast(p, `Handel! ${n > 1 ? `${n} × ` : ''}${o} statt ${unit} Gold.`, 'good');
+    }
+    if (p.char.gold < price) return this.emit(p, { e: 'error', text: `Nicht genug Gold (${price} benötigt).` });
     p.char.gold -= price;
     inv.addItem(p.char, itemId, n);
     this.emit(p, { e: 'sfx', id: 'coins' });
