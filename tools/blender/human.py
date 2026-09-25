@@ -687,7 +687,7 @@ class Scalp:
 
 def clump_u(rnd, layer):
     """Büschel im Haaratlas wählen: dichte Büschel innen, in der äußersten Lage auch lose Einzelhaare."""
-    if layer >= 2 and rnd.random() < 0.3:
+    if layer >= 2 and rnd.random() < 0.12:
         return 0.75
     return rnd.choice((0.0, 0.25, 0.5))
 
@@ -805,7 +805,7 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
                 dirv = r - crown + np.array([0, 0, -0.06])
                 dirv = np.array([dirv[0] * 0.6, -0.2, -0.8]) if r[2] > cz else dirv
                 pts, ns = grow(sc, r, dirv, L * rnd.uniform(0.8, 1.2), 4, lift, 0.25, rnd, face=face)
-                cards.append((pts, [0.013] * 5, ns, (0.5 + layer * 0.17, rnd.random(), clump_u(rnd, layer)))))
+                cards.append((pts, [0.013] * 5, ns, (0.5 + layer * 0.17, rnd.random(), clump_u(rnd, layer))))
     elif style in (2, 5):  # lang / wirr
         long_ = style == 2
         atlas = "hair" if long_ else "curly"
@@ -820,7 +820,7 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
                 steps = 9 if long_ else 5
                 pts, ns = grow(sc, r, dirv, L, steps, lift, 0.35 if long_ else 0.15, rnd, below=y_neck + 0.03, face=face)
                 w = [0.016] * (steps + 1)
-                cards.append((pts, w, ns, (0.45 + layer * 0.18, rnd.random(), clump_u(rnd, layer)))))
+                cards.append((pts, w, ns, (0.45 + layer * 0.18, rnd.random(), clump_u(rnd, layer))))
     elif style == 1:  # Zopf: straff nach hinten zur Nackenbinde, dann geflochtener Zopf
         tie = np.array([sc.c[0], y_neck + 0.07, sc.lo[2] - 0.01])
         for layer, (cnt, lift) in enumerate(((440, 0.004), (320, 0.009), (160, 0.014))):

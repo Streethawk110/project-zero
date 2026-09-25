@@ -254,6 +254,12 @@ Profiler nicht mitgezählt – behoben).
   gebacken (`bake_ao` in skin_bake.py, Kopf/Hals/Hände, 20 Strahlen, 9 cm, ins arm.R), Haut = Physical-
   Material (Clearcoat 0,12 Fettfilm, Sheen Flaum), Falten rötlich; Augen: Klarlack-Hornhaut + Lidschatten
   am Augapfelrand. Texturen werden gerade neu gebacken (2048, je ~5 min).
+  Danach: untere Wimpern auf 40 % gekürzt, Brauenende des Scans durch glatte Haut ersetzt (`tail`),
+  prozedurale Krähenfüße auf 1/5 (erzeugten Streifen neben den Augen), Frauen ohne Scan-Koteletten.
+- NUTZER: „Haare sehen noch nicht echt aus“. Haaratlas neu (`hair_strands` in foliage_bake.py): vier
+  Büschel je ¼ Breite, an der Wurzel breit, fransige Spitzen, Lücken, 4. = lose Einzelhaare. Karten nutzen
+  jetzt `u0` (vorher ignoriert → immer ganzer Atlas = flache Bänder): `clump_u` (lose nur 12 % außen).
+  alphaTest 0,28. ACHTUNG: `while pgrep -f "…"` findet sich selbst → Endlosschleife.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.
