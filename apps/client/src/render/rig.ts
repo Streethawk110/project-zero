@@ -54,7 +54,7 @@ export const OUTFITS: Record<string, { body: number; legs: number; accent: numbe
  */
 export function garment(kind: 'cloth' | 'leather' | 'chain' | 'plate', color: number) {
   const t = kind === 'leather' ? TEX.leather() : kind === 'chain' ? TEX.chain() : kind === 'plate' ? TEX.plate() : TEX.cloth();
-  const rep = kind === 'cloth' ? 12 : kind === 'leather' ? 4 : kind === 'chain' ? 60 : 2;
+  const rep = kind === 'cloth' ? 22 : kind === 'leather' ? 4 : kind === 'chain' ? 90 : 2;
   const c = (x?: THREE.Texture | null) => {
     if (!x) return null;
     const y = x.clone();
@@ -74,7 +74,7 @@ export function garment(kind: 'cloth' | 'leather' | 'chain' | 'plate', color: nu
     m.sheen = 0.7;
     m.sheenRoughness = 0.8;
     m.sheenColor = new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.25);
-    m.normalScale.set(0.55, 0.55);
+    m.normalScale.set(0.35, 0.35);
   } else if (kind === 'leather') {
     m.clearcoat = 0.18;
     m.clearcoatRoughness = 0.55;
@@ -98,6 +98,17 @@ export function garment(kind: 'cloth' | 'leather' | 'chain' | 'plate', color: nu
           diffuseColor.rgb *= mix(1.0, mix(0.82, 1.1, gw), uWear);
           diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.62, 0.56, 0.48), stain * 0.45 * uWear);
         #endif`);
+    if (kind === 'cloth') {
+      // Webmuster nur andeuten: Kontrast zur Durchschnittsfarbe (grobe Mip-Stufe) stark verringern,
+      // sonst wirkt der Stoff aus der Nähe wie Karopapier
+      sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `
+        #ifdef USE_MAP
+          vec4 sampledDiffuseColor = texture2D(map, vMapUv);
+          vec3 clothAvg = texture2D(map, vMapUv, 7.0).rgb;
+          sampledDiffuseColor.rgb = mix(clothAvg, sampledDiffuseColor.rgb, 0.4);
+          diffuseColor *= sampledDiffuseColor;
+        #endif`);
+    }
     if (kind === 'chain') {
       // Kettenhemd: in den Lücken zwischen den Ringen liegt der dunkle Gambeson (Stoff, kein Metall)
       sh.fragmentShader = sh.fragmentShader

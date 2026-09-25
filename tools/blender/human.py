@@ -1040,7 +1040,7 @@ def human(kind):
                       lambda c, vs: c[1] < yb + 0.04 and c[1] > y_ankle + 0.02 and not is_arm(c, vs), 0.005, 0.003))
     objs.append(piece("boots", "helper-tights", "accent",
                       lambda c, vs: c[1] < (y_knee + y_ankle) / 2 + 0.03 and not is_arm(c, vs), 0.014, 0.002))
-    objs.append(piece("belt", "helper-tights", "accent", lambda c, vs: abs(c[1] - yb) < 0.034 and not is_arm(c, vs), 0.024, 0.0, 0,
+    objs.append(piece("belt", "helper-tights", "accent", lambda c, vs: abs(c[1] - yb) < 0.034 and not is_arm(c, vs), 0.032, 0.0, 0,
                       band=(yb - 0.024, yb + 0.024)))
     # Robe (bis zu den Knöcheln)
     objs.append(piece("robe", "helper-skirt", "body", lambda c, vs: True, 0.03, 0.0))
