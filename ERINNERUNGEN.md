@@ -262,6 +262,9 @@ Profiler nicht mitgezählt – behoben).
   alphaTest 0,28. ACHTUNG: `while pgrep -f "…"` findet sich selbst → Endlosschleife.
   Scheitel: Kappe vorn bis eye+0,079 (vorher 0,088 → Hautstreifen am Scheitel). Karten mit Knick
   (Ausweichen am Gesicht, cos < 0,5) werden verworfen → keine Zickzack-Strähnen neben dem Ohr.
+- NUTZER: „mach alles was offen ist, alles dynamisch und realistischer“. Teil 1: Haare und Rock/Umhang
+  schwingen nach (Feder in `rig.updateSwing`: Kopf-/Hüftbeschleunigung → `uSwing`/`uCloth`), Haarkarten
+  tragen ihre Länge in Punktfarbe R (human.py `lenf`) → lange Strähnen schwingen stärker + Wind.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

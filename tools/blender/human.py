@@ -700,6 +700,9 @@ def hair_mesh(name, cards, material):
     col = bm.verts.layers.float_color.new("tree")
     for pts, widths, norms, (ao, tint, u0) in cards:
         n = len(pts)
+        # Kartenlänge (für das Nachschwingen im Client: kurze Haare/Bart kaum, lange Strähnen stark)
+        clen = float(sum(np.linalg.norm(pts[i + 1] - pts[i]) for i in range(n - 1)))
+        lenf = min(1.0, clen / 0.3)
         # zu den Spitzen hin schmal (keine stumpfen Enden)
         widths = [w * (1.0 - 0.8 * (i / max(1, n - 1)) ** 1.6) for i, w in enumerate(widths)]
         left, right = [], []
@@ -710,7 +713,7 @@ def hair_mesh(name, cards, material):
             side /= max(np.linalg.norm(side), 1e-9)
             for arr, sgn in ((left, -1), (right, 1)):
                 vv = bm.verts.new(B(pts[i] + side * widths[i] * 0.5 * sgn))
-                vv[col] = (0.0, ao * (0.55 + 0.45 * i / max(1, n - 1)), tint, 1.0)
+                vv[col] = (lenf, ao * (0.55 + 0.45 * i / max(1, n - 1)), tint, 1.0)
                 arr.append(vv)
         for i in range(n - 1):
             f = bm.faces.new((left[i], right[i], right[i + 1], left[i + 1]))

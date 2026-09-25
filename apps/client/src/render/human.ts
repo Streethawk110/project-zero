@@ -353,11 +353,24 @@ export function hairMaterial(color: THREE.Color, curly: boolean) {
   m.alphaToCoverage = settings.antialias === 'msaa';
   // Himmelsspiegelung legt sonst einen grauen Schleier über dunkles Haar
   m.envMapIntensity = 0.3;
+  // Nachschwingen je Figur (Feder im Rig): Spitzen bleiben bei Bewegung zurück und pendeln nach
+  const swing = { uSwing: { value: new THREE.Vector3() } };
+  m.userData['swing'] = swing.uSwing;
   m.onBeforeCompile = (s) => {
-    Object.assign(s.uniforms, windUniforms);
+    Object.assign(s.uniforms, windUniforms, swing);
     s.vertexShader = s.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec4 color;\nvarying float vHairAo;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHairAo = color.g;');
+      .replace('#include <common>', '#include <common>\nattribute vec4 color;\nvarying float vHairAo;\nuniform vec3 uSwing;\nuniform float uWindTime;\nuniform float uWindStrength;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        vHairAo = color.g;
+        // R = Kartenlänge (0 = Wimpern/Stoppeln fest), v = Wurzel → Spitze: nur Spitzen langer Strähnen bewegen sich
+        #ifdef USE_MAP
+          float hTip = pow(clamp(uv.y, 0.0, 1.0), 1.6) * color.r;
+        #else
+          float hTip = 0.0;
+        #endif
+        vec3 hWind = vec3(sin(uWindTime * 1.9 + position.y * 23.0 + position.x * 7.0), 0.0, cos(uWindTime * 1.4 + position.x * 19.0)) * 0.005 * uWindStrength;
+        transformed += (uSwing + hWind) * hTip;
+        transformed.y -= length(uSwing) * hTip * 0.3;`);
     s.fragmentShader = s.fragmentShader
       .replace('#include <common>', '#include <common>\nvarying float vHairAo;\nuniform vec3 uSunDirView;\nuniform vec3 uSunColor;')
       .replace('#include <map_fragment>', `

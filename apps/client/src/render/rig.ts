@@ -87,14 +87,20 @@ export function garment(kind: 'cloth' | 'leather' | 'chain' | 'plate', color: nu
   const u = {
     uRep: { value: rep }, uWear: { value: kind === 'plate' ? 0.35 : kind === 'chain' ? 0.25 : 1 },
     uDirt: { value: 0 }, uBlood: { value: 0 }, uGW: { value: new THREE.Vector2(1, 1) },
+    // Nachschwingen unterhalb der Hüfte (Saum, Rock, Robe); nur beim Rumpfstoff gesetzt
+    uCloth: { value: new THREE.Vector3() }, uHipY: { value: 1.0 },
   };
   m.userData['grime'] = u;
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, u);
     // Ruhelage-Position (Meter, Füße bei y = 0) für Schmutz/Blut – unabhängig von den Kleidungs-UVs
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vGPos;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGPos = position;');
+      .replace('#include <common>', '#include <common>\nvarying vec3 vGPos;\nuniform vec3 uCloth;\nuniform float uHipY;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        vGPos = position;
+        float cf = pow(clamp((uHipY - position.y) / 0.55, 0.0, 1.0), 1.4);
+        transformed += uCloth * cf;
+        transformed.y += length(uCloth) * cf * 0.25;`);
     sh.fragmentShader = 'varying vec3 vGPos;\n' + sh.fragmentShader
       .replace('#include <common>', `#include <common>
         uniform float uRep; uniform float uWear; uniform float uDirt; uniform float uBlood; uniform vec2 uGW;
@@ -413,6 +419,7 @@ export class HumanoidRig {
   private placeHumanJoints(bw: number) {
     const J = humanJoints(this.sex, JOINTS);
     const neckY = J.get('neck')?.y ?? 1.5;
+    this.hipY = J.get('hips')?.y ?? 0.95;
     const world = (n: string) => {
       const p = J.get(n)!.clone();
       if (p.y < neckY - 0.02) { p.x *= this.humanBw(bw); p.z *= 0.9 + this.humanBw(bw) * 0.1; }
@@ -526,6 +533,44 @@ export class HumanoidRig {
     }
   }
   private grimeCode = 0;
+  // Nachschwingen (Haare, Kleidung): gedämpfte Federn im Körperraum
+  private hipY = 0.95;
+  private swPrev: THREE.Vector3 | null = null;
+  private swPrevYaw = 0;
+  private swX = new THREE.Vector3();
+  private swV = new THREE.Vector3();
+  private clX = new THREE.Vector3();
+  private clV = new THREE.Vector3();
+
+  private updateSwing(dt: number) {
+    if (dt <= 0 || dt > 0.2) return;
+    const p = this.root.getWorldPosition(new THREE.Vector3());
+    const q = this.root.getWorldQuaternion(new THREE.Quaternion());
+    const yaw = new THREE.Euler().setFromQuaternion(q, 'YXZ').y;
+    if (!this.swPrev) { this.swPrev = p.clone(); this.swPrevYaw = yaw; return; }
+    const vel = p.clone().sub(this.swPrev).divideScalar(dt);
+    let dyaw = yaw - this.swPrevYaw;
+    dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw));
+    this.swPrev.copy(p); this.swPrevYaw = yaw;
+    if (vel.lengthSq() > 400) vel.set(0, 0, 0); // Teleport
+    // in den Körperraum drehen: Haare/Saum bleiben hinter der Bewegung zurück
+    const local = vel.applyQuaternion(q.clone().invert());
+    const turn = dyaw / dt;
+    const target = new THREE.Vector3(-local.x * 0.012 + turn * 0.02, 0, -local.z * 0.012);
+    target.clampLength(0, 0.07);
+    // Feder (leicht unterdämpft): pendelt nach dem Anhalten kurz nach
+    const k = 55, c = 7;
+    this.swV.addScaledVector(target.clone().sub(this.swX).multiplyScalar(k).addScaledVector(this.swV, -c), dt);
+    this.swX.addScaledVector(this.swV, dt);
+    const ct = target.clone().multiplyScalar(1.5);
+    // Saum: Schritte schwingen ihn zusätzlich seitlich
+    ct.x += Math.sin(this.phase) * Math.min(1, this.speed / 3) * 0.025;
+    this.clV.addScaledVector(ct.sub(this.clX).multiplyScalar(40).addScaledVector(this.clV, -6), dt);
+    this.clX.addScaledVector(this.clV, dt);
+    for (const m of this.humanHair) (m.userData['swing'] as { value: THREE.Vector3 } | undefined)?.value.copy(this.swX);
+    const g = this.bodyMat?.userData['grime'] as { uCloth: { value: THREE.Vector3 }; uHipY: { value: number } } | undefined;
+    if (g) { g.uCloth.value.copy(this.clX); g.uHipY.value = this.hipY; }
+  }
 
   /** Detailstufe: 0 = volle Figur, 1 = vereinfacht (Entfernung). */
   setLod(level: 0 | 1) {
@@ -692,6 +737,7 @@ export class HumanoidRig {
     this.animT += dt;
     this.blend = Math.min(1, this.blend + dt / this.blendDur);
     this.speed = speed;
+    if (this.human) this.updateSwing(dt);
     this.flinch = Math.max(0, this.flinch - dt);
     // Schrittphase an Strecke koppeln (Schrittlänge je nach Tempo)
     const stride = speed > 6.5 ? 2.6 : speed > 3.5 ? 1.9 : 1.2;
