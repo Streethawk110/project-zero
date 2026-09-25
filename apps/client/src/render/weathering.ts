@@ -46,6 +46,13 @@ export function weatheredMaterial(base: THREE.MeshStandardMaterial, partMatrix: 
         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * mud * 2.2, clamp(splash * (0.55 + speck * 0.3), 0.0, 1.0));
         // Leichte Vergrauung zum Boden hin über die ganze Wand
         diffuseColor.rgb *= mix(0.86, 1.0, smoothstep(0.0, 3.5, vModelY));
+        // Regenspuren: senkrechte, unregelmäßige Schmutzfahnen (unter Traufe und Fenstern), dazu fleckige
+        // Verfärbung in Wandgröße – nimmt dem Putz das frisch gestrichene Aussehen
+        float streakN = wNoise(vec2(wAlong * 5.5, vWPosW.y * 0.35)) * 0.7 + wNoise(vec2(wAlong * 17.0, vWPosW.y * 0.8)) * 0.3;
+        float streak = smoothstep(0.55, 0.85, streakN) * smoothstep(0.6, 2.2, vModelY);
+        float blotch = wNoise(vec2(wAlong * 0.8, vWPosW.y * 0.9)) * 0.6 + wNoise(vec2(wAlong * 2.3, vWPosW.y * 2.1)) * 0.4;
+        diffuseColor.rgb *= mix(1.0, 0.8, streak * 0.8) * mix(0.9, 1.04, blotch);
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.96, 0.95, 0.88), smoothstep(0.5, 0.8, blotch) * 0.6);
         float wWet = splash;`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
         roughnessFactor = mix(roughnessFactor, min(1.0, roughnessFactor + 0.08), wWet);`);
