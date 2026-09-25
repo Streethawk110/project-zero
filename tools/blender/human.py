@@ -774,7 +774,7 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
     y_neck = J["neck"][1]
     crown = np.array([sc.c[0], sc.hi[1], cz - 0.03])
 
-    def hairline(p, front_y=eye_y + 0.078, back_y=y_neck + 0.045):
+    def hairline(p, front_y=eye_y + 0.074, back_y=y_neck + 0.045):
         ang = abs(math.atan2(p[0] - sc.c[0], p[2] - cz))  # 0 vorn … π hinten
         y = front_y + (back_y - front_y) * (ang / math.pi) ** 1.3
         # Schläfen etwas zurückgesetzt, über den Ohren frei
@@ -846,7 +846,9 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
             ns = [sc.project(q, 0)[1] for q in pts]
             cards.append((pts, [0.028] * 5 + [0.018], ns, (0.7, rnd.random(), 0.0)))
         for r in sc.sample(rnd, 240, lambda p: hairline(p) and not top(p)):
-            pts, ns = grow(sc, r, np.array([0, -1.0, -0.3]), 0.02, 2, 0.002, 0.3, rnd)
+            # vorn nach hinten gestrichen (nicht in die Stirn hängen), seitlich/hinten nach unten
+            dv = np.array([0, 0.3, -1.0]) if r[2] > cz + 0.03 else np.array([0, -1.0, -0.3])
+            pts, ns = grow(sc, r, dv, 0.02, 2, 0.002, 0.0 if r[2] > cz + 0.03 else 0.3, rnd)
             cards.append((pts, [0.03, 0.03, 0.02], ns, (0.45, rnd.random(), 0.5)))
         # Knoten: kleine Kugel aus Karten
         for i in range(40):
@@ -859,7 +861,7 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
     o = hair_mesh(f"hair_{style}", cards, "hair_" + atlas)
     # Grundkappe: eng anliegende, haarfarbene Schicht auf der Kopfhaut (keine helle Haut zwischen Karten)
     # Kappe etwas hinter dem Haaransatz enden lassen: die Kante verschwindet unter den Strähnen
-    cap_keep = lambda p: hairline(p, front_y=eye_y + 0.092, back_y=y_neck + 0.06)
+    cap_keep = lambda p: hairline(p, front_y=eye_y + 0.088, back_y=y_neck + 0.06)
     cap, cused = make_mesh(f"hair_{style}_cap", base, v, W, {"body"}, "hair_cap", lambda c, vs: c[1] > y_neck - 0.03 and cap_keep(c))
     offset(cap, 0.0025)
     add_keys_after_offset(cap, cused, v, FACE_KEYS)

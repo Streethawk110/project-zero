@@ -266,7 +266,7 @@ export function skinMaterial(sex: Sex, skin: THREE.Color, hair: THREE.Color, old
         // Haaransatz wie in human.py (hairline): vorn über der Stirn, zum Nacken hin tiefer, Schläfen frei
         float scalpMask(vec3 p) {
           float ang = abs(atan(p.x - uLm.z, p.z - uLm.w));
-          float y = uLm.x + 0.075 + ((uLm.y + 0.05) - (uLm.x + 0.075)) * pow(ang / PI, 1.3);
+          float y = uLm.x + 0.071 + ((uLm.y + 0.05) - (uLm.x + 0.071)) * pow(ang / PI, 1.3);
           float temple = (ang > 0.9 && ang < 1.9) ? smoothstep(uLm.x + 0.02, uLm.x + 0.045, p.y) : 1.0;
           return smoothstep(y - 0.004, y + 0.014, p.y) * temple;
         }`)
@@ -358,14 +358,29 @@ export function hairMaterial(color: THREE.Color, curly: boolean) {
           vec4 hT = vec4(0.8, 0.8, 0.8, 1.0);
         #endif
         diffuseColor.a *= hT.a;
-        diffuseColor.rgb *= mix(0.55, 1.15, hT.r) * mix(0.35, 1.0, vHairAo);`)
+        // Einzelne Strähnen heller/dunkler (quer zur Karte), Ansatz dunkler als die Spitzen
+        float hStrand = fract(sin(floor(vMapUv.x * 160.0) * 91.7) * 43758.5);
+        float hStrand2 = fract(sin(floor(vMapUv.x * 47.0 + 3.0) * 12.9) * 24634.6);
+        diffuseColor.rgb *= mix(0.55, 1.15, hT.r) * mix(0.35, 1.0, vHairAo) * mix(0.72, 1.18, hStrand * 0.6 + hStrand2 * 0.4);`)
       .replace('#include <normal_fragment_begin>', THREE.ShaderChunk.normal_fragment_begin.replace('gl_FrontFacing ? 1.0 : - 1.0', '1.0'))
       .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
-        // Glanzband entlang der Strähnen (vereinfachtes Kajiya-Kay)
+        // Kajiya-Kay: Glanz entlang der Faserrichtung (Tangente = Kartenrichtung v aus den Ableitungen),
+        // zwei Glanzbänder – ein weißliches, zum Ansatz verschobenes und ein gefärbtes, zur Spitze verschobenes
         vec3 Vh = normalize(vViewPosition);
         vec3 Hh = normalize(uSunDirView + Vh);
-        float sheen = pow(1.0 - abs(dot(normal, Hh)), 12.0);
-        reflectedLight.directSpecular += diffuseColor.rgb * sheen * 0.6 * vHairAo;
+        vec3 dp1 = dFdx(-vViewPosition), dp2 = dFdy(-vViewPosition);
+        vec2 du1 = dFdx(vMapUv), du2 = dFdy(vMapUv);
+        float det = du1.x * du2.y - du2.x * du1.y;
+        vec3 Th = (dp2 * du1.x - dp1 * du2.x) * sign(det);
+        Th = length(Th) > 1e-8 ? normalize(Th) : vec3(0.0, 1.0, 0.0);
+        float shiftN = (hStrand - 0.5) * 0.3;
+        vec3 T1 = normalize(Th + normal * (0.12 + shiftN));
+        vec3 T2 = normalize(Th + normal * (-0.18 + shiftN));
+        float th1 = dot(T1, Hh), th2 = dot(T2, Hh);
+        float kk1 = pow(max(0.0, sqrt(max(0.0, 1.0 - th1 * th1))), 90.0);
+        float kk2 = pow(max(0.0, sqrt(max(0.0, 1.0 - th2 * th2))), 28.0);
+        float lit = max(dot(normal, uSunDirView), 0.0) * 0.7 + 0.3;
+        reflectedLight.directSpecular += uSunColor * (kk1 * 0.1 + kk2 * 0.12 * diffuseColor.rgb * 3.0) * lit * vHairAo * hT.a;
         // Gegenlicht: Sonne scheint durch die äußeren Strähnen (leuchtender Haarsaum)
         float backL = pow(max(dot(-Vh, uSunDirView), 0.0), 6.0);
         reflectedLight.directDiffuse += uSunColor * diffuseColor.rgb * backL * 0.35 * (1.0 - hT.a * 0.5) * vHairAo;`);
