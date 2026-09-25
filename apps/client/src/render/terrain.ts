@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addWetness } from './wetness.ts';
 import { castleLocal, clamp, getHeightfield, roadFactor, smoothstep, VILLAGE, WORLD_HALF, riverDistance, RIVER_WIDTH, shoreLine, type Heightfield } from '@pz/shared';
 import { TEX, bitmapPixels, type PBRSet } from './textures.ts';
 import { settings } from '../settings.ts';
@@ -346,12 +347,34 @@ function makeTerrainMaterial(albedo: THREE.DataArrayTexture, normals: THREE.Data
         float nStrength = mix(1.0, 0.45, far);
         vec3 wN = normalize(T * tnXY.x * nStrength + B * tnXY.y * nStrength + Ng * sqrt(max(0.0, 1.0 - dot(tnXY, tnXY))));
         normal = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
+        // Pfützen: bei Nässe füllen sich zuerst die tiefen Stellen der Bodentextur auf flachem Erdboden,
+        // Wegen und Pflaster (kaum auf Fels, Sand und Schnee). Bei Regen Tropfenringe.
+        if (uWet > 0.002) {
+          float pn = vnoise(vWPos.xz * 0.31) * 0.6 + vnoise(vWPos.xz * 1.7) * 0.4;
+          float susc = clamp(w[1] + w[7] + w[4] * 0.12 + w[0] * 0.08, 0.0, 1.0);
+          float hgt = nacc.b * 0.45 + pn * 0.55;
+          float level = uWet * 0.42 * susc;
+          float pud = (1.0 - smoothstep(level - 0.07, level, hgt)) * smoothstep(0.94, 0.985, Ng.y) * wetMask(vWPos) * (1.0 - far * 0.5);
+          // Rand der Pfütze: vollgesogen und dunkel
+          float rim = (1.0 - smoothstep(level - 0.02, level + 0.08, hgt)) * susc;
+          diffuseColor.rgb *= mix(1.0, 0.72, rim * uWet);
+          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.5, pud);
+          roughnessFactor = mix(roughnessFactor, 0.03, pud);
+          vec3 pN = Ng;
+          if (uRain > 0.05 && pud > 0.1 && camDist < 30.0) {
+            vec2 rp = rainRipples(vWPos.xz * 2.4, uWetTime) * uRain * 0.35;
+            pN = normalize(Ng + vec3(rp.x, 0.0, rp.y));
+          }
+          normal = normalize(mix(normal, (viewMatrix * vec4(pN, 0.0)).xyz, pud));
+        }
+        /*WET*/
       `)
       .replace('#include <aomap_fragment>', `
         reflectedLight.indirectDiffuse *= terrainAO;
         reflectedLight.directDiffuse *= mix(1.0, terrainAO, 0.35);
       `);
+    addWetness(shader, { worldPos: 'vWPos', anchor: '/*WET*/', strength: 0.8 });
   };
-  mat.customProgramCacheKey = () => `pz-terrain-v5-${baked}`;
+  mat.customProgramCacheKey = () => `pz-terrain-v6-${baked}`;
   return mat;
 }

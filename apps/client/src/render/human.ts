@@ -11,6 +11,7 @@ import { getModel, hasModel } from './models.ts';
 import { foliageSet, loadGltfTexture } from './textures.ts';
 import { windUniforms } from './foliage.ts';
 import { settings } from '../settings.ts';
+import { addWetness } from './wetness.ts';
 
 export type Sex = 'male' | 'female';
 
@@ -286,6 +287,8 @@ export function skinMaterial(sex: Sex, skin: THREE.Color, hair: THREE.Color, old
         // Streulicht unter der Haut: Schattenseite leicht rötlich aufgehellt
         reflectedLight.indirectDiffuse += reflectedLight.indirectDiffuse * vec3(0.18, 0.04, 0.02);
         reflectedLight.directDiffuse += reflectedLight.directDiffuse * vec3(0.05, -0.01, -0.02);`);
+    // Im Regen: Haut glänzt nass
+    addWetness(s, { strength: 0.35 });
   };
   m.customProgramCacheKey = () => 'human-skin';
   return m;
@@ -406,6 +409,8 @@ export function hairMaterial(color: THREE.Color, curly: boolean) {
         // Gegenlicht: Sonne scheint durch die äußeren Strähnen (leuchtender Haarsaum)
         float backL = pow(max(dot(-Vh, uSunDirView), 0.0), 6.0);
         reflectedLight.directDiffuse += uSunColor * diffuseColor.rgb * backL * 0.35 * (1.0 - hT.a * 0.5) * vHairAo;`);
+    // Nasses Haar: dunkler und glänzender
+    addWetness(s, { strength: 0.85 });
   };
   m.customProgramCacheKey = () => `human-hair-${curly}-${!!m.map}`;
   return m;

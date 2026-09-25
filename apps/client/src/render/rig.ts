@@ -10,6 +10,7 @@ import { getModel, hasModel, namedMaterial } from './models.ts';
 import { TEX } from './textures.ts';
 import { buildSkinnedParts, hasCharacterModel, headPiece, type SkinPart } from './skinned.ts';
 import { buildHuman, eyeMaterial, hairCapMaterial, hairMaterial, hasHumanModel, humanJoints, humanLandmarks, morphMeshes, skinMaterial, type Sex } from './human.ts';
+import { addWetness } from './wetness.ts';
 
 export type JointName =
   | 'hips' | 'spine' | 'chest' | 'neck' | 'head'
@@ -161,6 +162,8 @@ export function garment(kind: 'cloth' | 'leather' | 'chain' | 'plate', color: nu
     sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
       roughnessFactor = mix(roughnessFactor, 1.0, gDirt * 0.6);
       roughnessFactor = mix(roughnessFactor, 0.55, gBlood * 0.5);`);
+    // Stoff saugt sich im Regen voll (dunkler), Leder und Metall glänzen nass
+    addWetness(sh, { strength: kind === 'cloth' ? 0.9 : 0.7 });
   })(m.onBeforeCompile);
   m.customProgramCacheKey = () => `garment-${kind}`;
   return m;

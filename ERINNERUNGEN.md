@@ -265,6 +265,16 @@ Profiler nicht mitgezählt – behoben).
 - NUTZER: „mach alles was offen ist, alles dynamisch und realistischer“. Teil 1: Haare und Rock/Umhang
   schwingen nach (Feder in `rig.updateSwing`: Kopf-/Hüftbeschleunigung → `uSwing`/`uCloth`), Haarkarten
   tragen ihre Länge in Punktfarbe R (human.py `lenf`) → lange Strähnen schwingen stärker + Wind.
+  Teil 2: REGENNÄSSE (`render/wetness.ts`): `uWet` steigt bei Regen (~45 s), trocknet in ~150 s; nasse
+  Flächen dunkler (porös stärker) + glatter, oben stärker als Wände, Unterseiten trocken; Innenräume
+  begehbarer Häuser bleiben trocken (`uDryRoom`/`uDryTop`). Eingebaut in Gelände (Pfützen in Senken auf
+  Erde/Pflaster, Tropfenringe `rainRipples`, Anker `/*WET*/`), Modellmaterialien (`namedMaterial` tex),
+  Verwitterung, Kleidung, Haut, Haare. Testhaken `__pz.wetness`. Erster Versuch zu glänzend (Wald wie Eis)
+  → Glanz begrenzt, Pfützen fast nur auf Wegen.
+  Teil 3: NSCs suchen bei Regen Schutz (`World.raining`, `npcStep`: nach Hause bzw. Gasthaus; Wachen,
+  Streifen, Händler, Schlafende bleiben), Grüße wetterabhängig („Sauwetter!“ statt „Schönes Wetter“).
+  Umplanen mitten auf der Strecke schnitt Hausecken (Elsa blieb hängen) → Startpunkt nur überspringen,
+  wenn man dort steht. Test „Bei Regen …“ (44 Unit-Tests grün).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

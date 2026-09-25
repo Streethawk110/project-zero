@@ -1965,7 +1965,10 @@ export class World {
         lines = rep <= -30 ? ['Verschwinde!', 'Mit Dieben reden wir nicht.', 'Hau bloß ab.', 'Ich hol die Wache, wenn du näher kommst.']
           : rep < -5 ? ['Hm.', 'Pass auf, was du anfasst.', 'Ich hab ein Auge auf dich.', 'Was glotzt du so?']
           : rep >= 30 ? [`Gott zum Gruß, ${name}!`, `Schön, dich zu sehen, ${name}.`, 'Da ist ja unser Retter!', 'Das ganze Dorf spricht von dir.']
-          : night ? ['Gute Nacht.', 'Spät geworden, was?', 'Gott behüte.'] : ['Gott zum Gruß.', 'Guten Tag.', 'Schönes Wetter heute.', 'Grüß dich, Fremder.'];
+          : night ? ['Gute Nacht.', 'Spät geworden, was?', 'Gott behüte.']
+          : this.raining ? ['Sauwetter!', 'Ab ins Trockene, sag ich.', 'Das hört heute nicht mehr auf.', 'Gott zum Gruß – nass bis auf die Knochen.']
+          : this.weather === 'clear' ? ['Gott zum Gruß.', 'Guten Tag.', 'Schönes Wetter heute.', 'Grüß dich, Fremder.']
+          : ['Gott zum Gruß.', 'Guten Tag.', 'Grüß dich, Fremder.', 'Sieht nach Regen aus.'];
       }
       // Wer nicht schlecht über dich denkt, erzählt auch mal etwas Eigenes
       if (rep > -5 && def.bark?.length && this.rand.next() < 0.45) lines = def.bark;
@@ -2484,8 +2487,29 @@ export class World {
   }
 
   /** Aktueller Schritt im Tagesablauf eines NSC (oder null ohne Tagesablauf). */
-  npcStep(def: { routine?: RoutineStep[] }): RoutineStep | null {
-    return def.routine ? routineStep(def.routine, this.hour) : null;
+  npcStep(def: { id?: string; routine?: RoutineStep[] }): RoutineStep | null {
+    const s = def.routine ? routineStep(def.routine, this.hour) : null;
+    if (!s || !this.raining || !def.routine) return s;
+    // Bei Regen suchen Bewohner Schutz: wer draußen umhergeht, sitzt oder auf dem Feld arbeitet, geht
+    // nach Hause (oder ins Gasthaus). Wachen, Streifen, Händler am Stand und Schlafende bleiben.
+    if ((def.id && isGuard(def.id)) || s.act === 'patrol' || s.act === 'sleep') return s;
+    const tgt = s.at ?? s.route?.[0];
+    if (tgt && navNode(tgt)?.inside) return s;
+    if (s.act === 'work' && !(tgt ?? '').startsWith('field')) return s;
+    const home = def.routine.find((x) => x.act === 'sleep')?.at;
+    let shelter = home && navNode(home)?.inside ? home : undefined;
+    if (!shelter) {
+      const seats = ['inn_seat_a', 'inn_seat_b', 'inn_seat_c'];
+      let hsh = 0;
+      for (const ch of def.id ?? '') hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+      shelter = seats[hsh % seats.length]!;
+    }
+    return { from: s.from, to: s.to, act: shelter.startsWith('inn_seat') ? 'sit' : 'idle', at: shelter };
+  }
+
+  /** Richtiger Regen (nicht nur Nieselbeginn): Bewohner gehen ins Trockene. */
+  get raining() {
+    return (this.weather === 'rain' || this.weather === 'nullstorm') && this.weatherIntensity > 0.5;
   }
 
   private npcOpenDoor(door: string, x: number, z: number) {
@@ -2573,7 +2597,10 @@ export class World {
       if (!start || !cur || dist2(cur.x, cur.z, n.m.x, n.m.z) > 4 * 4) start = nearestNode(n.m.x, n.m.z, cur?.inside ? cur.door : undefined);
       n.pathTarget = target;
       n.path = start ? (start === target ? [target] : [start, ...findPath(start, target)]) : [target];
-      if (n.path.length > 1 && n.path[0] === n.lastNode) n.path.shift();
+      // Den Startpunkt nur überspringen, wenn man dort steht – wer mitten auf einer Strecke umplant
+      // (z. B. Regen setzt ein), geht erst zurück auf den Weg, sonst schneidet er Hausecken
+      const p0 = n.path.length > 1 && n.path[0] === n.lastNode ? navNode(n.path[0]!) : undefined;
+      if (p0 && dist2(p0.x, p0.z, n.m.x, n.m.z) < 1.2 * 1.2) n.path.shift();
       if (n.hidden) {
         // aus dem Haus kommen: am Innenpunkt wieder auftauchen
         n.hidden = false;

@@ -8,6 +8,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { PROPS } from '@pz/shared';
 import { TEX } from './textures.ts';
+import { addWetness } from './wetness.ts';
 
 const loader = new GLTFLoader();
 loader.setMeshoptDecoder(MeshoptDecoder);
@@ -65,7 +66,11 @@ export function namedMaterial(name: string, fallbackColor?: THREE.Color): THREE.
   const tex = (set: ReturnType<typeof TEX.grass>, rep = 1, extra: THREE.MeshStandardMaterialParameters = {}) => {
     const c = (t: THREE.Texture) => { const x = t.clone(); x.repeat.set(rep, rep); x.needsUpdate = true; return x; };
     const ao = set.aoMap ? { aoMap: c(set.aoMap), aoMapIntensity: 0.9 } : {};
-    return std({ map: c(set.map), normalMap: c(set.normalMap), roughnessMap: c(set.roughnessMap), ...ao, ...extra });
+    const m = std({ map: c(set.map), normalMap: c(set.normalMap), roughnessMap: c(set.roughnessMap), ...ao, ...extra });
+    // Regennässe (dunkler, glänzend); unter Dächern begehbarer Häuser trocken
+    m.onBeforeCompile = (sh) => addWetness(sh);
+    m.customProgramCacheKey = () => 'pz-wet';
+    return m;
   };
   let m: THREE.Material;
   switch (true) {

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { settings } from '../settings.ts';
 import type { AtmosphereState } from './renderer.ts';
+import { updateWetness } from './wetness.ts';
 
 const tmpC = new THREE.Color();
 
@@ -151,6 +152,7 @@ export class Environment {
     this.time += dt;
     this.weather = weather;
     this.wInt = wInt;
+    updateWetness(dt, weather === 'rain' || weather === 'nullstorm', wInt, inDungeon);
     // Sonnenstand: 0.25 Aufgang, 0.5 Mittag, 0.75 Untergang
     const ang = (dayTime - 0.25) * Math.PI * 2;
     const elev = Math.sin(ang);

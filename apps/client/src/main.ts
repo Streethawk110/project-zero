@@ -4,6 +4,7 @@ import { createCharacter, getWorldLayout, type Appearance, type OriginId } from 
 import { applyUiScale, settings } from './settings.ts';
 import { loadRuntimeConfig } from './config.ts';
 import { loadManifest, preloadModels } from './render/models.ts';
+import { wetness } from './render/wetness.ts';
 import { BAKED_NAMES, FOLIAGE_NAMES, loadBakedTextures, loadFoliageTextures, setTextureSize, TEX } from './render/textures.ts';
 import { hasCharacterModel } from './render/skinned.ts';
 import { diag, gpuName } from './diag.ts';
@@ -179,7 +180,7 @@ async function boot() {
   // Beim Verlassen der Seite sichern
   window.addEventListener('pagehide', () => save(false));
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(false); });
-  (window as unknown as { __pz: unknown }).__pz = { game, gameUi, THREE, get local() { return local; } };
+  (window as unknown as { __pz: unknown }).__pz = { game, gameUi, THREE, wetness, get local() { return local; } };
 }
 
 function findSlotFor(charId: string) {

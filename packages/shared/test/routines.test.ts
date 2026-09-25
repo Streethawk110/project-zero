@@ -47,4 +47,26 @@ describe('Tagesabläufe im Dorf', () => {
       if (t && !n.path?.length) expect(Math.hypot(t.x - n.m.x, t.z - n.m.z), n.def.id).toBeLessThan(1.5);
     }
   });
+
+  it('Bei Regen gehen Bewohner ins Trockene, Wachen bleiben auf Posten', () => {
+    const w = makeWorld('sp');
+    const npcs = () => [...(w as unknown as { ents: Map<number, { kind: string; def: { id: string; routine?: unknown }; pathTarget?: string | null; path?: string[]; stuckT?: number; m: { x: number; z: number } }> }).ents.values()].filter((e) => e.kind === 'npc' && e.def.routine);
+    const inside = () => npcs().filter((n) => n.pathTarget && navNode(n.pathTarget)?.inside).length;
+    w.dayTime = 10 / 24;
+    w.setWeather('clear');
+    w.weatherIntensity = 0;
+    for (let i = 0; i < 400; i++) w.step(0.05);
+    const dry = inside();
+    w.setWeather('rain');
+    w.weatherIntensity = 1;
+    let stuck = 0;
+    for (let i = 0; i < 2400; i++) {
+      w.step(0.05);
+      for (const n of npcs()) if ((n.stuckT ?? 0) > 3.9) stuck++;
+    }
+    expect(inside()).toBeGreaterThan(dry + 4);
+    expect(stuck).toBe(0);
+    // Wachen stehen weiter draußen
+    for (const n of npcs()) if (n.def.id.startsWith('watch_')) expect(n.pathTarget && navNode(n.pathTarget)?.inside, n.def.id).toBeFalsy();
+  });
 });

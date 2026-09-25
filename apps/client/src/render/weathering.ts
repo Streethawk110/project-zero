@@ -3,6 +3,7 @@
 // daher nur für in der Welt platzierte Objekte – nicht für Waffen oder Figuren.
 
 import * as THREE from 'three';
+import { addWetness } from './wetness.ts';
 
 const WEATHERED = /^(plaster|stone_block|stoneblock|wood|wood_dark|lower|door)/;
 
@@ -56,7 +57,8 @@ export function weatheredMaterial(base: THREE.MeshStandardMaterial, partMatrix: 
         float wWet = splash;`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
         roughnessFactor = mix(roughnessFactor, min(1.0, roughnessFactor + 0.08), wWet);`);
+    addWetness(shader, { worldPos: 'vWPosW' });
   };
-  m.customProgramCacheKey = () => `pz-weathered-${base.customProgramCacheKey()}`;
+  m.customProgramCacheKey = () => `pz-weathered-wet`;
   return m;
 }
