@@ -285,6 +285,10 @@ Profiler nicht mitgezählt – behoben).
   Gesichtsfilter nur bis eye+0,048. Wimpern nutzten die dichten Büschel des neuen Haaratlas (dicker schwarzer
   Lidstrich) → Spalte mit Einzelhaaren (u 0,77–0,97). Frauen: buschige Scan-Brauen + Nasenwurzel durch
   Stirnton ersetzt (weiche Ränder), Braue aus prozeduraler Maske ×1,6.
+  Danach: Wimpern u 0,66–0,90 (Einzelhaar-Spalte allein zu spärlich), Frauenbraue breiter (0,0052),
+  Scan-Brauenende ab ex+0,03 geglättet. Atemhauch geprüft (Zähler: 8 Teilchen in 4 s Spielzeit; ohne GPU
+  vergeht Spielzeit ~15× langsamer – Atemzug 3,7 s!). ACHTUNG: `pkill -f`/`pgrep -f` mit Text aus dem
+  eigenen Befehl trifft die eigene Shell.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.
