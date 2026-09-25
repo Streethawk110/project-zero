@@ -70,10 +70,11 @@ export function garment(kind: 'cloth' | 'leather' | 'chain' | 'plate', color: nu
     roughness: 1, metalness: metal ? 1 : 0,
   });
   if (kind === 'cloth') {
-    m.sheen = 1;
-    m.sheenRoughness = 0.65;
-    m.sheenColor = new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.35);
-    m.normalScale.set(0.9, 0.9);
+    // Weicher Stoffglanz; Normalen schwächer (feine Webung glitzert sonst an Ärmeln und Kanten)
+    m.sheen = 0.7;
+    m.sheenRoughness = 0.8;
+    m.sheenColor = new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.25);
+    m.normalScale.set(0.55, 0.55);
   } else if (kind === 'leather') {
     m.clearcoat = 0.18;
     m.clearcoatRoughness = 0.55;

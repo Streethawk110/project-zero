@@ -165,6 +165,8 @@ Profiler nicht mitgezählt – behoben).
 - Tageshimmel klarer (Trübung 2,4, Rayleigh 1,8, weniger Wolken bei klarem Wetter 0,3, bläulicherer
   Dunst). E2E: SP + Offline grün; MP im Gesamtlauf wieder am Menü-Timeout (Last), einzeln grün (3,3 min) →
   Testseiten jetzt mit fpsCap 15.
+- Menschen: Iris gedämpft (leuchtete), Stoff-Glitzern reduziert (Sheen/Normalen), Dutt (Frisur 4) als
+  runde Kugel aus gewickelten Strähnen, Schläfen-Haaransatz bis Augenhöhe (Modell + `scalpMask`).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

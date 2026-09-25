@@ -778,7 +778,7 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
         ang = abs(math.atan2(p[0] - sc.c[0], p[2] - cz))  # 0 vorn … π hinten
         y = front_y + (back_y - front_y) * (ang / math.pi) ** 1.3
         # Schläfen etwas zurückgesetzt, über den Ohren frei
-        if 0.9 < ang < 1.9 and p[1] < eye_y + 0.03:
+        if 0.9 < ang < 1.9 and p[1] < eye_y + 0.0:
             return False
         return p[1] > y
 
@@ -850,14 +850,24 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
             dv = np.array([0, 0.3, -1.0]) if r[2] > cz + 0.03 else np.array([0, -1.0, -0.3])
             pts, ns = grow(sc, r, dv, 0.02, 2, 0.002, 0.0 if r[2] > cz + 0.03 else 0.3, rnd)
             cards.append((pts, [0.03, 0.03, 0.02], ns, (0.45, rnd.random(), 0.5)))
-        # Knoten: kleine Kugel aus Karten
-        for i in range(40):
-            a = i * 2.4
-            h = (i % 8) / 8
-            d = np.array([math.cos(a) * math.sqrt(1 - h * h), h * 0.8 + 0.1, math.sin(a) * math.sqrt(1 - h * h)])
-            p0 = knot + d * 0.025
-            p1 = knot + d * 0.045 + np.array([0, 0.01, 0])
-            cards.append(([p0, (p0 + p1) / 2, p1], [0.035, 0.035, 0.02], [d, d, d], (0.8, rnd.random(), 0.25)))
+        # Knoten: runder Dutt – Strähnen liegen tangential um eine Kugel (gewickelt), nicht abstehend
+        R = 0.03
+        for i in range(140):
+            z_ = rnd.uniform(-0.6, 1.0)
+            a = rnd.uniform(0, math.tau)
+            d = np.array([math.cos(a) * math.sqrt(1 - z_ * z_), z_, math.sin(a) * math.sqrt(1 - z_ * z_)])
+            ref = np.array([0.0, 1.0, 0.0]) if abs(d[1]) < 0.9 else np.array([1.0, 0.0, 0.0])
+            t = np.cross(d, ref)
+            t /= np.linalg.norm(t)
+            ang = rnd.uniform(0, math.tau)
+            t = t * math.cos(ang) + np.cross(d, t) * math.sin(ang)
+            pts, ns = [], []
+            for k in range(4):
+                th = (k - 1.5) * 0.28
+                q = d * math.cos(th) + t * math.sin(th)
+                pts.append(knot + np.array([0, 0.012, 0]) + q * (R + 0.002 * (i % 3)))
+                ns.append(q)
+            cards.append((pts, [0.022, 0.024, 0.024, 0.018], ns, (0.8, rnd.random(), 0.25)))
     o = hair_mesh(f"hair_{style}", cards, "hair_" + atlas)
     # Grundkappe: eng anliegende, haarfarbene Schicht auf der Kopfhaut (keine helle Haut zwischen Karten)
     # Kappe etwas hinter dem Haaransatz enden lassen: die Kante verschwindet unter den Strähnen

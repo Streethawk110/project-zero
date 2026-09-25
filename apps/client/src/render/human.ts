@@ -267,7 +267,7 @@ export function skinMaterial(sex: Sex, skin: THREE.Color, hair: THREE.Color, old
         float scalpMask(vec3 p) {
           float ang = abs(atan(p.x - uLm.z, p.z - uLm.w));
           float y = uLm.x + 0.071 + ((uLm.y + 0.05) - (uLm.x + 0.071)) * pow(ang / PI, 1.3);
-          float temple = (ang > 0.9 && ang < 1.9) ? smoothstep(uLm.x + 0.02, uLm.x + 0.045, p.y) : 1.0;
+          float temple = (ang > 0.9 && ang < 1.9) ? smoothstep(uLm.x - 0.008, uLm.x + 0.016, p.y) : 1.0;
           return smoothstep(y - 0.004, y + 0.014, p.y) * temple;
         }`)
       .replace('#include <map_fragment>', `#include <map_fragment>
@@ -296,7 +296,8 @@ export function eyeMaterial(iris: THREE.Color) {
     s.fragmentShader = s.fragmentShader
       .replace('#include <common>', '#include <common>\nuniform vec3 uIris;')
       .replace('#include <map_fragment>', `vec4 eyeT = texture2D(map, vMapUv);
-        diffuseColor.rgb *= mix(eyeT.rgb, eyeT.rgb * uIris * 2.2, eyeT.a);`);
+        // Iris gedämpft (sonst leuchtet sie), Augapfel insgesamt etwas dunkler: er liegt im Schatten der Lider
+        diffuseColor.rgb *= mix(eyeT.rgb * 0.82, eyeT.rgb * uIris * 1.35, eyeT.a);`);
   };
   m.customProgramCacheKey = () => 'human-eye';
   return m;
