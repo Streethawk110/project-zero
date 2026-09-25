@@ -161,7 +161,7 @@ Profiler nicht mitgezählt – behoben).
   dunklen Gambeson statt schwarzem Metall, feinere Ringe. Gesprächskamera: Gesicht höher im Bild.
 - Haare: Kajiya-Kay-Glanz (2 Bänder), Strähnenvariation; Formziele nur Schädel (`SKULL_KEYS`), Bart
   `BEARD_KEYS`, Export ohne Formnormalen (`export_morph_normal=False`) → human_male 11,3 MB statt 17,6.
-  Web-Artifact Version 7 (59 MB, Texturen 1024).
+  Web-Artifact Version 7 (59 MB, Texturen 1024), danach Version 8 (Nacht, Haare, Kleidung).
 - Tageshimmel klarer (Trübung 2,4, Rayleigh 1,8, weniger Wolken bei klarem Wetter 0,3, bläulicherer
   Dunst). E2E: SP + Offline grün; MP im Gesamtlauf wieder am Menü-Timeout (Last), einzeln grün (3,3 min) →
   Testseiten jetzt mit fpsCap 15.
