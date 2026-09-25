@@ -147,6 +147,18 @@ Profiler nicht mitgezählt – behoben).
   der Karte (Kompass ⚑, verschwindet bei Ankunft), Pause beim Fensterwechsel
   (Einstellung). Belegte F-Tasten werden nicht mehr an den Browser gegeben
   (F5 hätte sonst die Seite neu geladen).
+- Filmreif/Menschen (Nacht 24./25.9.): GRAS-FEHLER behoben – ausgeblendete Halme wurden nur in der
+  Höhe auf 0 gesetzt und lagen als 1 m lange dunkle Striche überall auf Pflaster/Wiese (grass.ts,
+  `wsc`). Graswuchs-Sperre am Pflasterrand um eine Zelle ausgeweitet. Kopfsteinpflaster neu
+  (`mat_cobble`: ~15 cm Feldsteine, breite Erdfugen). Fels: grobe zweite Abtastung, Rinnen, Flechten.
+  Tag etwas dunkler belichtet (1,55), Kontrast 1,18.
+- Menschen: Lippenrot/Wangenröte saßen unter der Nase (skin_bake nahm „joint-mouth“, 3 cm zu hoch →
+  jetzt Mitte der Zahnreihen). Haaransatz 2 cm höher (Strähnen lagen auf der Stirn), Kappe/Strähnen/
+  Bart übernehmen die Gesichts-Formziele (`follow_keys`, `add_keys_after_offset`), Haut-Shader tönt die
+  Kopfhaut in Haarfarbe (`scalpMask`, `humanLandmarks`; aus bei Glatze), Kappe mit Tiefenversatz.
+  Frei hängende Strähnen fallen jetzt nach unten. Haar: weniger Himmelsglanz, Gegenlicht-Saum,
+  Alpha-to-Coverage bei MSAA. Falten je Alter (graues Haar → kräftiger). Kettenhemd: Lücken zeigen
+  dunklen Gambeson statt schwarzem Metall, feinere Ringe. Gesprächskamera: Gesicht höher im Bild.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

@@ -9,7 +9,7 @@ import { HAIR_COLORS, SKIN_COLORS, EYE_COLORS, ITEMS, type Appearance } from '@p
 import { getModel, hasModel, namedMaterial } from './models.ts';
 import { TEX } from './textures.ts';
 import { buildSkinnedParts, hasCharacterModel, headPiece, type SkinPart } from './skinned.ts';
-import { buildHuman, eyeMaterial, hairCapMaterial, hairMaterial, hasHumanModel, humanJoints, morphMeshes, skinMaterial, type Sex } from './human.ts';
+import { buildHuman, eyeMaterial, hairCapMaterial, hairMaterial, hasHumanModel, humanJoints, humanLandmarks, morphMeshes, skinMaterial, type Sex } from './human.ts';
 
 export type JointName =
   | 'hips' | 'spine' | 'chest' | 'neck' | 'head'
@@ -54,7 +54,7 @@ export const OUTFITS: Record<string, { body: number; legs: number; accent: numbe
  */
 export function garment(kind: 'cloth' | 'leather' | 'chain' | 'plate', color: number) {
   const t = kind === 'leather' ? TEX.leather() : kind === 'chain' ? TEX.chain() : kind === 'plate' ? TEX.plate() : TEX.cloth();
-  const rep = kind === 'cloth' ? 12 : kind === 'leather' ? 4 : kind === 'chain' ? 42 : 2;
+  const rep = kind === 'cloth' ? 12 : kind === 'leather' ? 4 : kind === 'chain' ? 60 : 2;
   const c = (x?: THREE.Texture | null) => {
     if (!x) return null;
     const y = x.clone();
@@ -97,6 +97,19 @@ export function garment(kind: 'cloth' | 'leather' | 'chain' | 'plate', color: nu
           diffuseColor.rgb *= mix(1.0, mix(0.82, 1.1, gw), uWear);
           diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.62, 0.56, 0.48), stain * 0.45 * uWear);
         #endif`);
+    if (kind === 'chain') {
+      // Kettenhemd: in den Lücken zwischen den Ringen liegt der dunkle Gambeson (Stoff, kein Metall)
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <map_fragment>', `#include <map_fragment>
+          #ifdef USE_MAP
+            float ring = smoothstep(0.08, 0.3, dot(texture2D(map, vMapUv).rgb, vec3(0.333)));
+          #else
+            float ring = 1.0;
+          #endif
+          diffuseColor.rgb = mix(vec3(0.075, 0.065, 0.055), diffuseColor.rgb, ring);`)
+        .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n          metalnessFactor *= ring;')
+        .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n          roughnessFactor = mix(0.9, roughnessFactor, ring);');
+    }
   };
   m.customProgramCacheKey = () => `garment-${kind}`;
   return m;
@@ -199,8 +212,9 @@ export class HumanoidRig {
     this.human = hasHumanModel(this.sex);
     if (this.human) this.useSkin = true;
     this.skinMat = this.human
-      ? skinMaterial(this.sex, new THREE.Color(SKIN_COLORS[a.skin] ?? SKIN_COLORS[1]!), new THREE.Color(HAIR_COLORS[a.hairColor] ?? '#3b2718'))
+      ? skinMaterial(this.sex, new THREE.Color(SKIN_COLORS[a.skin] ?? SKIN_COLORS[1]!), new THREE.Color(HAIR_COLORS[a.hairColor] ?? '#3b2718'), a.hairColor === 5 || a.hairColor === 7, humanLandmarks(this.sex, JOINTS))
       : new THREE.MeshStandardMaterial({ color: new THREE.Color(SKIN_COLORS[a.skin] ?? SKIN_COLORS[1]), roughness: 0.6, map: TEX.skin().map });
+    if (this.human && a.hair === 3) (this.skinMat.userData['scalp'] as { value: number }).value = 0; // Glatze
     const outfit = OUTFITS[opts.outfit ?? 'armor_gambeson'] ?? OUTFITS['armor_gambeson']!;
     if (this.human) {
       this.bodyMat = garment('cloth', outfit.body);
@@ -470,10 +484,13 @@ export class HumanoidRig {
     if (this.human) {
       const hc = new THREE.Color(HAIR_COLORS[a.hairColor] ?? '#3b2718');
       const skin = new THREE.Color(SKIN_COLORS[a.skin] ?? SKIN_COLORS[1]!);
-      const fresh = skinMaterial(this.sex, skin, hc);
+      const fresh = skinMaterial(this.sex, skin, hc, a.hairColor === 5 || a.hairColor === 7);
       this.skinMat.color.copy(fresh.color);
+      if ((this.skinMat as THREE.MeshStandardMaterial).normalScale) (this.skinMat as THREE.MeshStandardMaterial).normalScale.copy(fresh.normalScale);
       fresh.dispose();
       (this.skinMat.userData['hairCol'] as { value: THREE.Color } | undefined)?.value.copy(hc);
+      const scalp = this.skinMat.userData['scalp'] as { value: number } | undefined;
+      if (scalp) scalp.value = a.hair === 3 ? 0 : 1;
       for (const m of this.humanHair) m.color.copy(hc);
       this.humanCap?.color.copy(hc).multiplyScalar(0.8);
       (this.eyeMat.userData['iris'] as { value: THREE.Color } | undefined)?.value.set(EYE_COLORS[a.eyes] ?? '#4b3621');

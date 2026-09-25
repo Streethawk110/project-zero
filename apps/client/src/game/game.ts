@@ -694,7 +694,7 @@ export class Game {
       const dist0 = shoulder.distanceTo(h);
       const pos = shoulder.lerp(h.clone().addScaledVector(right, 0.12), Math.max(0, Math.min(0.55, 1 - 1.15 / Math.max(dist0, 0.01))));
       // Blickpunkt unter dem Gesicht: das Gesicht sitzt im oberen Bilddrittel, über dem Dialogfenster
-      this.cam.focus = { pos, look: h.clone().addScaledVector(right, 0.08).add(new THREE.Vector3(0, -0.22, 0)) };
+      this.cam.focus = { pos, look: h.clone().addScaledVector(right, 0.08).add(new THREE.Vector3(0, -0.34, 0)) };
       this.renderer.setCinematic(pos.distanceTo(h), true);
       if (this.playerRig) this.playerRig.lookAt = h;
     } else {

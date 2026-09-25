@@ -122,7 +122,12 @@ def bake(kind):
     # Orientierungspunkte des Gesichts
     eyeL = base.center(v, "helper-l-eye")
     eyeR = base.center(v, "helper-r-eye")
-    mouth = base.center(v, "joint-mouth")
+    # Mundlinie: Mitte zwischen oberer und unterer Zahnreihe („joint-mouth“ liegt ~3 cm zu hoch –
+    # sonst landen Lippenrot und Wangenröte unter der Nase)
+    _ut, _lt = base.center(v, "helper-upper-teeth"), base.center(v, "helper-lower-teeth")
+    _jm = base.center(v, "joint-mouth")
+    mouth = np.array([_ut[0], (_ut[1] + _lt[1]) / 2, _jm[2]])
+    print("[haut] Mund", _jm, "->", mouth, flush=True)
     jaw = base.center(v, "joint-jaw")
     head_idx = [i for i in base.groups["body"] if v[i, 1] > J["neck"][1]]
     hv = v[head_idx]
@@ -141,8 +146,11 @@ def bake(kind):
     tone *= (0.93 + 0.12 * blot)[:, None]
     tone *= (0.97 + 0.05 * fine)[:, None]
     red = np.array([0.72, 0.30, 0.26])
-    redness = (gauss(P, eyeL + np.array([0.012, -0.035, 0.01]), np.array([0.03, 0.022, 0.03])) * 0.35 +
-               gauss(P, eyeR + np.array([-0.012, -0.035, 0.01]), np.array([0.03, 0.022, 0.03])) * 0.35 +
+    # Wangenröte: unter und außerhalb der Augen (nicht zur Nase hin, sonst wirkt die Nase gerötet)
+    outL = np.sign(eyeL[0]) * 0.012
+    outR = np.sign(eyeR[0]) * 0.012
+    redness = (gauss(P, eyeL + np.array([outL, -0.04, 0.0]), np.array([0.024, 0.02, 0.03])) * 0.3 +
+               gauss(P, eyeR + np.array([outR, -0.04, 0.0]), np.array([0.024, 0.02, 0.03])) * 0.3 +
                gauss(P, nose, np.array([0.016, 0.016, 0.02])) * 0.025 +
                gauss(P, mouth, np.array([0.035, 0.03, 0.03])) * 0.12)
     # Ohren (seitlich am Kopf auf Augenhöhe)

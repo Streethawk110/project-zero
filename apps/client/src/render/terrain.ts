@@ -187,6 +187,23 @@ export class Terrain {
         splatData[o + 2] = Math.min(1, sp[3]! + sp[5]! + Math.max(0, sp[1]! - 0.3) * 1.3 + sp[7]! * 1.2) * 255;
         splatData[o + 3] = rs * 255;
       }
+    // Graswuchs-Sperre (Kanal B) um eine Zelle ausweiten: sonst ragen Halme über die lineare Filterung
+    // ein bis zwei Meter auf Pflaster und Wege
+    {
+      const src = new Uint8Array(splatRes * splatRes);
+      for (let k = 0; k < src.length; k++) src[k] = splatData[k * 4 + 2]!;
+      for (let j = 0; j < splatRes; j++)
+        for (let i = 0; i < splatRes; i++) {
+          let m = 0;
+          for (let dj = -1; dj <= 1; dj++)
+            for (let di = -1; di <= 1; di++) {
+              const ii = i + di, jj = j + dj;
+              if (ii >= 0 && jj >= 0 && ii < splatRes && jj < splatRes) m = Math.max(m, src[jj * splatRes + ii]!);
+            }
+          const o = (j * splatRes + i) * 4 + 2;
+          splatData[o] = Math.max(src[j * splatRes + i]!, m * 0.75);
+        }
+    }
     this.splatTex = new THREE.DataTexture(splatData, splatRes, splatRes, THREE.RGBAFormat);
     this.splatTex.magFilter = THREE.LinearFilter;
     this.splatTex.needsUpdate = true;
@@ -265,7 +282,15 @@ function makeTerrainMaterial(albedo: THREE.DataArrayTexture, normals: THREE.Data
           la[i] = vec4(0.0); ln[i] = vec4(0.5, 0.5, 0.0, 1.0);
           if (w[i] < 0.015) continue;
           float l = float(i);
-          if (i == 2) { la[i] = triA(2.0, vWPos, vWNorm, TS * 0.55); ln[i] = triN(2.0, vWPos, vWNorm, TS * 0.55); }
+          if (i == 2) {
+            la[i] = triA(2.0, vWPos, vWNorm, TS * 0.55); ln[i] = triN(2.0, vWPos, vWNorm, TS * 0.55);
+            // Felswände: zweite, sehr grobe Abtastung (Felsbänke im Maßstab von Metern) – in der Ferne dominiert sie
+            float mf = smoothstep(12.0, 90.0, camDist);
+            vec4 ma = triA(2.0, vWPos, vWNorm, TS * 0.07);
+            vec4 mn = triN(2.0, vWPos, vWNorm, TS * 0.07);
+            la[i].rgb = mix(la[i].rgb * mix(vec3(1.0), ma.rgb * 2.2, 0.5), ma.rgb, mf * 0.7);
+            ln[i] = mix(ln[i], mn, 0.35 + mf * 0.45);
+          }
           else {
             vec2 uv = tuv * (i == 7 ? 1.25 : 1.0);
             sampleLayer(l, uv, breakT, la[i], ln[i]);
@@ -294,6 +319,11 @@ function makeTerrainMaterial(albedo: THREE.DataArrayTexture, normals: THREE.Data
           float stain = vnoise(vWPos.xz * 0.006 + vWPos.y * 0.01);
           vec3 tint = mix(vec3(0.92, 0.9, 0.86), vec3(1.08, 1.0, 0.9), stain) * mix(0.86, 1.06, strata);
           acc.rgb = mix(acc.rgb, acc.rgb * tint, mountainMask * (1.0 - w[6]));
+          // Dunkle Rinnen/Klüfte (großräumiges Grat-Rauschen) und Flechten auf flacheren Stellen
+          float gully = 1.0 - abs(vnoise(vec2(vWPos.x * 0.03 + vWPos.y * 0.02, vWPos.z * 0.11)) * 2.0 - 1.0);
+          acc.rgb *= mix(1.0, 0.72, smoothstep(0.75, 0.97, gully) * mountainMask * (1.0 - w[6]));
+          float lichen = smoothstep(0.55, 0.8, vnoise(vWPos.xz * 0.21 + vWPos.y * 0.13)) * (1.0 - smoothstep(0.3, 0.55, 1.0 - normalize(vWNorm).y));
+          acc.rgb = mix(acc.rgb, acc.rgb * vec3(0.95, 1.02, 0.78), lichen * mountainMask * (1.0 - w[6]) * 0.6);
         }
         diffuseColor.rgb *= acc.rgb;
         float terrainRough = acc.a;
@@ -315,6 +345,6 @@ function makeTerrainMaterial(albedo: THREE.DataArrayTexture, normals: THREE.Data
         reflectedLight.directDiffuse *= mix(1.0, terrainAO, 0.35);
       `);
   };
-  mat.customProgramCacheKey = () => `pz-terrain-v4-${baked}`;
+  mat.customProgramCacheKey = () => `pz-terrain-v5-${baked}`;
   return mat;
 }

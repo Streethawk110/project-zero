@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { getModel, hasModel } from './models.ts';
 import { foliageSet, loadGltfTexture } from './textures.ts';
 import { windUniforms } from './foliage.ts';
+import { settings } from '../settings.ts';
 
 export type Sex = 'male' | 'female';
 
@@ -122,6 +123,21 @@ function pieceName(n: string) {
   return m ? m[1]! : s;
 }
 
+/** Orientierungspunkte für den Haaransatz: Augenhöhe, Hals, Mitte des Oberkopfs (Rig-Raum). */
+export function humanLandmarks(sex: Sex, order: string[]) {
+  const t = template(sex, order);
+  const box = (name: string) => {
+    const bb = new THREE.Box3();
+    for (const pg of t.pieces.get(name) ?? []) { pg.geometry.computeBoundingBox(); bb.union(pg.geometry.boundingBox!); }
+    return bb.isEmpty() ? null : bb;
+  };
+  const eyes = box('eyes'), cap = box('hair_0_cap') ?? box('hair_2_cap');
+  const head = t.joints.get('head') ?? new THREE.Vector3(0, 1.65, 0);
+  const eyeY = eyes ? (eyes.min.y + eyes.max.y) / 2 : head.y + 0.02;
+  const c = cap ? cap.getCenter(new THREE.Vector3()) : head.clone();
+  return { eyeY, neckY: t.joints.get('neck')?.y ?? eyeY - 0.2, cx: c.x, cz: c.z };
+}
+
 /** Ruhepositionen der Gelenke im Rig-Raum (Füße auf 0, Blick +Z). */
 export function humanJoints(sex: Sex, order: string[]) {
   return template(sex, order).joints;
@@ -227,21 +243,41 @@ function skinTextures(sex: Sex) {
  * Hautmaterial: Textur relativ zum Grundton eingefärbt, Brauen/Stoppeln (Maske im Blaukanal)
  * in Haarfarbe, weiches Streulicht (rötliches Durchscheinen an Licht-Schatten-Kanten).
  */
-export function skinMaterial(sex: Sex, skin: THREE.Color, hair: THREE.Color) {
+/** old: Falten und Poren kräftiger (graues Haar); junge Gesichter glatter. */
+export function skinMaterial(sex: Sex, skin: THREE.Color, hair: THREE.Color, old = false, landmarks?: { eyeY: number; neckY: number; cx: number; cz: number }) {
   const t = skinTextures(sex);
   const tint = new THREE.Color(skin.r / BASE_TONE.r, skin.g / BASE_TONE.g, skin.b / BASE_TONE.b);
-  const m = new THREE.MeshStandardMaterial({ map: t.map, normalMap: t.normalMap, normalScale: new THREE.Vector2(0.7, 0.7), roughnessMap: t.arm, roughness: 1, metalness: 0, color: tint });
-  const u = { uHairCol: { value: hair.clone() }, tArm: { value: t.arm } };
+  const m = new THREE.MeshStandardMaterial({ map: t.map, normalMap: t.normalMap, normalScale: new THREE.Vector2(old ? 0.85 : 0.45, old ? 0.85 : 0.45), roughnessMap: t.arm, roughness: 1, metalness: 0, color: tint });
+  const lm = landmarks ?? { eyeY: 1.68, neckY: 1.5, cx: 0, cz: 0 };
+  const u = {
+    uHairCol: { value: hair.clone() }, tArm: { value: t.arm },
+    uScalp: { value: 1 }, uLm: { value: new THREE.Vector4(lm.eyeY, lm.neckY, lm.cx, lm.cz) },
+  };
   m.userData['hairCol'] = u.uHairCol;
+  m.userData['scalp'] = u.uScalp;
   m.onBeforeCompile = (s) => {
     Object.assign(s.uniforms, u);
+    s.vertexShader = s.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vBindP;')
+      .replace('#include <morphtarget_vertex>', '#include <morphtarget_vertex>\nvBindP = transformed;');
     s.fragmentShader = s.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uHairCol;\nuniform sampler2D tArm;')
+      .replace('#include <common>', `#include <common>
+        uniform vec3 uHairCol; uniform sampler2D tArm; uniform float uScalp; uniform vec4 uLm; varying vec3 vBindP;
+        // Haaransatz wie in human.py (hairline): vorn über der Stirn, zum Nacken hin tiefer, Schläfen frei
+        float scalpMask(vec3 p) {
+          float ang = abs(atan(p.x - uLm.z, p.z - uLm.w));
+          float y = uLm.x + 0.075 + ((uLm.y + 0.05) - (uLm.x + 0.075)) * pow(ang / PI, 1.3);
+          float temple = (ang > 0.9 && ang < 1.9) ? smoothstep(uLm.x + 0.02, uLm.x + 0.045, p.y) : 1.0;
+          return smoothstep(y - 0.004, y + 0.014, p.y) * temple;
+        }`)
       .replace('#include <map_fragment>', `#include <map_fragment>
         vec3 armS = texture2D(tArm, vMapUv).rgb;
         // Brauen und Stoppeln in Haarfarbe (Maske aus der Hauttextur)
         diffuseColor.rgb = mix(diffuseColor.rgb, uHairCol * 0.55, armS.b * 0.85);
-        diffuseColor.rgb *= armS.r;`)
+        diffuseColor.rgb *= armS.r;
+        // Kopfhaut unter den Haaren: dunkel in Haarfarbe (keine helle Haut zwischen den Strähnen)
+        float scalp = scalpMask(vBindP) * uScalp;
+        diffuseColor.rgb = mix(diffuseColor.rgb, uHairCol * 0.45, scalp * 0.92);`)
       .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
         // Streulicht unter der Haut: Schattenseite leicht rötlich aufgehellt
         reflectedLight.indirectDiffuse += reflectedLight.indirectDiffuse * vec3(0.18, 0.04, 0.02);
@@ -271,7 +307,9 @@ export function eyeMaterial(iris: THREE.Color) {
  * dunkler Ansatz, Glanzband – statt einer flachen Farbfläche, die wie ein Helm wirkt.
  */
 export function hairCapMaterial(color: THREE.Color, head: THREE.Vector3) {
-  const m = new THREE.MeshStandardMaterial({ color: color.clone(), roughness: 0.62, metalness: 0 });
+  // Tiefenversatz: die Kappe liegt nur Millimeter über der Kopfhaut – ohne Versatz flimmert die
+  // helle Haut in Flecken durch (Tiefenpuffer-Genauigkeit)
+  const m = new THREE.MeshStandardMaterial({ color: color.clone(), roughness: 0.7, metalness: 0, envMapIntensity: 0.3, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 });
   const u = { uHead: { value: head.clone().add(new THREE.Vector3(0, 0.09, -0.01)) } };
   m.onBeforeCompile = (s) => {
     Object.assign(s.uniforms, u);
@@ -301,14 +339,18 @@ export function hairCapMaterial(color: THREE.Color, head: THREE.Vector3) {
 /** Haarkarten: Strähnenbild mit Deckung, Farbe aus der Haarfarbe, dunkler zum Ansatz hin. */
 export function hairMaterial(color: THREE.Color, curly: boolean) {
   const set = foliageSet(curly ? 'curly' : 'hair');
-  const m = new THREE.MeshStandardMaterial({ map: set?.map ?? null, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.5, metalness: 0, color: color.clone() });
+  const m = new THREE.MeshStandardMaterial({ map: set?.map ?? null, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.6, metalness: 0, color: color.clone() });
+  // Mit MSAA weiche Strähnenränder statt harter Zacken
+  m.alphaToCoverage = settings.antialias === 'msaa';
+  // Himmelsspiegelung legt sonst einen grauen Schleier über dunkles Haar
+  m.envMapIntensity = 0.3;
   m.onBeforeCompile = (s) => {
     Object.assign(s.uniforms, windUniforms);
     s.vertexShader = s.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec4 color;\nvarying float vHairAo;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHairAo = color.g;');
     s.fragmentShader = s.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying float vHairAo;\nuniform vec3 uSunDirView;')
+      .replace('#include <common>', '#include <common>\nvarying float vHairAo;\nuniform vec3 uSunDirView;\nuniform vec3 uSunColor;')
       .replace('#include <map_fragment>', `
         #ifdef USE_MAP
           vec4 hT = texture2D(map, vMapUv);
@@ -323,7 +365,10 @@ export function hairMaterial(color: THREE.Color, curly: boolean) {
         vec3 Vh = normalize(vViewPosition);
         vec3 Hh = normalize(uSunDirView + Vh);
         float sheen = pow(1.0 - abs(dot(normal, Hh)), 12.0);
-        reflectedLight.directSpecular += diffuseColor.rgb * sheen * 0.6 * vHairAo;`);
+        reflectedLight.directSpecular += diffuseColor.rgb * sheen * 0.6 * vHairAo;
+        // Gegenlicht: Sonne scheint durch die äußeren Strähnen (leuchtender Haarsaum)
+        float backL = pow(max(dot(-Vh, uSunDirView), 0.0), 6.0);
+        reflectedLight.directDiffuse += uSunColor * diffuseColor.rgb * backL * 0.35 * (1.0 - hT.a * 0.5) * vHairAo;`);
   };
   m.customProgramCacheKey = () => `human-hair-${curly}-${!!m.map}`;
   return m;

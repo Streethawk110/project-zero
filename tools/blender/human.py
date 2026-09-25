@@ -738,9 +738,13 @@ def grow(scalp, root, direction, length, steps, lift, gravity, rnd, below=None, 
         pts.append(p.copy())
         norms.append(n.copy())
         # Richtung: tangential zur Kopfhaut + Schwerkraft + etwas Zufall
-        d = d - n * np.dot(d, n)
+        # (frei hängend nicht mehr an die Kopfhaut-Tangente binden: am Nacken zeigt die Normale nach unten,
+        # die Projektion würde die Schwerkraft aufheben und Strähnen stünden waagerecht ab)
+        if not free:
+            d = d - n * np.dot(d, n)
         d = d / max(np.linalg.norm(d), 1e-9)
-        d = d + np.array([0, -gravity, 0]) + np.array([rnd.uniform(-0.08, 0.08), 0, rnd.uniform(-0.08, 0.08)])
+        g = max(gravity, 0.9) if free else gravity
+        d = d + np.array([0, -g, 0]) + np.array([rnd.uniform(-0.08, 0.08), 0, rnd.uniform(-0.08, 0.08)])
         d /= max(np.linalg.norm(d), 1e-9)
         q = p + d * step
         if not free and (below is not None and q[1] < below):
@@ -770,7 +774,7 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
     y_neck = J["neck"][1]
     crown = np.array([sc.c[0], sc.hi[1], cz - 0.03])
 
-    def hairline(p, front_y=eye_y + 0.055, back_y=y_neck + 0.045):
+    def hairline(p, front_y=eye_y + 0.078, back_y=y_neck + 0.045):
         ang = abs(math.atan2(p[0] - sc.c[0], p[2] - cz))  # 0 vorn … π hinten
         y = front_y + (back_y - front_y) * (ang / math.pi) ** 1.3
         # Schläfen etwas zurückgesetzt, über den Ohren frei
@@ -832,7 +836,7 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
     elif style == 4:  # Kriegerknoten: Seiten sehr kurz, Oberkopf zum Knoten
         knot = crown + np.array([0, 0.02, -0.03])
         def top(p):
-            return hairline(p) and p[1] > eye_y + 0.07
+            return hairline(p) and p[1] > eye_y + 0.09
         for r in sc.sample(rnd, 260, top):
             pts = []
             for i in range(6):
@@ -855,9 +859,11 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
     o = hair_mesh(f"hair_{style}", cards, "hair_" + atlas)
     # Grundkappe: eng anliegende, haarfarbene Schicht auf der Kopfhaut (keine helle Haut zwischen Karten)
     # Kappe etwas hinter dem Haaransatz enden lassen: die Kante verschwindet unter den Strähnen
-    cap_keep = lambda p: hairline(p, front_y=eye_y + 0.075, back_y=y_neck + 0.06)
-    cap, _ = make_mesh(f"hair_{style}_cap", base, v, W, {"body"}, "hair_cap", lambda c, vs: c[1] > y_neck - 0.03 and cap_keep(c))
+    cap_keep = lambda p: hairline(p, front_y=eye_y + 0.092, back_y=y_neck + 0.06)
+    cap, cused = make_mesh(f"hair_{style}_cap", base, v, W, {"body"}, "hair_cap", lambda c, vs: c[1] > y_neck - 0.03 and cap_keep(c))
     offset(cap, 0.0025)
+    add_keys_after_offset(cap, cused, v, FACE_KEYS)
+    follow_keys(o, base, v, FACE_KEYS)
     return [o, cap]
 
 
@@ -903,26 +909,59 @@ def beard_style(style, base, v, J, W):
     return o
 
 
+FACE_KEYS = [k for k in SHAPES if k.startswith("f_")] + ["brows", "frown"]
+
+
 def beard_follow_jaw(o, base, v):
-    """Bart folgt dem Kiefer-Formziel: jede Karte übernimmt die Kieferverschiebung der nächsten Hautstelle."""
+    """Bart folgt Kiefer und Gesichtsform (siehe follow_keys)."""
+    follow_keys(o, base, v, ["jaw"] + FACE_KEYS)
+
+
+def follow_keys(o, base, v, names):
+    """Haarkarten/Bart übernehmen Formziele von der nächsten Hautstelle (Kopf): sonst bleiben Haare starr,
+    während Gesichtsvarianten den Schädel verformen – die Kopfhaut sticht dann durch."""
     from mathutils.kdtree import KDTree
-    jaw = shape_deltas("jaw", len(v))
-    idx = [i for i in sorted(base.groups["body"]) if np.abs(jaw[i]).max() > 1e-6 or v[i, 1] > FIG_EXTRA.get("neck_y", 0)]
+    n = len(v)
+    deltas = {nm: shape_deltas(nm, n) for nm in names}
+    moved = np.zeros(n, dtype=bool)
+    for d in deltas.values():
+        moved |= np.abs(d).max(axis=1) > 1e-6
+    idx = [i for i in sorted(base.groups["body"]) if moved[i] or v[i, 1] > FIG_EXTRA.get("neck_y", 0)]
     kd = KDTree(len(idx))
-    for n, i in enumerate(idx):
-        kd.insert(B(v[i]), n)
+    for k_, i in enumerate(idx):
+        kd.insert(B(v[i]), k_)
     kd.balance()
-    o.shape_key_add(name="Basis", from_mix=False)
-    k = o.shape_key_add(name="jaw", from_mix=False)
+    near = []
     for vt in o.data.vertices:
-        acc = np.zeros(3)
-        tot = 0.0
-        for co, n, dist in kd.find_n(vt.co, 3):
-            wgt = 1.0 / max(dist, 1e-4)
-            acc += jaw[idx[n]] * wgt
-            tot += wgt
-        d = acc / max(tot, 1e-9)
-        k.data[vt.index].co = vt.co + B(d) - B(np.zeros(3))
+        hits = kd.find_n(vt.co, 3)
+        near.append([(idx[h[1]], 1.0 / max(h[2], 1e-4)) for h in hits])
+    if not o.data.shape_keys:
+        o.shape_key_add(name="Basis", from_mix=False)
+    for nm, d in deltas.items():
+        vals = []
+        for lst in near:
+            tot = sum(w for _, w in lst)
+            vals.append(sum((d[i] * w for i, w in lst), np.zeros(3)) / max(tot, 1e-9))
+        if max(float(np.abs(x).max()) for x in vals) < 1e-6:
+            continue
+        k = o.shape_key_add(name=nm, from_mix=False)
+        for vt, dv in zip(o.data.vertices, vals):
+            k.data[vt.index].co = vt.co + B(dv)
+
+
+def add_keys_after_offset(o, used, v, names):
+    """Formziele für ein (schon nach außen versetztes) Netz aus Körperpunkten: Delta auf die aktuelle Lage."""
+    n = len(v)
+    if not o.data.shape_keys:
+        o.shape_key_add(name="Basis", from_mix=False)
+    for nm in names:
+        d = shape_deltas(nm, n)
+        if not np.abs(d[used]).max() > 1e-6:
+            continue
+        k = o.shape_key_add(name=nm, from_mix=False)
+        for j, i in enumerate(used):
+            if d[i].any():
+                k.data[j].co = o.data.vertices[j].co + B(d[i])
 
 
 def human(kind):

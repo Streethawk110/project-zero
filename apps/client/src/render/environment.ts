@@ -235,7 +235,7 @@ export class Environment {
       this.fog.color.copy(fogDay).multiplyScalar(1 + flash * 0.8);
       this.fog.density = fogDensity;
       // AgX bildet Mittelgrau dunkler ab als ACES (dort ist ein Faktor 1/0,6 eingebaut)
-      this.renderer.toneMappingExposure = THREE.MathUtils.lerp(1.15, 1.7, day) + flash * 0.6;
+      this.renderer.toneMappingExposure = THREE.MathUtils.lerp(1.15, 1.55, day) + flash * 0.6;
     }
     if (this.envRT && !inDungeon) this.scene.environmentIntensity = this.envTarget.intensity * (1 - this.indoor * 0.75);
 

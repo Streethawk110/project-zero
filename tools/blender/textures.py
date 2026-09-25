@@ -414,31 +414,43 @@ def mat_snow(g):
     g.finish(col, rough, height, bump=1.0, bump_dist=0.12)
 
 def mat_cobble(g):
-    # Kopfsteinpflaster: gerundete, abgetretene Steine, Moos und Erde in breiten Fugen
-    cell = g.voronoi(8, feature="DISTANCE_TO_EDGE", rand=0.8, off=0.3)
-    idc = g.voronoi(8, feature="F1", rand=0.8, off=0.3, out="Color")
+    # Kopfsteinpflaster: kleine, gewölbte Feldsteine (etwa faustgroß bis handbreit) in breiten Fugen
+    # aus festgetretener Erde, Sand und etwas Moos; die Kuppen sind blank gelaufen, die Ränder dunkel
+    F = 13
+    cell = g.voronoi(F, feature="DISTANCE_TO_EDGE", rand=0.72, off=0.3)
+    idc = g.voronoi(F, feature="F1", rand=0.72, off=0.3, out="Color")
     sep = g.n("ShaderNodeSeparateColor")
     g.link(idc, sep.inputs[0])
     rnd = sep.outputs[0]
     rnd2 = sep.outputs[1]
-    cellw = g.add(cell, g.mul(g.sub(g.noise(40, detail=4, off=6.6), 0.5), 0.012))
-    stone = g.smooth(0.016, 0.03, cellw)
-    t = g.remap(cellw, 0.016, 0.1)
+    rnd3 = sep.outputs[2]
+    # Unregelmäßige Steinkontur: Kante mit Rauschen verwackeln, Steine unterschiedlich groß (Fugenbreite je Stein)
+    cellw = g.add(cell, g.mul(g.sub(g.noise(55, detail=4, off=6.6), 0.5), 0.02))
+    gap = g.add(0.035, g.mul(rnd3, 0.03))
+    stone = g.smooth(0.0, 0.025, g.sub(cellw, gap))
+    t = g.remap(g.sub(cellw, gap), 0.0, 0.16)
+    # Kuppe: kräftig gerundet (Feldstein), leicht schief
     dome = g.m("SQRT", g.sub(1.0, g.m("POWER", g.sub(1.0, t), 2.0)))
-    lumps = g.noise(45, detail=7, rough=0.62, off=2.5)
-    pits = g.smooth(0.35, 0.15, g.voronoi(90, feature="F1", off=7.4))
-    col_stone = g.ramp(rnd, [(0.0, "#46423d"), (0.2, "#5a5249"), (0.4, "#6e675c"), (0.6, "#7d7266"), (0.8, "#8a8274"), (1.0, "#6b6f70")])
-    col_stone = g.mixc(col_stone, g.ramp(rnd2, [(0.0, "#5a5048"), (1.0, "#77756f")]), 0.3)
-    col_stone = g.mixc(col_stone, g.ramp(g.st(lumps), [(0.0, "#2f2c29"), (1.0, "#bdb4a4")]), 0.4, "OVERLAY")
-    col_stone = g.mixc(col_stone, "#3a3530", g.mul(pits, 0.4))
-    grout = g.mixc("#2a2118", "#3c4a22", g.smooth(0.45, 0.62, g.noise(12, detail=5, off=8.1)))
-    grout = g.mixc(grout, "#4a3b2c", g.mul(g.noise(70, detail=4, off=3.1), 0.5))
-    edge_dark = g.smooth(0.0, 0.35, t)
-    col = g.mixc(grout, g.mixc(g.cmul(col_stone, 0.55), col_stone, edge_dark), stone)
-    col = g.mixc(col, g.cmul(col, 1.15), g.mul(g.smooth(0.75, 1.0, dome), 0.55))
-    height = g.add(g.mul(stone, g.add(0.25, g.mul(dome, 0.6))), g.sub(g.mul(lumps, 0.15), g.mul(pits, 0.05)))
-    rough = g.lerp(0.97, 0.58, g.mul(g.smooth(0.65, 1.0, dome), stone))
-    g.finish(col, rough, height, bump=1.0, bump_dist=0.1)
+    lumps = g.noise(60, detail=7, rough=0.62, off=2.5)
+    pits = g.smooth(0.3, 0.12, g.voronoi(120, feature="F1", off=7.4))
+    col_stone = g.ramp(rnd, [(0.0, "#4a4540"), (0.18, "#5d554b"), (0.36, "#6f665a"), (0.52, "#7a6f60"), (0.7, "#6a6358"), (0.85, "#5e5a55"), (1.0, "#80766a")])
+    col_stone = g.mixc(col_stone, g.ramp(rnd2, [(0.0, "#6b5a48"), (0.5, "#6c6860"), (1.0, "#5b5953")]), 0.35)
+    col_stone = g.mixc(col_stone, g.ramp(g.st(lumps), [(0.0, "#2f2c29"), (1.0, "#b5ab9a")]), 0.45, "OVERLAY")
+    col_stone = g.mixc(col_stone, "#35302b", g.mul(pits, 0.45))
+    # Fugen: Erde/Sand, stellenweise Moos und Halme; zum Stein hin Schmutzrand
+    soil = g.noise(18, detail=6, off=8.1)
+    grout = g.ramp(soil, [(0.0, "#2c231a"), (0.45, "#43362a"), (0.7, "#5a4a36"), (1.0, "#6b5a42")])
+    grout = g.mixc(grout, "#3d4a24", g.mul(g.smooth(0.58, 0.72, g.noise(9, detail=5, off=3.1)), 0.8))
+    grout = g.mixc(grout, g.ramp(g.noise(160, detail=3, off=1.7), [(0.0, "#2a2016"), (1.0, "#7a6a52")]), 0.35, "OVERLAY")
+    edge_dark = g.smooth(0.0, 0.45, t)
+    dirty = g.mixc(g.mixc(grout, col_stone, 0.35), col_stone, edge_dark)
+    col = g.mixc(grout, dirty, stone)
+    # Blank gelaufene Kuppen
+    col = g.mixc(col, g.cmul(col, 1.22), g.mul(g.smooth(0.7, 1.0, dome), g.mul(stone, 0.6)))
+    height = g.add(g.mul(stone, g.add(0.18, g.mul(dome, 0.72))), g.sub(g.mul(lumps, 0.12), g.mul(pits, 0.04)))
+    height = g.add(height, g.mul(g.sub(1.0, stone), g.mul(soil, 0.08)))
+    rough = g.lerp(0.98, 0.55, g.mul(g.smooth(0.6, 1.0, dome), stone))
+    g.finish(col, rough, height, bump=1.0, bump_dist=0.12)
 
 def mat_wood(g):
     # Verwitterte Bohlen: unterschiedlich breite Bretter, grau ausgeblichene Oberfläche mit

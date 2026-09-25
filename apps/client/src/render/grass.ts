@@ -80,7 +80,10 @@ const PLACE = /* glsl */ `
 // Läuft nach NORMAL (dort wurden die Platzierungswerte schon berechnet)
 const BEGIN = /* glsl */ `
   float sc = keep * fade * (0.65 + fract(offset.z * 37.0) * 0.6) * (dry > 0.5 ? 1.1 : 1.0);
-  vec3 p = position * vec3(1.0 + fract(offset.z * 13.0) * 0.3, sc, 1.0);
+  // Ausgeblendete Halme ganz zusammenfallen lassen (nur die Höhe auf 0 zu setzen ließ sie als flache
+  // dunkle Striche auf dem Boden liegen); beim Ausblenden am Rand schrumpft die Breite erst zuletzt
+  float wsc = min(1.0, sc * 4.0);
+  vec3 p = position * vec3((1.0 + fract(offset.z * 13.0) * 0.3) * wsc, sc, wsc);
   p.xz = mat2(ca, -sa, sa, ca) * p.xz;
   // Wind (Böen wandern übers Feld) und Wegdrücken durch den Spieler
   float gust = sin(uTime * 0.9 - wxz.x * 0.06 - wxz.y * 0.04) * 0.5 + 0.5;

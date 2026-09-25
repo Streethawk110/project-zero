@@ -23,7 +23,7 @@ const GradeShader = {
     tDiffuse: { value: null as THREE.Texture | null },
     uVignette: { value: 0.22 },
     uSaturation: { value: 1.12 },
-    uContrast: { value: 1.12 },
+    uContrast: { value: 1.18 },
     uTint: { value: new THREE.Color(1, 1, 1) },
     uSight: { value: 0 },
     uDamage: { value: 0 },
