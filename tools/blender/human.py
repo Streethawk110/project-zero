@@ -883,11 +883,20 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
     # Keine Strähne quer durchs Gesicht (Stirn/Augen): solche Karten verwerfen
     def crosses_face(pts):
         return any(p[2] > cz + 0.045 and eye_y - 0.1 < p[1] < eye_y + 0.07 and abs(p[0] - sc.c[0]) < 0.06 for p in pts)
-    cards = [c for c in cards if not crosses_face(c[0])]
+    # Karten mit scharfem Knick (Ausweichen am Gesicht) wirken seitlich betrachtet wie Zickzack-Linien
+    def kinked(pts):
+        for i in range(1, len(pts) - 1):
+            a_, b_ = pts[i] - pts[i - 1], pts[i + 1] - pts[i]
+            na, nb = np.linalg.norm(a_), np.linalg.norm(b_)
+            if na > 1e-6 and nb > 1e-6 and np.dot(a_, b_) / (na * nb) < 0.5:
+                return True
+        return False
+    cards = [c for c in cards if not crosses_face(c[0]) and not kinked(c[0])]
     o = hair_mesh(f"hair_{style}", cards, "hair_" + atlas)
     # Grundkappe: eng anliegende, haarfarbene Schicht auf der Kopfhaut (keine helle Haut zwischen Karten)
     # Kappe etwas hinter dem Haaransatz enden lassen: die Kante verschwindet unter den Strähnen
-    cap_keep = lambda p: hairline(p, front_y=eye_y + 0.088, back_y=y_neck + 0.06)
+    # vorn fast bis an den Haaransatz (sonst bleibt am Scheitel ein Hautstreifen zwischen den Seiten sichtbar)
+    cap_keep = lambda p: hairline(p, front_y=eye_y + 0.079, back_y=y_neck + 0.06)
     cap, cused = make_mesh(f"hair_{style}_cap", base, v, W, {"body"}, "hair_cap", lambda c, vs: c[1] > y_neck - 0.03 and cap_keep(c))
     offset(cap, 0.0025)
     add_keys_after_offset(cap, cused, v, SKULL_KEYS)

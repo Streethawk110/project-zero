@@ -260,6 +260,8 @@ Profiler nicht mitgezählt – behoben).
   Büschel je ¼ Breite, an der Wurzel breit, fransige Spitzen, Lücken, 4. = lose Einzelhaare. Karten nutzen
   jetzt `u0` (vorher ignoriert → immer ganzer Atlas = flache Bänder): `clump_u` (lose nur 12 % außen).
   alphaTest 0,28. ACHTUNG: `while pgrep -f "…"` findet sich selbst → Endlosschleife.
+  Scheitel: Kappe vorn bis eye+0,079 (vorher 0,088 → Hautstreifen am Scheitel). Karten mit Knick
+  (Ausweichen am Gesicht, cos < 0,5) werden verworfen → keine Zickzack-Strähnen neben dem Ohr.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.
