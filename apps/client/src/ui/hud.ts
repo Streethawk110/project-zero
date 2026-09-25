@@ -312,6 +312,7 @@ export class Hud {
     const cam = g.camera;
     const w = window.innerWidth, hh = window.innerHeight;
     const seen = new Set<number>();
+    const placed: { el: HTMLElement; x: number; y: number; d: number }[] = [];
     for (const v of g.ents.views.values()) {
       if (!['n', 'p', 'e', 'c'].includes(v.kind)) continue;
       const d = v.pos.distanceTo(cam.position);
@@ -327,13 +328,22 @@ export class Hud {
         this.plates.append(el);
         this.plateEls.set(v.id, el);
       }
-      el.style.left = `${(p.x * 0.5 + 0.5) * w}px`;
-      el.style.top = `${(-p.y * 0.5 + 0.5) * hh}px`;
+      placed.push({ el, x: (p.x * 0.5 + 0.5) * w, y: (-p.y * 0.5 + 0.5) * hh, d });
       el.style.opacity = String(Math.max(0.35, 1 - d / 45));
       const color = isEnemy ? '#ffb0a0' : v.kind === 'n' ? '#f1d59a' : v.kind === 'c' ? '#9ff8ff' : '#bfe0ff';
       const hp = isEnemy || v.kind === 'p' ? `<div style="width:5em;height:0.3em;background:rgba(0,0,0,0.6);margin:0.15em auto 0"><div style="height:100%;width:${Math.max(0, v.hp) * 100}%;background:${isEnemy ? '#c8423a' : '#6fcf6a'}"></div></div>` : '';
       const html = `<div style="color:${color}">${escapeHtml(v.name)}${isEnemy && v.level ? ` <span style="opacity:.7">${v.level}</span>` : ''}${v.anim === 'downed' ? ' ✚' : ''}</div>${hp}`;
       if (el.dataset['h'] !== html) { el.innerHTML = html; el.dataset['h'] = html; }
+    }
+    // Überlappende Schilder (Leute dicht beieinander) übereinander stapeln – die nächsten bleiben unten
+    placed.sort((a, b) => a.d - b.d);
+    const done: { x: number; y: number }[] = [];
+    for (const q of placed) {
+      let y = q.y;
+      for (let k = 0; k < 6 && done.some((o) => Math.abs(o.x - q.x) < 90 && Math.abs(o.y - y) < 15); k++) y -= 15;
+      q.el.style.left = `${q.x}px`;
+      q.el.style.top = `${y}px`;
+      done.push({ x: q.x, y });
     }
     for (const [id, el] of this.plateEls) if (!seen.has(id)) { el.remove(); this.plateEls.delete(id); }
   }

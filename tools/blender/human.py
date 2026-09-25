@@ -892,8 +892,21 @@ def beard_style(style, base, v, J, W):
     eye_y = base.center(v, "helper-l-eye")[1]
     cz = sc.c[2]
 
+    # Unterkieferlinie in der Seitenansicht: vom Kieferwinkel (unter dem Ohr) zum Kinn. Darunter ist Hals –
+    # dort wächst kein Bart (sonst hängt ein Vorhang aus Strähnen vom Kiefer); nur knapp unter dem Kinn.
+    # Achtung: joint-jaw liegt an der Kinnspitze (nicht am Kiefergelenk). Kieferwinkel unter dem Ohr etwa
+    # 2 cm unter der Mundlinie, Kinnunterkante gut 1 cm unter der Kinnspitze.
+    ang_y, ang_z = mouth[1] - 0.02, cz - 0.02
+    chin_y, chin_z = jaw[1] - 0.012, jaw[2] - 0.015
+
+    def below_jaw(p):
+        t = min(1.0, max(0.0, (p[2] - ang_z) / max(chin_z - ang_z, 1e-6)))
+        return p[1] < ang_y + (chin_y - ang_y) * t - 0.01
+
     def beard_area(p):
-        if p[2] < cz - 0.02:
+        if p[2] < ang_z - 0.004:  # hinter dem Kieferwinkel/Ohr: kein Bart
+            return False
+        if below_jaw(p):
             return False
         dx = abs(p[0] - mouth[0])
         # Bartlinie: an den Koteletten hoch, über den Wangen bis knapp über den Mundwinkel
@@ -911,9 +924,17 @@ def beard_style(style, base, v, J, W):
     for layer, (cnt, lift) in enumerate(((900, 0.0012), (700, 0.0028), (420, 0.0045))):
         for r in sc.sample(rnd, cnt, beard_area):
             mus = r[1] > mouth[1] and abs(r[0] - mouth[0]) < 0.045
-            dirv = np.array([(r[0] - mouth[0]) * 2.5, -1.0, 0.25]) if mus else np.array([(r[0] - mouth[0]) * 0.8, -1.0, 0.3])
-            L = (0.016 if mus else 0.03 if style == 2 else 0.024) * rnd.uniform(0.7, 1.2) * (0.85 + 0.2 * layer)
-            pts, ns = grow(sc, r, dirv, L, 3, lift, 0.25, rnd, below=jaw[1] - 0.035)
+            # Seiten entlang des Kiefers zum Kinn gekämmt (nicht senkrecht herab); hinten kürzer
+            back = min(1.0, max(0.0, (chin_z - r[2]) / max(chin_z - ang_z, 1e-6)))
+            if mus:
+                dirv = np.array([(r[0] - mouth[0]) * 2.5, -1.0, 0.25])
+            else:
+                to_chin = np.array([mouth[0] - r[0], chin_y - r[1], chin_z - r[2]])
+                to_chin /= max(np.linalg.norm(to_chin), 1e-9)
+                dirv = np.array([0.0, -1.0, 0.3]) * (1 - back) + to_chin * back * 1.4
+            L = (0.016 if mus else 0.03 if style == 2 else 0.024) * rnd.uniform(0.7, 1.2) * (0.85 + 0.2 * layer) * (1 - 0.5 * back)
+            # an der Haut entlang wachsen (kein freies Herabfallen), leicht nach vorn-unten gekämmt
+            pts, ns = grow(sc, r, dirv, L, 3, lift, 0.08, rnd)
             w = 0.0045 + 0.0015 * layer
             cards.append((pts, [w, w, w * 0.9, w * 0.6], ns, (0.5 + layer * 0.2, rnd.random(), 0.0)))
     o = hair_mesh(f"beard_{style}", cards, "hair_curly")

@@ -234,6 +234,11 @@ Profiler nicht mitgezählt – behoben).
   props.py: Tisch, Mörser, Kolben, Buch, Kessel auf Dreibein über Glut + Licht) bei (−12, 46).
   Interaktion `kind: 'alchemy'` → `alchemy_open` → `ui/alchemy.ts` (Rezeptbuch + Werkbank), Befehl
   `brew` (validate.ts). Dice-UI und Burghof im Spiel geprüft. 43 Unit-Tests.
+- BART-FEHLER: `joint-jaw` liegt an der KINNSPITZE (y 1,588, z 0,148), nicht am Kiefergelenk → Vollbart
+  reichte 7 cm auf den Hals und hing wie ein Vorhang herab (im Spiel: dunkler Block am Kiefer). Jetzt
+  Kieferlinie (Winkel 2 cm unter Mundlinie bei z = cz−0,02 → Kinnunterkante), Seiten zum Kinn gekämmt,
+  hinten kürzer. Namensschilder dicht stehender Figuren stapeln sich (hud.ts). Alchemie-UI im Spiel
+  geprüft. Nutzerfrage: Projekt ≈ 33.900 Zeilen (TS ~25.900, Python ~7.100).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

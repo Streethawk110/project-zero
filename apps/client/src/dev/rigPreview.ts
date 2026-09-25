@@ -55,7 +55,7 @@ const only = params.get('only');
 const list = only !== null ? [specs[Number(only)]!] : specs;
 const rigs: HumanoidRig[] = [];
 list.forEach((s, i) => {
-  const rig = new HumanoidRig({ faceSeed: params.get('seed') ? params.get('seed')! + i : undefined, appearance: { skin: s.skin, hair: s.hair, hairColor: i % 6, beard: s.beard, body: s.body, height: 1, eyes: i % 4, scar: 0, sex: s.sex ?? 0 }, outfit: s.outfit });
+  const rig = new HumanoidRig({ faceSeed: params.get('seed') ? params.get('seed')! + i : undefined, appearance: { skin: s.skin, hair: params.get('hair') ? Number(params.get('hair')) : s.hair, hairColor: params.get('hc') ? Number(params.get('hc')) : i % 6, beard: params.get('beard') ? Number(params.get('beard')) : s.beard, body: s.body, height: 1, eyes: i % 4, scar: 0, sex: s.sex ?? 0 }, outfit: s.outfit });
   rig.setEquipment(s.weapon ?? '', s.offhand ?? '', s.outfit);
   rig.root.position.set((i - (list.length - 1) / 2) * 1.25, 0, 0);
   rig.root.rotation.y = Math.PI + Number(params.get('turn') ?? 0.35);
