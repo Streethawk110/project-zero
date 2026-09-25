@@ -445,38 +445,44 @@ def grass_clump(rnd, dry=False):
 
 
 def hair_strands(rnd, curly=False):
-    """Haarsträhnen für Haarkarten: Wurzel unten (v=0), Spitzen oben (v=1), Grauwerte (Client färbt).
-    Viele feine, leicht gewellte Haare, zu den Rändern und Spitzen hin lichter."""
+    """Haarkarten-Atlas: vier Büschel nebeneinander (je ein Viertel der Breite, u = 0, ¼, ½, ¾).
+    Wurzel unten (v=0), Spitzen oben (v=1). Jedes Büschel ist an der Wurzel breit und läuft zur Spitze
+    schmal zu, Haare unterschiedlich lang (lichte, fransige Spitzen), mit Lücken – so wirkt eine Karte
+    wie eine Haarsträhne statt wie ein Band. Das vierte Büschel ist locker (abstehende Einzelhaare)."""
     bld = Builder()
-    n = 1300
-    for i in range(n):
-        x0 = rnd.gauss(0, 0.2)
-        if abs(x0) > 0.46:
-            continue
-        L = rnd.uniform(0.75, 1.0) * (1 - abs(x0) * 0.6)
-        steps = 12
-        pts = []
-        phase = rnd.uniform(0, 6.28)
-        amp = rnd.uniform(0.004, 0.012) * (3 if curly else 1)
-        drift = rnd.uniform(-0.05, 0.05)
-        start = rnd.uniform(0.0, 0.3)  # versetzte Wurzeln: keine harte Kante am Kartenanfang
-        L = min(L, 1.0 - start)
-        for s in range(steps + 1):
-            t = s / steps
-            pts.append(Vector((x0 + drift * t + math.sin(t * (9 if curly else 4) + phase) * amp, -0.5 + start + t * L, rnd.uniform(-0.01, 0.01))))
-        g = rnd.uniform(0.55, 1.0)
-        # dunklere Haare innen (Tiefe), hellere außen
-        g *= 0.75 + 0.25 * rnd.random()
-        w = rnd.uniform(0.0016, 0.0028)
-        left, right, ul, ur = [], [], [], []
-        for s, p in enumerate(pts):
-            t = s / steps
-            ww = w * (1 - t ** 3 * 0.8)
-            left.append(p - Vector((ww, 0, 0)))
-            right.append(p + Vector((ww, 0, 0)))
-            ul.append((-1, t))
-            ur.append((1, t))
-        bld.quad_strip(left, right, ul, ur, (g, g, g, 1), 1)
+    for c in range(4):
+        cx = -0.5 + (c + 0.5) / 4
+        loose = c == 3
+        n = 110 if loose else rnd.choice((300, 360, 420))
+        root_w = 0.085 if not loose else 0.1
+        tip_w = rnd.uniform(0.035, 0.06) if not loose else 0.09
+        for i in range(n):
+            off = max(-1.0, min(1.0, rnd.gauss(0, 0.45)))
+            start = abs(rnd.gauss(0, 0.06)) + (0.1 * rnd.random() if loose else 0)
+            L = min(1.0 - start - 0.01, (1.0 - rnd.random() ** 1.4 * 0.65) if not loose else rnd.uniform(0.3, 0.8))
+            steps = 14
+            phase = rnd.uniform(0, 6.28)
+            amp = rnd.uniform(0.002, 0.006) * (3.5 if curly else 1)
+            freq = rnd.uniform(3, 6) * (2.2 if curly else 1)
+            pts = []
+            for st in range(steps + 1):
+                t = st / steps
+                # Büschel: Abstand zur Mitte schrumpft von Wurzel- auf Spitzenbreite
+                wid = root_w + (tip_w - root_w) * min(1.0, (t * L + start) / 0.95) ** 0.8
+                x = cx + off * wid + math.sin(t * freq + phase) * amp * (0.3 + t)
+                pts.append(Vector((x, -0.5 + start + t * L, rnd.uniform(-0.01, 0.01))))
+            # innen dunkler (Tiefe), einzelne helle Haare
+            g = rnd.uniform(0.45, 0.85) * (0.8 + 0.2 * abs(off)) + (0.15 if rnd.random() < 0.08 else 0.0)
+            w = rnd.uniform(0.0009, 0.0017)
+            left, right, ul, ur = [], [], [], []
+            for st, p in enumerate(pts):
+                t = st / steps
+                ww = w * (1 - t ** 2 * 0.85)
+                left.append(p - Vector((ww, 0, 0)))
+                right.append(p + Vector((ww, 0, 0)))
+                ul.append((-1, t))
+                ur.append((1, t))
+            bld.quad_strip(left, right, ul, ur, (g, g, g, 1), 1)
     return bld.finish("hair", [flat_material("root"), flat_material("strand")])
 
 

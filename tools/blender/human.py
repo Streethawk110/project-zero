@@ -685,6 +685,13 @@ class Scalp:
         return out
 
 
+def clump_u(rnd, layer):
+    """Büschel im Haaratlas wählen: dichte Büschel innen, in der äußersten Lage auch lose Einzelhaare."""
+    if layer >= 2 and rnd.random() < 0.3:
+        return 0.75
+    return rnd.choice((0.0, 0.25, 0.5))
+
+
 def hair_mesh(name, cards, material):
     """cards: Liste von (Punkte, Breiten, Normalen, Ton) → Bänder mit UV (u quer, v längs)."""
     import bmesh
@@ -708,7 +715,9 @@ def hair_mesh(name, cards, material):
         for i in range(n - 1):
             f = bm.faces.new((left[i], right[i], right[i + 1], left[i + 1]))
             t0, t1 = i / (n - 1), (i + 1) / (n - 1)
-            for loop, uv in zip(f.loops, ((0.0, t0), (1.0, t0), (1.0, t1), (0.0, t1))):
+            # u0 wählt eines der vier Büschel im Atlas (je ¼ der Breite)
+            ua, ub = u0 + 0.004, u0 + 0.246
+            for loop, uv in zip(f.loops, ((ua, t0), (ub, t0), (ub, t1), (ua, t1))):
                 loop[uvl].uv = uv
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me)
@@ -796,7 +805,7 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
                 dirv = r - crown + np.array([0, 0, -0.06])
                 dirv = np.array([dirv[0] * 0.6, -0.2, -0.8]) if r[2] > cz else dirv
                 pts, ns = grow(sc, r, dirv, L * rnd.uniform(0.8, 1.2), 4, lift, 0.25, rnd, face=face)
-                cards.append((pts, [0.013] * 5, ns, (0.5 + layer * 0.17, rnd.random(), rnd.choice((0.0, 0.25, 0.5)))))
+                cards.append((pts, [0.013] * 5, ns, (0.5 + layer * 0.17, rnd.random(), clump_u(rnd, layer)))))
     elif style in (2, 5):  # lang / wirr
         long_ = style == 2
         atlas = "hair" if long_ else "curly"
@@ -811,7 +820,7 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
                 steps = 9 if long_ else 5
                 pts, ns = grow(sc, r, dirv, L, steps, lift, 0.35 if long_ else 0.15, rnd, below=y_neck + 0.03, face=face)
                 w = [0.016] * (steps + 1)
-                cards.append((pts, w, ns, (0.45 + layer * 0.18, rnd.random(), rnd.choice((0.0, 0.25, 0.5)))))
+                cards.append((pts, w, ns, (0.45 + layer * 0.18, rnd.random(), clump_u(rnd, layer)))))
     elif style == 1:  # Zopf: straff nach hinten zur Nackenbinde, dann geflochtener Zopf
         tie = np.array([sc.c[0], y_neck + 0.07, sc.lo[2] - 0.01])
         for layer, (cnt, lift) in enumerate(((440, 0.004), (320, 0.009), (160, 0.014))):

@@ -348,7 +348,7 @@ export function hairCapMaterial(color: THREE.Color, head: THREE.Vector3) {
 /** Haarkarten: Strähnenbild mit Deckung, Farbe aus der Haarfarbe, dunkler zum Ansatz hin. */
 export function hairMaterial(color: THREE.Color, curly: boolean) {
   const set = foliageSet(curly ? 'curly' : 'hair');
-  const m = new THREE.MeshStandardMaterial({ map: set?.map ?? null, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.6, metalness: 0, color: color.clone() });
+  const m = new THREE.MeshStandardMaterial({ map: set?.map ?? null, alphaTest: 0.28, side: THREE.DoubleSide, roughness: 0.6, metalness: 0, color: color.clone() });
   // Mit MSAA weiche Strähnenränder statt harter Zacken
   m.alphaToCoverage = settings.antialias === 'msaa';
   // Himmelsspiegelung legt sonst einen grauen Schleier über dunkles Haar
