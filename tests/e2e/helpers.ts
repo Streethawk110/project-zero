@@ -10,7 +10,7 @@ test.afterEach(async () => {
 export async function lowGraphics(ctx: BrowserContext) {
   await ctx.addInitScript(() => {
     if (!localStorage.getItem('pz.settings.v1')) {
-      localStorage.setItem('pz.settings.v1', JSON.stringify({ graphics: 'niedrig', renderScale: 0.5, shadows: false, bloom: false, grass: false, viewDistance: 160, firstRun: false }));
+      localStorage.setItem('pz.settings.v1', JSON.stringify({ graphics: 'niedrig', renderScale: 0.5, shadows: false, bloom: false, grass: false, viewDistance: 160, firstRun: false, fpsCap: 15 }));
     }
   });
 }

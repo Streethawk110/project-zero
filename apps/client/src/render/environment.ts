@@ -68,7 +68,7 @@ export class Environment {
 
   /** Zustand für Wolken und Atmosphären-Stufe. */
   atmosphere(): AtmosphereState {
-    const target = this.weather === 'rain' ? 0.92 : this.weather === 'cloudy' ? 0.75 : this.weather === 'nullstorm' ? 0.85 : this.weather === 'fog' ? 0.6 : 0.36;
+    const target = this.weather === 'rain' ? 0.92 : this.weather === 'cloudy' ? 0.75 : this.weather === 'nullstorm' ? 0.85 : this.weather === 'fog' ? 0.6 : 0.3;
     return {
       sunDir: this.sunDir.y > -0.05 ? this.sunDir : tmpV.copy(this.sunDir).multiplyScalar(-1).clone(),
       sunColor: this.sun.color,
@@ -77,7 +77,7 @@ export class Environment {
       fogDensity: this.fog.density,
       skyTop: this.skyTop,
       skyHorizon: this.skyHorizon,
-      coverage: 0.36 + (target - 0.36) * this.wInt,
+      coverage: 0.3 + (target - 0.3) * this.wInt,
       night: this.nightFactor,
       inDungeon: this.inDungeon,
       time: this.time,
@@ -160,8 +160,8 @@ export class Environment {
     u['sunPosition']!.value.copy(this.sunDir);
     const storm = weather === 'nullstorm' ? wInt : 0;
     const overcast = (weather === 'rain' || weather === 'cloudy' || weather === 'fog' ? 1 : 0.2) * wInt;
-    u['turbidity']!.value = 3 + overcast * 12;
-    u['rayleigh']!.value = 1.4 + overcast * 1.5 - storm * 0.8;
+    u['turbidity']!.value = 2.4 + overcast * 12;
+    u['rayleigh']!.value = 1.8 + overcast * 1.2 - storm * 0.8;
     this.sky.visible = !inDungeon;
     this.stars.visible = !inDungeon;
     this.moon.visible = !inDungeon;
@@ -184,7 +184,7 @@ export class Environment {
     // Himmelsfarben für die Wolkenbeleuchtung
     lerpColor([[-1, 0x02040a], [-0.08, 0x0a1224], [0.05, 0x46526e], [0.25, 0x3f6ea8], [1, 0x3a6db0]], elev, this.skyTop);
     lerpColor([[-1, 0x05080f], [-0.08, 0x1a2234], [0.04, 0xe39a6a], [0.25, 0xb7c6d6], [1, 0xc4d3e0]], elev, this.skyHorizon);
-    const fogDay = lerpColor([[-1, 0x0b1220], [-0.08, 0x141c2c], [0.05, 0xc98a62], [0.25, 0xa9b9c9], [1, 0xb5c7d6]], elev, new THREE.Color());
+    const fogDay = lerpColor([[-1, 0x0b1220], [-0.08, 0x141c2c], [0.05, 0xc98a62], [0.25, 0xa2b6cc], [1, 0xa9bfd8]], elev, new THREE.Color());
     let sunI = elev > -0.05 ? THREE.MathUtils.lerp(0.4, 3.2, THREE.MathUtils.smoothstep(elev, -0.05, 0.4)) : 0.35; // Mondlicht
     sunI *= 1 - overcast * 0.55;
     let hemiI = THREE.MathUtils.lerp(0.18, 0.75, day);
