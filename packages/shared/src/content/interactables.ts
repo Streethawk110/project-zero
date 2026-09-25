@@ -1,5 +1,5 @@
 import type { InteractableDef } from '../types.ts';
-import { DUNGEON_ORIGIN as D } from '../world/region.ts';
+import { DUNGEON_ORIGIN as D, castleToWorld } from '../world/region.ts';
 import { HOUSES, houseChest, houseDoor } from '../world/houses.ts';
 
 const bell = (i: number): InteractableDef => {
@@ -20,6 +20,10 @@ export const INTERACTABLES: InteractableDef[] = [
   { id: 'chest_niche', kind: 'chest', name: 'Grubenschatulle', x: D.x - 24, z: D.z - 54, prop: 'chest', rot: Math.PI / 2, loot: 'chest_mine', y: 0 },
   { id: 'chest_chapel', kind: 'chest', name: 'Odas Schrein', x: -260, z: 348, prop: 'chest', rot: 0.4, loot: 'chest_secret', y: 6 },
   { id: 'chest_north', kind: 'chest', name: 'Jägerversteck', x: 120, z: -196, prop: 'chest', rot: 0.2, loot: 'chest_forest' },
+
+  // ---------- Brunnen: Waschen (Schmutz und Blut) ----------
+  { id: 'wash_village', kind: 'wash', name: 'Brunnen', x: 14, z: 34, radius: 2.4, interactTime: 1.6 },
+  { id: 'wash_castle', kind: 'wash', name: 'Burgbrunnen', ...castleToWorld(5.5, 2.5), radius: 2.4, interactTime: 1.6 },
 
   // ---------- Fundstücke / Lesbares ----------
   { id: 'lore_expedition', kind: 'lore', name: 'Einsatzbefehl', x: -148, z: -33, prop: 'lore', codex: 'lore_expedition' },

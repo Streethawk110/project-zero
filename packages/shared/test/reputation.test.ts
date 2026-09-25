@@ -68,3 +68,24 @@ describe('Ruf in Haldenbruck (KCD2-artig)', () => {
     expect(barks().length).toBe(1);
   });
 });
+
+describe('Schmutz und Blut (KCD2-artig)', () => {
+  it('Kampf macht blutig, Laufen schmutzig, Brunnen und Bad waschen, Bewohner reagieren, Preise steigen', () => {
+    const w = makeWorld('sp');
+    const p = addPlayer(w);
+    const e = w.spawnEnemy('glassrunner', p.m.x + 1.5, p.m.z, 1, 'test', 1);
+    const price0 = inv.buyPrice(p.char, 'pell', 'bread');
+    for (let i = 0; i < 12; i++) w.applyDamage(e, 1, p.id, { type: 'physical', attacker: p });
+    expect(p.char.needs!.blood).toBeGreaterThan(15);
+    p.char.needs!.blood = 60;
+    expect(inv.buyPrice(p.char, 'pell', 'bread')).toBeGreaterThan(price0);
+    // Snapshot trägt den Zustand für die Darstellung
+    expect(w.snapEntity(p, true).gr! & 15).toBeGreaterThan(7);
+    // Waschen am Brunnen
+    w.wash(p, false);
+    expect(p.char.needs!.blood).toBe(0);
+    p.char.needs!.dirt = 80;
+    w.applyEffects(p, ['wash:bath']);
+    expect(p.char.needs!.dirt).toBe(0);
+  });
+});

@@ -269,13 +269,14 @@ export interface CharacterData {
   lastRespawnAt?: number;
   nodes: Record<string, number>; // Ressourcenknoten: Zeitpunkt der Wiederkehr
   /** Grundbedürfnisse (KCD2): Sättigung und Ausgeruhtheit, 0–100 (fehlt in alten Spielständen → voll) */
-  needs?: { food: number; rest: number };
+  /** Grundbedürfnisse (0–100) und Zustand der Kleidung (Schmutz, Blut; 0–100) */
+  needs?: { food: number; rest: number; dirt?: number; blood?: number };
   created: number;
 }
 
 export interface InteractableDef {
   id: string;
-  kind: 'chest' | 'lore' | 'resource' | 'door' | 'lever' | 'plate' | 'bell' | 'stele' | 'glyph' | 'workbench' | 'transition' | 'quest_object' | 'viewpoint' | 'rest' | 'search' | 'switch';
+  kind: 'chest' | 'lore' | 'resource' | 'door' | 'lever' | 'plate' | 'bell' | 'stele' | 'glyph' | 'workbench' | 'transition' | 'quest_object' | 'viewpoint' | 'rest' | 'search' | 'switch' | 'wash';
   name: string;
   x: number;
   z: number;

@@ -83,12 +83,21 @@ export function garment(kind: 'cloth' | 'leather' | 'chain' | 'plate', color: nu
     m.clearcoatRoughness = 0.55;
     m.normalScale.set(0.8, 0.8);
   }
-  const u = { uRep: { value: rep }, uWear: { value: kind === 'plate' ? 0.35 : kind === 'chain' ? 0.25 : 1 } };
+  // Schmutz und Blut (je Figur, 0–1) mit Gewichtung je Kleidungsteil (x = Schmutz, y = Blut)
+  const u = {
+    uRep: { value: rep }, uWear: { value: kind === 'plate' ? 0.35 : kind === 'chain' ? 0.25 : 1 },
+    uDirt: { value: 0 }, uBlood: { value: 0 }, uGW: { value: new THREE.Vector2(1, 1) },
+  };
+  m.userData['grime'] = u;
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, u);
-    sh.fragmentShader = sh.fragmentShader
+    // Ruhelage-Position (Meter, Füße bei y = 0) für Schmutz/Blut – unabhängig von den Kleidungs-UVs
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vGPos;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGPos = position;');
+    sh.fragmentShader = 'varying vec3 vGPos;\n' + sh.fragmentShader
       .replace('#include <common>', `#include <common>
-        uniform float uRep; uniform float uWear;
+        uniform float uRep; uniform float uWear; uniform float uDirt; uniform float uBlood; uniform vec2 uGW;
         float gHash(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
         float gNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           return mix(mix(gHash(i), gHash(i + vec2(1, 0)), f.x), mix(gHash(i + vec2(0, 1)), gHash(i + vec2(1, 1)), f.x), f.y); }`)
@@ -100,7 +109,21 @@ export function garment(kind: 'cloth' | 'leather' | 'chain' | 'plate', color: nu
           float stain = smoothstep(0.62, 0.8, gNoise(guv * 13.0 + 3.7));
           diffuseColor.rgb *= mix(1.0, mix(0.82, 1.1, gw), uWear);
           diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.62, 0.56, 0.48), stain * 0.45 * uWear);
-        #endif`);
+        #endif
+        float gDirt = 0.0, gBlood = 0.0;
+        {
+          // Schmutz: wolkige Flecken, von unten (Stiefel, Hosenbeine, Saum) nach oben
+          vec3 gp = vGPos;
+          float dA = clamp(uDirt * uGW.x * (0.35 + 1.1 * smoothstep(1.25, 0.1, gp.y)), 0.0, 1.0);
+          float dN = gNoise(gp.xy * 7.0 + gp.z * 3.0) * 0.45 + gNoise(gp.zy * 19.0 + 5.0) * 0.35 + gNoise(gp.xz * 53.0 + gp.y * 9.0) * 0.2;
+          gDirt = smoothstep(0.8 - dA * 0.42, 0.95 - dA * 0.42, dN) * step(0.01, dA);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.13, 0.1, 0.07), gDirt * (0.38 + dA * 0.3));
+          // Blut: scharf begrenzte Spritzer und Tropfen (Rumpf und Arme vorn stärker)
+          float bA = clamp(uBlood * uGW.y * (0.6 + 0.6 * smoothstep(0.6, 1.3, gp.y)), 0.0, 1.0);
+          float bN = gNoise(gp.xy * 23.0 + gp.z * 7.0) * 0.5 + gNoise(gp.zy * 61.0 + 13.0) * 0.3 + gNoise(gp.xy * 140.0) * 0.2;
+          gBlood = smoothstep(0.8 - bA * 0.26, 0.83 - bA * 0.26, bN) * step(0.01, bA);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.06, 0.008, 0.006), gBlood * 0.92);
+        }`);
     if (kind === 'cloth') {
       // Webmuster nur andeuten: Kontrast zur Durchschnittsfarbe (grobe Mip-Stufe) stark verringern,
       // sonst wirkt der Stoff aus der Nähe wie Karopapier
@@ -126,6 +149,13 @@ export function garment(kind: 'cloth' | 'leather' | 'chain' | 'plate', color: nu
         .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n          roughnessFactor = mix(0.9, roughnessFactor, ring);');
     }
   };
+  m.onBeforeCompile = ((prev) => (sh: THREE.WebGLProgramParametersWithUniforms, r: THREE.WebGLRenderer) => {
+    prev.call(m, sh, r);
+    // Schmutz macht stumpf, Blut glänzt feucht
+    sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+      roughnessFactor = mix(roughnessFactor, 1.0, gDirt * 0.6);
+      roughnessFactor = mix(roughnessFactor, 0.55, gBlood * 0.5);`);
+  })(m.onBeforeCompile);
   m.customProgramCacheKey = () => `garment-${kind}`;
   return m;
 }
@@ -238,6 +268,9 @@ export class HumanoidRig {
       this.chainMat = garment('chain', outfit.body);
       this.plateMat = garment('plate', outfit.body);
       this.hoodMat = garment('cloth', outfit.accent);
+      const w = (m: THREE.Material, d: number, b: number) => (m.userData['grime'] as { uGW: { value: THREE.Vector2 } }).uGW.value.set(d, b);
+      w(this.bodyMat, 0.7, 1); w(this.legMat, 1.1, 0.6); w(this.accentMat, 0.8, 0.5);
+      w(this.chainMat, 0.5, 0.8); w(this.plateMat, 0.45, 0.9); w(this.hoodMat, 0.4, 0.35);
     } else {
       this.bodyMat = mat(outfit.body, outfit.metal ? { metalness: 0.7, roughness: 0.55 } : {}, outfit.metal ? 'metal' : 'cloth');
       this.legMat = mat(outfit.legs);
@@ -481,6 +514,18 @@ export class HumanoidRig {
     // Unter der Kapuze keine langen Haare
     this.hairNode.visible = !o.hood;
   }
+
+  /** Schmutz und Blut auf der Kleidung (Snapshot-Code: Schmutz obere 4 Bit, Blut untere 4 Bit). */
+  setGrime(code: number) {
+    if (code === this.grimeCode) return;
+    this.grimeCode = code;
+    const dirt = (code >> 4) / 15, blood = (code & 15) / 15;
+    for (const m of [this.bodyMat, this.legMat, this.accentMat, this.chainMat, this.plateMat, this.hoodMat]) {
+      const g = m?.userData['grime'] as { uDirt: { value: number }; uBlood: { value: number } } | undefined;
+      if (g) { g.uDirt.value = dirt; g.uBlood.value = blood; }
+    }
+  }
+  private grimeCode = 0;
 
   /** Detailstufe: 0 = volle Figur, 1 = vereinfacht (Entfernung). */
   setLod(level: 0 | 1) {

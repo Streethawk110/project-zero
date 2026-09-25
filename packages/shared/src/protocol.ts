@@ -89,6 +89,8 @@ export interface SnapEntity {
   tg?: number; // Ziel (Gegner) / Besitzer
   hp?: number; // absolute Lebenspunkte (für Bosse)
   mhp?: number;
+  /** Kleidung: Schmutz (obere 4 Bit) und Blut (untere 4 Bit), je 0–15 */
+  gr?: number;
 }
 
 export interface WorldEventState {

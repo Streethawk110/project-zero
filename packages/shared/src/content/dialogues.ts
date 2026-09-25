@@ -265,6 +265,7 @@ const nodes: DialogueNode[] = [
     { text: 'Erzähl mir Gerüchte.', next: 'he_rumor' },
     { text: 'Eine Schüssel Suppe, bitte. (4 Gold)', cond: 'gold>=4', effects: ['gold:-4', 'need:food:70'], next: 'he_soup' },
     { text: 'Ein Bett für die Nacht. (10 Gold)', cond: 'gold>=10', effects: ['gold:-10', 'sleep'], next: 'he_rest' },
+    { text: 'Ein heißes Bad. (3 Gold)', cond: 'gold>=3', effects: ['gold:-3', 'wash:bath'], next: 'he_bath' },
     end('Tschüss.'),
   ]),
   N('he_quest', 'Jede Nacht, wenn es still wird, flüstert jemand meinen Namen. Es klingt wie Bertram, mein Mann. Er ist vor zwei Wintern im Wald geblieben. Ich weiß, dass er tot ist. Aber … könntest du nachsehen? Nachts, im Flüsterforst, bei den alten Eichen östlich von Marens Schrein.', [{ text: 'Ich sehe nach.', effects: ['quest:start:s_hedda'], next: null }]),
@@ -276,6 +277,7 @@ const nodes: DialogueNode[] = [
     ],
   }),
   N('he_rest', 'Die Kammer oben links. Das Bett ist hart, aber trocken. Schlaf gut – und wenn du nachts etwas kratzen hörst … schlaf trotzdem.', [end()]),
+  N('he_bath', 'Der Zuber steht hinten, das Wasser ist heiß. Seife liegt daneben – nimm sie auch.', [back('hedda_root', 'Danke.'), end()]),
   N('he_soup', 'Rübensuppe mit Speck. Die Rüben leuchten nicht, versprochen. Iss, solange sie warm ist.', [back('hedda_root', 'Danke.'), end()]),
 
   // ============================ BRANN ============================

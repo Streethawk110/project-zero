@@ -64,6 +64,7 @@ list.forEach((s, i) => {
   for (let k = 0; k < 40; k++) rig.update(s.t / 40 + (k < 20 ? 0.02 : 0), s.speed);
   if (params.get('talk')) { rig.talking = 5; rig.update(Number(params.get('talk')), 0); }
   if (params.get('lod') === '1') rig.setLod(1);
+  if (params.get('grime')) rig.setGrime(Number(params.get('grime')));
   // Fehlersuche: Teile ausblenden (?hide=mouth,mouth_cavity)
   for (const n of (params.get('hide') ?? '').split(',').filter(Boolean)) (rig as unknown as { humanParts: Map<string, THREE.Object3D> }).humanParts?.get(n)?.traverse((o) => { o.visible = false; });
   scene.add(rig.root);

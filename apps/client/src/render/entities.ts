@@ -107,6 +107,7 @@ export class EntityManager {
       this.group.add(v.obj);
     }
     if (s.st) this.applyStatic(v, s);
+    if (s.k === 'p' && v.rig) v.rig.setGrime(s.gr ?? 0);
     return v;
   }
 

@@ -131,6 +131,7 @@ export type Effect =
   | { t: 'need'; food?: number; rest?: number }
   | { t: 'sleep' }
   | { t: 'dice'; bet: number }
+  | { t: 'wash'; full: boolean }
   | { t: 'fine'; op: 'pay' | 'talk' | 'scare' | 'jail' }
   | { t: 'respec' }
   | { t: 'toast'; text: string };
@@ -187,6 +188,7 @@ function parseEffectRaw(s: string): Effect {
     case 'need': return parts[0] === 'rest' ? { t: 'need', rest: num(parts[1]) } : { t: 'need', food: num(parts[1]) };
     case 'sleep': return { t: 'sleep' };
     case 'dice': return { t: 'dice', bet: num(a, 10) };
+    case 'wash': return { t: 'wash', full: a === 'bath' };
     case 'fine': return { t: 'fine', op: a as 'pay' };
     case 'restore': return { t: 'restore' };
     case 'respec': return { t: 'respec' };

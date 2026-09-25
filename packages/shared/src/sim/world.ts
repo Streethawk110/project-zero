@@ -634,6 +634,11 @@ export class World {
         if (o.attacker) e.target = o.attacker.id;
       }
       this.emitNear(e.m.x, e.m.z, { e: 'dmg', tgt: e.id, src, n: dmg, crit: !!o.crit, dt: o.type, weak: o.weak, x: e.m.x, y: e.m.y + this.entHeight(e), z: e.m.z }, 70, e.area);
+      // Nahkampf spritzt: Blut auf der Kleidung des Angreifers
+      if (o.attacker && !o.dot && o.type === 'physical' && dist2(o.attacker.m.x, o.attacker.m.z, e.m.x, e.m.z) < 16) {
+        const nd = needsOf(o.attacker.char);
+        nd.blood = Math.min(100, (nd.blood ?? 0) + 1.5);
+      }
       if (e.hp <= 0) this.killEnemy(e, o.attacker ?? null);
       return dmg;
     }
@@ -647,6 +652,7 @@ export class World {
         absorbed = a > 0;
       }
       if (dmg > 0) e.hp -= dmg;
+      if (dmg > 0 && !o.dot) { const nd = needsOf(e.char); nd.blood = Math.min(100, (nd.blood ?? 0) + (dmg / e.stats.maxHp) * 30); }
       e.regenDelay = 3;
       e.combatT = 0;
       this.emitNear(e.m.x, e.m.z, { e: 'dmg', tgt: e.id, src, n: dmg, crit: !!o.crit, dt: o.type, blocked: o.blocked, perfect: o.perfect, absorbed, x: e.m.x, y: e.m.y + 1.9, z: e.m.z }, 70, e.area);
@@ -1424,6 +1430,9 @@ export class World {
           if (it.target.zone === 'tiefenrast') questEvent(this, p, 'reach', 'tiefenrast');
         }
         break;
+      case 'wash':
+        this.wash(p, false);
+        break;
       case 'viewpoint':
         if (!c.flags['view_' + it.id]) {
           c.flags['view_' + it.id] = 1;
@@ -1551,6 +1560,9 @@ export class World {
           break;
         case 'fine':
           this.fineEffect(p, ef.op);
+          break;
+        case 'wash':
+          this.wash(p, ef.full);
           break;
         case 'respec':
           this.emit(p, { e: 'respec_open' });
@@ -1713,6 +1725,17 @@ export class World {
     p.charDirty = true;
   }
 
+  /** Waschen am Brunnen (Blut ab, Schmutz größtenteils) oder Bad im Gasthaus (alles). */
+  wash(p: PlayerEnt, full: boolean) {
+    const nd = needsOf(p.char);
+    const before = Math.max(nd.dirt ?? 0, nd.blood ?? 0);
+    nd.blood = 0;
+    nd.dirt = full ? 0 : Math.min(nd.dirt ?? 0, 15);
+    p.charDirty = true;
+    this.emit(p, { e: 'sfx', id: 'splash' });
+    this.toast(p, full ? 'Ein heißes Bad. Du bist sauber wie lange nicht mehr.' : before > 10 ? 'Du wäschst dir Blut und Dreck ab.' : 'Das kalte Wasser tut gut.', 'good');
+  }
+
   // ======================= Würfeln =======================
 
   startDice(p: PlayerEnt, npcId: string, bet: number) {
@@ -1814,6 +1837,10 @@ export class World {
         lines = rep <= -30 ? ['Dich hab ich im Auge.', 'Noch ein Fehltritt, und du sitzt im Loch.', 'Weiter. Und Finger weg von fremden Türen.']
           : rep >= 30 ? [`Ruhige Wache heute, ${name}.`, 'Alles in Ordnung?', `Gut, dass du da bist, ${name}.`]
           : night ? ['Spät noch unterwegs?', 'Halt dich ans Licht.', 'Nachts bleibt man besser drinnen.'] : ['Halt dich an die Gesetze.', 'Weitergehen.', 'Keinen Ärger, verstanden?'];
+      } else if ((p.char.needs?.blood ?? 0) > 45) {
+        lines = ['Heilige Mutter – du bist ja voller Blut!', 'Wessen Blut ist das? Nein – ich will’s gar nicht wissen.', 'Wasch dich, bevor du hier herumläufst!'];
+      } else if ((p.char.needs?.dirt ?? 0) > 65) {
+        lines = ['Puh. Ein Bad würde dir nicht schaden.', 'Du stinkst wie ein Schweinestall.', 'Hast du im Graben geschlafen?'];
       } else {
         lines = rep <= -30 ? ['Verschwinde!', 'Mit Dieben reden wir nicht.', 'Hau bloß ab.', 'Ich hol die Wache, wenn du näher kommst.']
           : rep < -5 ? ['Hm.', 'Pass auf, was du anfasst.', 'Ich hab ein Auge auf dich.', 'Was glotzt du so?']
@@ -1992,6 +2019,13 @@ export class World {
     const busy = sprinting || p.combatT < 5;
     nd.food = Math.max(0, nd.food - dt * (100 / (DAY_LENGTH * 1.25)) * (busy ? 1.6 : 1));
     nd.rest = Math.max(0, nd.rest - dt * (100 / (DAY_LENGTH * 1.6)) * (busy ? 1.4 : 1));
+    // Kleidung: Laufen macht schmutzig, Schwimmen und Regen waschen langsam ab
+    const moving = Math.hypot(p.m.vx, p.m.vz) > 0.5;
+    if (p.m.swim) { nd.dirt = Math.max(0, (nd.dirt ?? 0) - dt * 8); nd.blood = Math.max(0, (nd.blood ?? 0) - dt * 10); }
+    else {
+      nd.dirt = Math.min(100, (nd.dirt ?? 0) + dt * (moving ? (sprinting ? 0.05 : 0.025) : 0.002) + (p.m.dodgeT > 0 ? dt * 0.6 : 0));
+      if (this.weather === 'rain' && nd.blood) nd.blood = Math.max(0, nd.blood - dt * 0.08);
+    }
     const maxSta = st.maxStamina * needStaminaMult(nd);
     const staRegen = st.staminaRegen * needRegenMult(nd);
     this.needWarnings(p, nd);
@@ -2696,6 +2730,12 @@ export class World {
           base.eq = this.equipModels(e);
         }
         base.pt = e.party ?? undefined;
+        {
+          const nd = needsOf(e.char);
+          const q = (v?: number) => Math.round(clamp((v ?? 0) / 100, 0, 1) * 15);
+          const gr = q(nd.dirt) * 16 + q(nd.blood);
+          if (gr) base.gr = gr;
+        }
         break;
       case 'enemy':
         base.k = 'e';

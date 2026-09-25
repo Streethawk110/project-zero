@@ -180,6 +180,9 @@ export function priceFactor(c: CharacterData, shopId: string) {
     if (shop.faction === 'order' && c.touch >= 30) f += 0.25 + (c.touch - 30) / 200;
     if (shop.faction === 'rooted' && c.touch >= 30) f -= 0.1;
   }
+  // Wer blutverschmiert oder verdreckt hereinkommt, zahlt mehr (wie Charisma in KCD2)
+  const grime = Math.max(c.needs?.dirt ?? 0, c.needs?.blood ?? 0);
+  if (grime > 50) f += 0.1;
   return Math.max(0.6, f);
 }
 export function buyPrice(c: CharacterData, shopId: string, itemId: string) {

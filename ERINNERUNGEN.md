@@ -216,6 +216,11 @@ Profiler nicht mitgezählt – behoben).
   Kerker (`jail`: 12 h im SP, Hunger, Ruf −5, vor dem Vogthaus), Davonlaufen → Kopfgeld = 2× Strafe
   (`flags.bounty`, Ruf −10); Wachen erkennen Gesuchte beim Vorbeigehen. HUD „⚖ Gesucht“.
   Hook `World.dialogueClosed` (alle Wege, die ein Gespräch beenden).
+- KCD2-Umbau Teil 7: SCHMUTZ UND BLUT (`needs.dirt/blood`): Laufen/Ausweichen → Schmutz, Nahkampf-
+  Treffer und erlittener Schaden → Blut, Schwimmen/Regen waschen ab. Brunnen (Dorf, Burg) = Waschen
+  (`kind: 'wash'`), Hedda: Bad 3 Gold (`wash:bath`). Ab 50 teurer beim Händler (+10 %), Bewohner
+  kommentieren. Snapshot `gr` (4 Bit Schmutz, 4 Bit Blut) → `rig.setGrime` → Kleidungsshader nutzt
+  Ruhelage-Position (`vGPos`, Meter): Dreck von unten, Blutspritzer oben. Vorschau `?grime=N`.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.
