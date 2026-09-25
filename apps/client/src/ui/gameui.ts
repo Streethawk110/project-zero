@@ -10,6 +10,7 @@ import { CraftWin, RestWin, ShopWin, SteleWin, TradeWin } from './win_misc.ts';
 import { settingsPanel } from './settingsPanel.ts';
 import { LockpickUI } from './lockpick.ts';
 import { DiceUI } from './dice.ts';
+import { AlchemyUI } from './alchemy.ts';
 import { Tutorial } from './tutorial.ts';
 import type { Win } from './win.ts';
 import type { Game } from '../game/game.ts';
@@ -56,6 +57,7 @@ export class GameUI {
   private lastInteractLabel = '';
   private lockpick: LockpickUI | null = null;
   private dice: DiceUI | null = null;
+  private alchemy: AlchemyUI | null = null;
   private tutorial: Tutorial | null = null;
   private photoEl = h('div', { class: 'photo-help hidden' });
   private hudHidden = false;
@@ -174,6 +176,7 @@ export class GameUI {
     this.char = c;
     this.hud.setChar(c);
     this.current?.refresh();
+    this.refreshOverlays();
   }
 
   onSnapshot(s: Snapshot) {
@@ -230,6 +233,7 @@ export class GameUI {
       case 'dialogue_end': this.hideDialogue(); break;
       case 'shop': (this.wins['shop'] as ShopWin).shopId = e.id; this.hideDialogue(); this.openWindow('shop'); break;
       case 'craft_open': this.hideDialogue(); this.openCraft(e.station, e.name); break;
+      case 'alchemy_open': this.openAlchemy(e.name); break;
       case 'rest_open': (this.wins['rest'] as RestWin).restId = e.id; this.openWindow('rest'); if (this.mode === 'sp') this.requestSave(false); break;
       case 'stele_open': this.openWindow('stele'); break;
       case 'respec_open': this.openWindow('skills'); break;
@@ -304,7 +308,7 @@ export class GameUI {
   }
 
   blocksGameInput() {
-    return !!this.current || !!this.pauseEl || this.dialogueOpen || !!this.emoteEl || !!this.settingsEl || !!this.lockpick || !!this.dice || !!this.waitEl || (this.game?.input.typing ?? false);
+    return !!this.current || !!this.pauseEl || this.dialogueOpen || !!this.emoteEl || !!this.settingsEl || !!this.lockpick || !!this.dice || !!this.alchemy || !!this.waitEl || (this.game?.input.typing ?? false);
   }
 
   /** Schlossknacken-Minispiel öffnen (vom Server nach Interaktion mit einer abgeschlossenen Tür). */
@@ -353,6 +357,18 @@ export class GameUI {
     this.waitEl = null;
   }
 
+  /** Alchemietisch öffnen (nach Interaktion) */
+  openAlchemy(name: string) {
+    this.alchemy?.close();
+    const ui = new AlchemyUI(name, () => this.char, (recipe, steps) => this.cmd({ t: 'brew', recipe, steps }), () => { this.alchemy = null; }, (sid) => this.game?.audio.sfx(sid));
+    this.alchemy = ui;
+    this.root.append(ui.el);
+    this.game?.input.releaseLock();
+  }
+
+  /** Neuer Charakterstand: offene Fenster wie der Alchemietisch zeigen aktuelle Vorräte */
+  refreshOverlays() { this.alchemy?.render(); }
+
   /** Würfelspiel: Stand vom Server anzeigen (öffnet den Tisch beim ersten Ereignis). */
   onDice(ev: Extract<GameEvent, { e: 'dice' }>) {
     if (!this.dice) {
@@ -369,7 +385,7 @@ export class GameUI {
   }
 
   handleHotkeys(i: Input) {
-    if (this.lockpick || this.dice) { i.pressed('pause', true); return; }
+    if (this.lockpick || this.dice || this.alchemy) { i.pressed('pause', true); return; }
     if (this.game?.input.typing) return;
     // Fotomodus: nur eigene Tasten
     if (this.game?.photo) {

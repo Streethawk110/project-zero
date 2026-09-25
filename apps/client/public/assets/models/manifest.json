@@ -1,4 +1,7 @@
 {
+ "alchemy_table": {
+  "file": "alchemy_table.glb"
+ },
  "altar": {
   "file": "altar.glb"
  },

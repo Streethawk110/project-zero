@@ -137,6 +137,52 @@ def workbench():
     return join(parts, "workbench")
 
 
+def alchemy_table():
+    """Alchemietisch (wie in KCD): Tisch mit Mörser, Kolben und Rezeptbuch, daneben ein Kessel über Glut."""
+    rnd = random.Random(11)
+
+    def sl(o):
+        smooth(o, 50)
+        return o
+    parts = [box("top", (1.8, 0.8, 0.08), (0, 0, 0.88), material="wood", bevel=0.01)]
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            parts.append(box("leg", (0.09, 0.09, 0.84), (sx * 0.82, sy * 0.33, 0.42), material="wood_dark"))
+    parts.append(box("shelf", (1.6, 0.7, 0.04), (0, 0, 0.22), material="wood_dark"))
+    # Mörser und Stößel
+    parts.append(sl(lathe("mortar", [(0.0, 0.0), (0.1, 0.0), (0.11, 0.05), (0.1, 0.12), (0.075, 0.12), (0.06, 0.05), (0.0, 0.04)], 14, "stone", loc=(-0.55, 0.1, 0.92))))
+    parts.append(beam("pestle", (-0.55, 0.1, 0.98), (-0.47, 0.18, 1.14), 0.025, material="stone"))
+    # Kolben und Flaschen
+    for i, (x, y, hh) in enumerate([(0.1, 0.2, 0.26), (0.28, 0.12, 0.2), (0.4, 0.25, 0.3), (0.62, 0.05, 0.18)]):
+        prof = [(0.0, 0.0), (0.07, 0.0), (0.08, hh * 0.35), (0.03, hh * 0.7), (0.025, hh), (0.0, hh)]
+        parts.append(sl(lathe("flask", prof, 12, "crystal" if i % 2 == 0 else "herb", loc=(x, y, 0.92))))
+    # Rezeptbuch, aufgeschlagen
+    parts.append(box("book_l", (0.22, 0.3, 0.025), (-0.12, -0.2, 0.935), rot=(0, 0.08, 0.1), material="cloth_white"))
+    parts.append(box("book_r", (0.22, 0.3, 0.025), (0.1, -0.18, 0.935), rot=(0, -0.08, 0.1), material="cloth_white"))
+    parts.append(box("cover", (0.48, 0.33, 0.012), (-0.01, -0.19, 0.918), rot=(0, 0, 0.1), material="leather"))
+    # Kräuterbündel im Regal und getrocknete Kräuter
+    for i in range(5):
+        parts.append(cyl("bundle", 0.05, 0.22, (-0.6 + i * 0.3, rnd.uniform(-0.2, 0.2), 0.32), rot=(math.pi / 2, 0, rnd.uniform(0, 3)), material="herb", seg=6))
+    for i in range(3):
+        parts.append(cyl("jar", 0.07, 0.16, (-0.4 + i * 0.3, 0.2, 0.32), material="metal_dark" if i == 1 else "stone", seg=10))
+    # Kessel auf Dreibein über der Glut (neben dem Tisch)
+    kx = 1.45
+    for i in range(3):
+        a = i * 2 * math.pi / 3
+        parts.append(beam("tripod", (kx + math.cos(a) * 0.45, math.sin(a) * 0.45, 0.0), (kx, 0, 1.25), 0.035, material="metal_dark"))
+    parts.append(beam("chain", (kx, 0, 1.25), (kx, 0, 0.8), 0.012, material="metal_dark"))
+    parts.append(sl(lathe("cauldron", [(0.0, 0.0), (0.18, 0.02), (0.27, 0.14), (0.28, 0.28), (0.24, 0.36), (0.25, 0.38), (0.0, 0.38)], 16, "metal_dark", loc=(kx, 0, 0.42))))
+    parts.append(cyl("brew", 0.23, 0.01, (kx, 0, 0.78), material="herb", seg=16))
+    for i in range(6):
+        a = i * math.pi / 3 + rnd.uniform(-0.2, 0.2)
+        parts.append(cyl("log", 0.045, 0.5, (kx + math.cos(a) * 0.18, math.sin(a) * 0.18, 0.06), rot=(math.pi / 2, 0, a + math.pi / 2), material="bark", seg=6))
+    parts.append(ico("embers", 0.16, (kx, 0, 0.05), material="glow_warm", sub=1, scale=(1, 1, 0.35)))
+    for i in range(10):
+        a = i * 2 * math.pi / 10
+        parts.append(rock("ring", 0.09, i, (kx + math.cos(a) * 0.4, math.sin(a) * 0.4, 0.04), material="stone", sub=1))
+    return join(parts, "alchemy_table")
+
+
 def ruin_pillar():
     rnd = random.Random(7)
     parts = [box("base", (1.4, 1.4, 0.5), (0, 0, 0.1), material="stone_block", bevel=0.04)]
@@ -475,7 +521,7 @@ def boss_pillar():
 ASSETS = {
     "barrel": (barrel, None), "crate": (crate, None), "cart": (cart, None), "fence": (fence, None), "lamp": (lamp, None),
     "bench": (bench, None), "haystack": (haystack, None), "woodpile": (woodpile, None), "anvil": (anvil, None),
-    "workbench": (workbench, None), "ruin_pillar": (ruin_pillar, None), "ruin_wall": (ruin_wall, None), "ruin_arch": (ruin_arch, None),
+    "workbench": (workbench, None), "alchemy_table": (alchemy_table, None), "ruin_pillar": (ruin_pillar, None), "ruin_wall": (ruin_wall, None), "ruin_arch": (ruin_arch, None),
     "bell_pillar": (bell_pillar, None), "altar": (altar, None), "statue_oda": (statue_oda, None), "crystal_small": (crystal_small, None),
     "crystal_large": (crystal_large, None), "crystal_node": (crystal_node, None), "mine_cart": (mine_cart, None), "stele": (stele, None),
     "raven_stone": (raven_stone, None), "rest_shrine": (rest_shrine, None), "chest": (chest, None), "expedition_wagon": (expedition_wagon, None),

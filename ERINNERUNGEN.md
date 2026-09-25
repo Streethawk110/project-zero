@@ -229,6 +229,11 @@ Profiler nicht mitgezählt – behoben).
 - KCD2-Umbau Teil 10: WARTEN [H] (nur SP, nicht im Kampf; `waitHours`, `snapRoutines` setzt Bewohner
   an ihren Tagesplan-Ort, auch nach Schlaf/Kerker). Burghof: Erde + Pflasterweg Tor→Bergfried im
   Geländesplat (`castleLocal`). README: Tabelle + Abschnitt „Lebendige Welt“. 41 Unit-Tests.
+- KCD2-Umbau Teil 11: ALCHEMIE (`sim/alchemy.ts`: 4 Rezepte mit Schritten Grundflüssigkeit/Zutat ganz
+  oder gemahlen/köcheln/abfüllen; `judgeBrew` 2/1/0 Phiolen). Alchemietisch-Modell (`alchemy_table` in
+  props.py: Tisch, Mörser, Kolben, Buch, Kessel auf Dreibein über Glut + Licht) bei (−12, 46).
+  Interaktion `kind: 'alchemy'` → `alchemy_open` → `ui/alchemy.ts` (Rezeptbuch + Werkbank), Befehl
+  `brew` (validate.ts). Dice-UI und Burghof im Spiel geprüft. 43 Unit-Tests.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

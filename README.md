@@ -96,7 +96,7 @@ haben einen Tagesablauf (Arbeit, Mittag im Gasthaus, Feierabend, Schlaf im eigen
 auf Streife) und laufen über ein Wegenetz mit Türen. Dazu: Hunger und Müdigkeit, Ruf im Dorf (Preise, Grüße,
 Strenge der Wachen), ertappt werden (zahlen, überreden, einschüchtern, Kerker, Kopfgeld), Schmutz und Blut auf
 der Kleidung (waschen am Brunnen, Bad im Gasthaus), Würfeln gegen Bewohner, Feilschen, Übungskampf beim
-Hauptmann, Schlösser knacken und Warten.
+Hauptmann, Alchemie nach Rezept am Alchemietisch, Schlösser knacken und Warten.
 
 **Trennung:** Einzelspieler-Spielstände und Online-Charaktere sind vollständig getrennt. Es gibt bewusst
 keine Übertragung zwischen beiden – ein lokaler Spielstand lässt sich beliebig bearbeiten und darf deshalb

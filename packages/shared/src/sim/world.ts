@@ -7,6 +7,7 @@ import { ITEMS } from '../content/items.ts';
 import { LOOT } from '../content/loot.ts';
 import { NPCS } from '../content/npcs.ts';
 import { FACTIONS } from '../content/meta.ts';
+import { ALCHEMY_BY_ID, brewMaterials, judgeBrew, type BrewStep } from './alchemy.ts';
 import { DICE_TARGET, bestSelection, opponentTurn, rollDice, scoreDice, type DiceTurnLog } from './dice.ts';
 import { HOUSES, doorLockLevel } from '../world/houses.ts';
 import { findPath, navNode, nearestNode, routineStep, type RoutineStep } from '../world/routines.ts';
@@ -271,6 +272,9 @@ export class World {
         return;
       case 'wait':
         this.waitHours(p, cmd.hours);
+        return;
+      case 'brew':
+        this.brew(p, cmd.recipe, cmd.steps);
         return;
       case 'interact_cancel':
         p.interacting = null;
@@ -1454,6 +1458,10 @@ export class World {
       case 'wash':
         this.wash(p, false);
         break;
+      case 'alchemy':
+        p.lastAlchemy = it.id;
+        this.emit(p, { e: 'alchemy_open', name: it.name });
+        break;
       case 'viewpoint':
         if (!c.flags['view_' + it.id]) {
           c.flags['view_' + it.id] = 1;
@@ -1808,6 +1816,33 @@ export class World {
       n.hidden = step.act === 'sleep';
       if (step.act === 'patrol') n.patrolIdx = 0;
     }
+  }
+
+  /** Brauen am Alchemietisch: Schritte prüfen, Zutaten verbrauchen, Tränke nach Genauigkeit. */
+  brew(p: PlayerEnt, recipeId: string, steps: BrewStep[]) {
+    const it = p.lastAlchemy ? INTERACTABLE_BY_ID[p.lastAlchemy] : undefined;
+    if (!it || dist2(it.x, it.z, p.m.x, p.m.z) > 4 * 4) return this.emit(p, { e: 'error', text: 'Du stehst nicht am Alchemietisch.' });
+    const r = ALCHEMY_BY_ID[recipeId];
+    if (!r) return;
+    if (r.level && p.char.level < r.level) return this.emit(p, { e: 'error', text: `Dieses Rezept verlangt Stufe ${r.level}.` });
+    if (!Array.isArray(steps) || steps.length > 40) return;
+    const mats = brewMaterials(steps);
+    for (const [id, n] of mats) {
+      if (!ITEMS[id]) return;
+      if (inv.countItem(p.char, id) < n) return this.emit(p, { e: 'error', text: `Es fehlt: ${ITEMS[id]!.name} (${inv.countItem(p.char, id)}/${n}).` });
+    }
+    if (!steps.some((s) => s.a === 'bottle')) return this.emit(p, { e: 'error', text: 'Der Trank muss noch abgefüllt werden.' });
+    for (const [id, n] of mats) inv.removeItem(p.char, id, n);
+    const q = judgeBrew(r, steps);
+    this.emit(p, { e: 'sfx', id: 'splash' });
+    if (q === 0) {
+      this.toast(p, 'Die Brühe stinkt und schäumt grau. Misslungen – die Zutaten sind verloren.', 'bad');
+    } else {
+      this.grantLoot(p, [{ id: r.result, n: q }]);
+      this.giveXp(p, q === 2 ? 30 : 12, 'Alchemie');
+      this.toast(p, q === 2 ? `${r.name}: sauber gebraut – zwei Phiolen.` : `${r.name}: nicht ganz nach Rezept – nur eine brauchbare Phiole.`, q === 2 ? 'good' : 'warn');
+    }
+    p.charDirty = true;
   }
 
   /** Waschen am Brunnen (Blut ab, Schmutz größtenteils) oder Bad im Gasthaus (alles). */

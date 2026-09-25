@@ -387,3 +387,22 @@ h3 { font-size: 1.1em; color: var(--gold); }
 .wait-title { font-family: var(--serif, Georgia, serif); font-size: 1.2em; color: #e6d3a8; letter-spacing: 0.04em; }
 .wait-slider { width: 100%; accent-color: #d9b47a; }
 .wait-label { color: #e8dcc2; font-variant-numeric: tabular-nums; }
+
+/* Alchemietisch */
+.alchemy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(900px, 96vw); max-height: 92vh; overflow: auto; display: flex; flex-direction: column; gap: 0.8em; padding: 1.2em 1.4em; background: radial-gradient(ellipse at center, rgba(22,17,12,0.96), rgba(8,7,6,0.98)); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+.alc-title { font-family: var(--serif, Georgia, serif); font-size: 1.3em; color: #e6d3a8; text-align: center; letter-spacing: 0.04em; }
+.alc-grid { display: grid; grid-template-columns: 1fr 1.25fr; gap: 1.4em; }
+.alc-book { display: flex; flex-direction: column; gap: 0.6em; }
+.alc-tabs { display: flex; flex-wrap: wrap; gap: 0.4em; }
+.alc-page { background: linear-gradient(180deg, #e9dcc0, #d8c7a2); color: #3a2a18; border-radius: 4px; padding: 0.9em 1.1em; font-family: var(--serif, Georgia, serif); box-shadow: inset 0 0 18px rgba(90,60,20,0.35); line-height: 1.45; }
+.alc-page ol { margin: 0.5em 0 0 1.2em; padding: 0; }
+.alc-right { display: flex; flex-direction: column; gap: 0.6em; }
+.alc-bench { display: flex; flex-direction: column; gap: 0.6em; }
+.alc-bench .row { display: flex; flex-wrap: wrap; gap: 0.45em; align-items: center; }
+.alc-ingr { display: flex; flex-direction: column; gap: 0.35em; }
+.alc-name { min-width: 11em; color: #e8dcc2; }
+.alc-mortar { padding: 0.4em 0.6em; border: 1px dashed var(--line); border-radius: 6px; }
+.alc-sub { color: #b8ad96; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.08em; }
+.alc-log { margin: 0 0 0 1.4em; padding: 0; color: #e8dcc2; min-height: 3em; }
+.alc-help { color: #857c6b; font-size: 0.8em; text-align: center; }
+@media (max-width: 700px) { .alc-grid { grid-template-columns: 1fr; } }

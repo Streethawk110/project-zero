@@ -850,7 +850,7 @@ export class Game {
         consider({ label, key, id: it.id, kind: it.kind, x: it.x, z: it.z }, d, (it.radius ?? 2.2) + 1.2);
         continue;
       }
-      const verb = { chest: 'Öffnen', lore: 'Lesen', glyph: 'Entziffern', resource: 'Sammeln', workbench: 'Werkbank benutzen', transition: 'Betreten', viewpoint: 'Ausblick genießen', bell: 'Glocke anschlagen', stele: 'Stele untersuchen', lever: 'Hebel umlegen', switch: 'Weiche umstellen', search: 'Untersuchen', quest_object: 'Untersuchen', plate: '', door: 'Öffnen', rest: 'Rasten', wash: 'Waschen' }[it.kind];
+      const verb = { chest: 'Öffnen', lore: 'Lesen', glyph: 'Entziffern', resource: 'Sammeln', workbench: 'Werkbank benutzen', transition: 'Betreten', viewpoint: 'Ausblick genießen', bell: 'Glocke anschlagen', stele: 'Stele untersuchen', lever: 'Hebel umlegen', switch: 'Weiche umstellen', search: 'Untersuchen', quest_object: 'Untersuchen', plate: '', door: 'Öffnen', rest: 'Rasten', wash: 'Waschen', alchemy: 'Brauen' }[it.kind];
       if (!verb) continue;
       consider({ label: `${verb}: ${it.name}`, key, id: it.id, kind: it.kind, x: it.x, z: it.z }, d, (it.radius ?? 2.2) + 1.2);
     }

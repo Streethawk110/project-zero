@@ -39,6 +39,13 @@ export function validCommand(c: unknown): c is GameCommand {
     case 'emote': return isId(c['id']);
     case 'companion': return ['follow', 'wait', 'plate'].includes(c['order'] as string);
     case 'lockpick': return isId(c['id']) && isBool(c['ok']);
+    case 'brew': return isId(c['recipe']) && Array.isArray(c['steps']) && c['steps'].length <= 40 && c['steps'].every((st) => {
+      const o = st as Record<string, unknown>;
+      if (!o || typeof o !== 'object') return false;
+      if (o['a'] === 'base') return o['v'] === 'water' || o['v'] === 'wine' || o['v'] === 'oil';
+      if (o['a'] === 'add') return isId(o['item']) && isBool(o['ground']);
+      return o['a'] === 'boil' || o['a'] === 'bottle';
+    });
     case 'wait': return isNum(c['hours'], 1, 24);
     case 'dice': return (c['op'] === 'roll' || c['op'] === 'bank' || c['op'] === 'quit') && (c['keep'] === undefined || (Array.isArray(c['keep']) && c['keep'].length <= 6 && c['keep'].every((k) => Number.isInteger(k) && (k as number) >= 0 && (k as number) < 6)));
     case 'stele': return Array.isArray(c['order']) && c['order'].length <= 3 && c['order'].every((x) => isId(x));

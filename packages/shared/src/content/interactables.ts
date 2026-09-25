@@ -50,6 +50,7 @@ export const INTERACTABLES: InteractableDef[] = [
 
   // ---------- Werkbänke, Übergänge ----------
   { id: 'wb_village', kind: 'workbench', name: 'Werkbank der Schmiede', x: -4, z: 48, radius: 2.5 },
+  { id: 'alchemy_village', kind: 'alchemy', name: 'Alchemietisch', x: -12, z: 46, prop: 'alchemy_table', rot: 0, radius: 2.6 },
   { id: 'wb_mine', kind: 'workbench', name: 'Grubenwerkbank', x: 236, z: -218, prop: 'workbench', rot: 0.5, radius: 2.5 },
   { id: 'mine_door', kind: 'transition', name: 'Grube Tiefenrast betreten', x: 254, z: -236, radius: 3.5, target: { x: D.x, z: D.z + 14, zone: 'tiefenrast' }, cond: 'flag:mine_open', condFail: 'Das Tor ist mit Ketten und einem Kontorsiegel verschlossen.' },
   { id: 'mine_exit', kind: 'transition', name: 'Zurück ans Tageslicht', x: D.x, z: D.z + 20, radius: 2.5, target: { x: 249, z: -228 }, y: 0 },

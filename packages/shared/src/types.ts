@@ -276,7 +276,7 @@ export interface CharacterData {
 
 export interface InteractableDef {
   id: string;
-  kind: 'chest' | 'lore' | 'resource' | 'door' | 'lever' | 'plate' | 'bell' | 'stele' | 'glyph' | 'workbench' | 'transition' | 'quest_object' | 'viewpoint' | 'rest' | 'search' | 'switch' | 'wash';
+  kind: 'chest' | 'lore' | 'resource' | 'door' | 'lever' | 'plate' | 'bell' | 'stele' | 'glyph' | 'workbench' | 'transition' | 'quest_object' | 'viewpoint' | 'rest' | 'search' | 'switch' | 'wash' | 'alchemy';
   name: string;
   x: number;
   z: number;

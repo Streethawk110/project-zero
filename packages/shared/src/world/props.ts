@@ -121,6 +121,7 @@ export const PROPS: Record<string, PropDef> = {
   woodpile: { model: 'woodpile', colliders: [box(1.2, 0.5, 1)] },
   anvil: { model: 'anvil', colliders: [box(0.4, 0.25, 0.8)] },
   workbench: { model: 'workbench', colliders: [box(1.1, 0.5, 1)] },
+  alchemy_table: { model: 'alchemy_table', colliders: [box(0.95, 0.45, 1), circ(0.5, 1.3, 1.45, 0)], light: { color: 0xff7a30, intensity: 2.2, dist: 4.5, y: 0.35, ox: 1.45, oz: 0 } },
   // Natur
   tree_pine: { model: 'tree_pine', colliders: [circ(0.4, 9)] },
   tree_oak: { model: 'tree_oak', colliders: [circ(0.55, 8)] },

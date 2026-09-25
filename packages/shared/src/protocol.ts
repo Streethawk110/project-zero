@@ -2,6 +2,7 @@
 // direkt im Prozess, im Mehrspieler als JSON über WebSocket.
 
 import type { MoveInput } from './sim/movement.ts';
+import type { BrewStep } from './sim/alchemy.ts';
 import type { Appearance, Attr, CharacterData, EquipSlot, OriginId } from './types.ts';
 
 export const PROTOCOL_VERSION = 3;
@@ -34,6 +35,7 @@ export type GameCommand =
   | { t: 'lockpick'; id: string; ok: boolean }
   | { t: 'dice'; op: 'roll' | 'bank' | 'quit'; keep?: number[] }
   | { t: 'wait'; hours: number }
+  | { t: 'brew'; recipe: string; steps: BrewStep[] }
   | { t: 'travel'; rest: string }
   | { t: 'sight'; on: boolean }
   | { t: 'track_quest'; id: string | null }
@@ -139,6 +141,7 @@ export type GameEvent =
   | { e: 'dice'; npc: string; name: string; bet: number; target: number; you: number; them: number; turn: number; roll: number[]; over: '' | 'won' | 'lost' | 'quit'; note: string; opp?: { rolls: { roll: number[]; keep: number[] }[]; bust: boolean; gained: number } }
   | { e: 'shop'; id: string }
   | { e: 'craft_open'; station: 'camp' | 'bench'; name: string }
+  | { e: 'alchemy_open'; name: string }
   | { e: 'rest_open'; id: string }
   | { e: 'stele_open' }
   | { e: 'respec_open' }
