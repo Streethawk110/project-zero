@@ -201,6 +201,11 @@ Profiler nicht mitgezählt – behoben).
   Palisade – sonst entsteht eine Palisadenlücke!) zum Tor. Wegpunkte `c_*` (Burgkoordinaten →
   `castleToWorld`). Bewohner: Hauptmann (Dialog `captain_root`), 4 Soldaten (Wache am Tor, Übung,
   Streife außen um die Mauer), Köchin, Stallknecht, Magd. Test „Weg zur Burg“ (32 Unit-Tests).
+- KCD2-Umbau Teil 4: RUF „Haldenbruck“ (neue Fraktion `folk`): Dorf-Nebenquests +10, Straftat vor
+  Zeugen −8/−5, Wachen (`isGuard`, auch Burgbesatzung) strafen je Ruf (≥40 halb, ≤−30 doppelt),
+  Händler Pell/Oswin/Jorun Preise nach Ruf, Bewohner/Burgleute mit `faction: 'folk'` (≤−40 kein
+  Gespräch). Grüße im Vorbeigehen (`World.greet`, 3,2 m, je nach Ruf/Wache/Nacht, sonst eigene
+  `bark`-Sätze, die vorher nie benutzt wurden). Test `reputation.test.ts` (34 Unit-Tests).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

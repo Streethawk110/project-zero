@@ -37,6 +37,8 @@ interface BaseEnt {
 export interface PlayerEnt extends BaseEnt {
   /** zuletzt gemeldete Bedürfnis-Stufe (Hunger*10 + Müdigkeit) */
   needWarn?: number;
+  /** frühester Zeitpunkt für den nächsten Gruß eines Bewohners */
+  greetAt?: number;
   /** Laufendes Schlossknacken (Server prüft die Mindestdauer) */
   lockpick?: { id: string; t: number } | null;
   kind: 'player';
@@ -157,6 +159,8 @@ export interface NpcEnt extends BaseEnt {
   wanderT: number;
   wanderTo: { x: number; z: number } | null;
   talkT: number;
+  /** frühester Zeitpunkt für den nächsten Gruß */
+  greetAt?: number;
   /** Tagesablauf: Weg (Wegpunkte), Ziel, zuletzt erreichter Wegpunkt, im Haus verschwunden */
   path?: string[];
   pathTarget?: string | null;

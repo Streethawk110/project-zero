@@ -6,6 +6,7 @@ import { INTERACTABLES, INTERACTABLE_BY_ID } from '../content/interactables.ts';
 import { ITEMS } from '../content/items.ts';
 import { LOOT } from '../content/loot.ts';
 import { NPCS } from '../content/npcs.ts';
+import { FACTIONS } from '../content/meta.ts';
 import { HOUSES, doorLockLevel } from '../world/houses.ts';
 import { findPath, navNode, nearestNode, routineStep, type RoutineStep } from '../world/routines.ts';
 import { SKILL_BY_ID } from '../content/skills.ts';
@@ -44,6 +45,11 @@ export interface WorldOptions {
 
 export const DAY_LENGTH = 24 * 60; // Sekunden pro Spieltag
 export const INTEREST_RADIUS = 110;
+
+/** Wachen: Dorfwache, Ordenswache, Burgbesatzung */
+export function isGuard(id: string) {
+  return id === 'brann' || id === 'order_guard' || id === 'hauptmann' || id.startsWith('watch_') || id.startsWith('soldier_');
+}
 
 export class World {
   readonly opts: WorldOptions;
@@ -1449,7 +1455,7 @@ export class World {
           break;
         case 'rep': {
           c.rep[ef.faction] = clamp((c.rep[ef.faction] ?? 0) + ef.delta, -100, 100);
-          const f = { order: 'Orden', kontor: 'Kontor', rooted: 'Verwurzelte' }[ef.faction as FactionId];
+          const f = FACTIONS[ef.faction as FactionId]?.short ?? ef.faction;
           this.toast(p, `Ruf ${f}: ${ef.delta > 0 ? '+' : ''}${ef.delta}`, ef.delta > 0 ? 'good' : 'bad');
           break;
         }
@@ -1614,16 +1620,55 @@ export class World {
       best = e; bd = d;
     }
     if (!best) return;
-    const guard = best.def.id === 'brann' || best.def.id === 'order_guard' || best.def.id.startsWith('watch_');
+    const guard = isGuard(best.def.id);
     const lines = what === 'Einbruch' ? ['He! Was machst du da an der Tür?', 'Einbrecher! Haltet ihn!', 'Das ist nicht dein Haus!'] : ['Dieb! Leg das zurück!', 'Haltet den Dieb!', 'Das gehört dir nicht!'];
     this.emitNear(best.m.x, best.m.z, { e: 'bark', eid: best.id, name: best.def.name, text: lines[Math.floor(Math.random() * lines.length)]!, dur: 3 }, 30);
+    // Das spricht sich herum: Ruf in Haldenbruck sinkt
+    const rep = p.char.rep.folk ?? 0;
+    this.applyEffects(p, [`rep:folk-${what === 'Einbruch' ? 8 : 5}`]);
     if (guard) {
-      const fine = Math.min(p.char.gold, what === 'Einbruch' ? 25 : 15);
+      // Wer im Ort geachtet ist, kommt glimpflicher davon; Verrufene zahlen doppelt
+      const base = what === 'Einbruch' ? 25 : 15;
+      const fine = Math.min(p.char.gold, Math.round(base * (rep >= 40 ? 0.5 : rep <= -30 ? 2 : 1)));
       p.char.gold -= fine;
       p.charDirty = true;
       this.toast(p, `${best.def.name} hat dich erwischt: ${fine} Gold Strafe.`, 'bad');
     } else {
       this.toast(p, `${best.def.name} hat dich gesehen.`, 'warn');
+    }
+  }
+
+  /**
+   * Grüße im Vorbeigehen (wie in KCD2): Bewohner reagieren auf den Ruf des Spielers –
+   * freundlich, neutral, misstrauisch oder feindselig; Wachen mahnen, nachts klingt es anders.
+   */
+  private greet(n: NpcEnt) {
+    if (n.hidden || n.talkT > 0 || this.time < (n.greetAt ?? 0)) return;
+    const def = n.def;
+    if (!def.routine && def.faction !== 'folk') return;
+    for (const p of this.players.values()) {
+      if (p.area !== n.area || p.dialogue || this.time < (p.greetAt ?? 0)) continue;
+      if (dist2(n.m.x, n.m.z, p.m.x, p.m.z) > 3.2 * 3.2) continue;
+      const rep = p.char.rep.folk ?? 0;
+      const name = p.char.name;
+      const night = this.isNight;
+      let lines: string[];
+      if (isGuard(def.id)) {
+        lines = rep <= -30 ? ['Dich hab ich im Auge.', 'Noch ein Fehltritt, und du sitzt im Loch.', 'Weiter. Und Finger weg von fremden Türen.']
+          : rep >= 30 ? [`Ruhige Wache heute, ${name}.`, 'Alles in Ordnung?', `Gut, dass du da bist, ${name}.`]
+          : night ? ['Spät noch unterwegs?', 'Halt dich ans Licht.', 'Nachts bleibt man besser drinnen.'] : ['Halt dich an die Gesetze.', 'Weitergehen.', 'Keinen Ärger, verstanden?'];
+      } else {
+        lines = rep <= -30 ? ['Verschwinde!', 'Mit Dieben reden wir nicht.', 'Hau bloß ab.', 'Ich hol die Wache, wenn du näher kommst.']
+          : rep < -5 ? ['Hm.', 'Pass auf, was du anfasst.', 'Ich hab ein Auge auf dich.', 'Was glotzt du so?']
+          : rep >= 30 ? [`Gott zum Gruß, ${name}!`, `Schön, dich zu sehen, ${name}.`, 'Da ist ja unser Retter!', 'Das ganze Dorf spricht von dir.']
+          : night ? ['Gute Nacht.', 'Spät geworden, was?', 'Gott behüte.'] : ['Gott zum Gruß.', 'Guten Tag.', 'Schönes Wetter heute.', 'Grüß dich, Fremder.'];
+      }
+      // Wer nicht schlecht über dich denkt, erzählt auch mal etwas Eigenes
+      if (rep > -5 && def.bark?.length && this.rand.next() < 0.45) lines = def.bark;
+      n.greetAt = this.time + 45 + this.rand.next() * 30;
+      p.greetAt = this.time + 7;
+      this.emit(p, { e: 'bark', eid: n.id, name: def.name, text: lines[Math.floor(this.rand.next() * lines.length)]!, dur: 2.5 });
+      return;
     }
   }
 
@@ -2158,6 +2203,7 @@ export class World {
   private updateNpc(n: NpcEnt, dt: number) {
     n.talkT = Math.max(0, n.talkT - dt);
     const def = n.def;
+    this.greet(n);
     if (def.routine) { this.updateRoutine(n, dt); return; }
     const home = this.isNight && def.night ? def.night : { x: def.x, z: def.z };
     let tx = home.x, tz = home.z;

@@ -1,6 +1,6 @@
 // Zentrale Datentypen für Inhalte, Charaktere und Simulation.
 
-export type FactionId = 'order' | 'kontor' | 'rooted';
+export type FactionId = 'order' | 'kontor' | 'rooted' | 'folk';
 export type Attr = 'str' | 'dex' | 'int' | 'con';
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 export type ItemCategory = 'weapon' | 'offhand' | 'armor' | 'accessory' | 'consumable' | 'material' | 'quest' | 'relic';

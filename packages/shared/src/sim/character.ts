@@ -67,7 +67,7 @@ export function createCharacter(name: string, origin: OriginId, appearance: Part
     quests: {},
     trackedQuest: null,
     flags: {},
-    rep: { order: 0, kontor: 0, rooted: 0, ...o.rep },
+    rep: { order: 0, kontor: 0, rooted: 0, folk: 0, ...o.rep },
     touch: 0,
     zones: [],
     fog: '',

@@ -59,14 +59,14 @@ export interface ShopDef {
 
 export const SHOPS: Record<string, ShopDef> = {
   pell: {
-    id: 'pell', name: 'Pells Krämerstand', stock: [
+    id: 'pell', name: 'Pells Krämerstand', faction: 'folk', stock: [
       { item: 'potion_heal' }, { item: 'potion_mana' }, { item: 'potion_stamina' }, { item: 'bread' }, { item: 'apple' }, { item: 'cheese' }, { item: 'salve_burn' },
       { item: 'cloth' }, { item: 'leather' }, { item: 'quiver_basic' }, { item: 'focus_lens' }, { item: 'ring_copper' }, { item: 'lockpick' },
       { item: 'bomb_fire', cond: 'flag:choice_kontor' }, { item: 'crystal_draught', cond: 'flag:choice_kontor' },
     ],
   },
   oswin: {
-    id: 'oswin', name: 'Oswins Schmiede', stock: [
+    id: 'oswin', name: 'Oswins Schmiede', faction: 'folk', stock: [
       { item: 'sword_guard' }, { item: 'axe_wood' }, { item: 'dagger_hunt' }, { item: 'bow_short' }, { item: 'staff_oak' }, { item: 'shield_wood' },
       { item: 'armor_gambeson' }, { item: 'iron_ingot' }, { item: 'sword_steel', cond: 'level>=4' }, { item: 'armor_chain', cond: 'flag:choice_order' },
     ],
@@ -89,7 +89,7 @@ export const SHOPS: Record<string, ShopDef> = {
       { item: 'dagger_shade', cond: 'rep:rooted>=25' }, { item: 'armor_rooted', cond: 'rep:rooted>=40' },
     ],
   },
-  jorun: { id: 'jorun', name: 'Joruns Fischerhütte', stock: [{ item: 'salt' }, { item: 'bread' }, { item: 'smoked_fish' }, { item: 'potion_stamina' }, { item: 'cloth' }] },
+  jorun: { id: 'jorun', name: 'Joruns Fischerhütte', faction: 'folk', stock: [{ item: 'salt' }, { item: 'bread' }, { item: 'smoked_fish' }, { item: 'potion_stamina' }, { item: 'cloth' }] },
 };
 
 /** Gold, um alle Skillpunkte zurückzusetzen (plus Nullsplitter). */

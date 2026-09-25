@@ -36,6 +36,7 @@ export const ORIGINS: Record<OriginId, OriginDef> = {
 export const FACTIONS: Record<FactionId, { name: string; short: string; desc: string; symbol: string; color: string }> = {
   order: { name: 'Orden der Stillen Flamme', short: 'Orden', desc: 'Will das Nullherz versiegeln und alles Berührte reinigen – notfalls mit Feuer.', symbol: '🜂', color: '#e8b04a' },
   kontor: { name: 'Kontor von Vardenfall', short: 'Kontor', desc: 'Will das Nulllicht als Energiequelle und Ware nutzen. Gewinn vor Menschenleben.', symbol: '⚖', color: '#8fb4ff' },
+  folk: { name: 'Haldenbruck und Haldenstein', short: 'Haldenbruck', desc: 'Wie die Leute im Dorf und auf der Burg über dich denken. Hilfe für die Bewohner spricht sich herum – Einbruch und Diebstahl vor Zeugen ebenso. Der Ruf ändert Preise, Grüße und wie streng die Wachen sind.', symbol: '⌂', color: '#d9b47a' },
   rooted: { name: 'Die Verwurzelten', short: 'Verwurzelte', desc: 'Wollen mit dem Nulllicht als lebendigem Wesen leben. Fremde sind ihnen entbehrlich.', symbol: '❦', color: '#7cd47c' },
 };
 

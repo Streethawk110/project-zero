@@ -27,7 +27,7 @@ export function startDialogue(w: World, p: PlayerEnt, e: NpcEnt | CompanionEnt) 
   questEvent(w, p, 'talk', npcId);
   // Fraktionsruf: Verhasste Fraktionen reden nicht
   if (e.kind === 'npc' && e.def.faction && (p.char.rep[e.def.faction] ?? 0) <= -40) {
-    w.emit(p, { e: 'dialogue', npc: npcId, speaker: npcId, name: speakerName(npcId, p), text: 'Du wagst es, hier aufzutauchen? Geh mir aus den Augen.', choices: [{ text: '[Gehen]', idx: -1 }] });
+    w.emit(p, { e: 'dialogue', npc: npcId, speaker: npcId, name: speakerName(npcId, p), text: e.def.faction === 'folk' ? 'Mit Leuten wie dir rede ich nicht. Mach, dass du wegkommst.' : 'Du wagst es, hier aufzutauchen? Geh mir aus den Augen.', choices: [{ text: '[Gehen]', idx: -1 }] });
     p.dialogue = { npc: npcId, node: '__end', choices: [] };
     return;
   }

@@ -189,7 +189,7 @@ const FOLK: Folk[] = [
 for (const f of FOLK) {
   const s = f.shift;
   NPCS.push({
-    id: f.id, name: f.name, title: f.title, x: 20 + (FOLK.indexOf(f) % 5) * 2, z: 38 + Math.floor(FOLK.indexOf(f) / 5) * 2, rot: 0, dialogue: f.dialogue,
+    id: f.id, name: f.name, title: f.title, x: 20 + (FOLK.indexOf(f) % 5) * 2, z: 38 + Math.floor(FOLK.indexOf(f) / 5) * 2, rot: 0, dialogue: f.dialogue, faction: 'folk',
     appearance: { sex: f.sex, outfit: f.outfit, skin: f.skin, hair: f.hair, hairColor: f.hairColor, beard: f.beard ?? 0, height: f.height, body: f.body },
     bark: f.bark,
     routine: [
@@ -264,7 +264,7 @@ const CASTLE_FOLK: { id: string; name: string; title: string; sex: 0 | 1; outfit
   { id: 'castle_maid', name: 'Hilde', title: 'Magd auf der Burg', sex: 1, outfit: 'maid', work: ['c_yard', 'c_keep', 'c_palas', 'c_well'], dialogue: 'folk_a', hair: 1, hairColor: 2, bark: ['Der Hauptmann will seine Stiefel geputzt. Schon wieder.'] },
 ];
 CASTLE_FOLK.forEach((f, i) => NPCS.push({
-  id: f.id, name: f.name, title: f.title, x: 72 + i, z: -56, rot: 0, dialogue: f.dialogue,
+  id: f.id, name: f.name, title: f.title, x: 72 + i, z: -56, rot: 0, dialogue: f.dialogue, faction: 'folk',
   appearance: { sex: f.sex, outfit: f.outfit, skin: 1, hair: f.hair, hairColor: f.hairColor, beard: f.beard ?? 0, height: f.sex ? 0.96 : 1.0, body: 0.5 },
   bark: f.bark,
   routine: [

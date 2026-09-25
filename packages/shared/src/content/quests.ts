@@ -69,7 +69,7 @@ export const QUESTS: QuestDef[] = [
       { id: 'ledger', text: 'Rotbart trug einen Messingschlüssel mit dem Zeichen des Kontors. Im Kontor steht ein verschlossenes Buch …', objectives: [{ id: 'read', type: 'flag', target: 'read_ledger', text: 'Das Kontorbuch lesen', marker: { x: 45, z: 49 } }] },
       { id: 'decide', text: 'Das Buch beweist: Aldric Vey bezahlt die Plünderer – und hat vor vierzig Jahren den Einsturz befohlen. Was tust du mit diesem Wissen?', objectives: [{ id: 'dec', type: 'flag', target: 'ledger_decided', text: 'Entscheiden: Ysolde, Aldric oder Maren' }] },
     ],
-    rewards: { xp: 380, gold: 40 },
+    rewards: { xp: 380, gold: 40, rep: { folk: 10 } },
   },
   {
     id: 's_smith', name: 'Glut für Oswin', type: 'side', giver: 'oswin', level: 2,
@@ -81,7 +81,7 @@ export const QUESTS: QuestDef[] = [
       ] },
       { id: 'return', text: 'Bring Oswin das Material.', objectives: [{ id: 'talk', type: 'flag', target: 'smith_done', text: 'Mit Oswin sprechen', marker: { x: 3, z: 51 } }] },
     ],
-    rewards: { xp: 220, gold: 25, items: [['iron_ingot', 3]] },
+    rewards: { xp: 220, gold: 25, items: [['iron_ingot', 3]], rep: { folk: 10 } },
   },
   {
     id: 's_cat', name: 'Die gläserne Katze', type: 'side', giver: 'lina', level: 1,
@@ -90,7 +90,7 @@ export const QUESTS: QuestDef[] = [
       { id: 'search', text: 'Suche Glimmer am Waldrand westlich des Dorfes.', objectives: [{ id: 'find', type: 'flag', target: 'cat_found', text: 'Glimmer finden', marker: { x: -214, z: -30 } }] },
       { id: 'choose', text: 'Glimmer ist halb aus Glas und summt leise. Was tust du?', objectives: [{ id: 'dec', type: 'flag', target: 'cat_decided', text: 'Mit Lina, Maren oder Ysolde sprechen' }] },
     ],
-    rewards: { xp: 160, gold: 10 },
+    rewards: { xp: 160, gold: 10, rep: { folk: 10 } },
   },
   {
     id: 's_nets', name: 'Joruns Netze', type: 'side', giver: 'jorun', level: 2,
@@ -103,7 +103,7 @@ export const QUESTS: QuestDef[] = [
       ] },
       { id: 'return', text: 'Kehre zu Jorun zurück.', objectives: [{ id: 'talk', type: 'flag', target: 'nets_done', text: 'Mit Jorun sprechen', marker: { x: -34, z: 262 } }] },
     ],
-    rewards: { xp: 220, gold: 35, items: [['potion_stamina', 2]] },
+    rewards: { xp: 220, gold: 35, items: [['potion_stamina', 2]], rep: { folk: 10 } },
   },
   {
     id: 's_hedda', name: 'Die Stimme im Keller', type: 'side', giver: 'hedda', level: 3,
@@ -112,7 +112,7 @@ export const QUESTS: QuestDef[] = [
       { id: 'night', text: 'Warte die Nacht ab und finde die Quelle der Stimme im Flüsterforst.', objectives: [{ id: 'echo', type: 'kill', target: 'echo', count: 1, text: 'Den Nachhall zum Schweigen bringen (nachts)', marker: { x: -180, z: -110 } }] },
       { id: 'return', text: 'Erzähle Hedda, was du gefunden hast.', objectives: [{ id: 'talk', type: 'flag', target: 'hedda_done', text: 'Mit Hedda sprechen', marker: { x: 44, z: 24 } }] },
     ],
-    rewards: { xp: 260, gold: 30, items: [['bread', 5]] },
+    rewards: { xp: 260, gold: 30, items: [['bread', 5]], rep: { folk: 10 } },
   },
   {
     id: 's_emrik', name: 'Licht für die Tiefe', type: 'side', giver: 'emrik', level: 4,
