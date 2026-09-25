@@ -171,6 +171,15 @@ Profiler nicht mitgezählt – behoben).
   Wände: Regenspuren/Flecken (weathering.ts). Nacht filmischer: Belichtung nachts begrenzt (uMax 1,05),
   Nachthimmel blau getönt, Mondlicht 0,55, feinere Sterne, Fenster leuchten nachts (`windowMaterial`,
   `setWindowGlow`, ~2/3 der Fenster je Lage). Im Spiel geprüft (Tag, Abend, Nacht).
+- NUTZER (25.9. morgens): „Menschen sehen immer noch nicht echt aus, soll hochentwickelt sein, ich will
+  nicht alles sagen müssen“. Umgesetzt: fotografische Gesichtshaut aus dem Kopfscan „Lee Perry-Smith“
+  (CC BY 3.0, three.js-Repo; `tools/blender/scan_skin.py`: Landmarken-Anpassung, Strahlprojektion je Texel,
+  Farbe + Faltennormalen, Brauen/Bart als Haarmaske, Lippen der Figur, Frauen ohne Bartschatten,
+  Lücken per Dilatation gefüllt, Füllflächen der Scan-Textur verworfen). Wimpern aus den MakeHuman-
+  Hilfsstreifen (`eyelashes()`), Mundinneres folgt Gesichtsformen, Haare dichter/dünner/voluminöser
+  (Figuren jetzt ~16/12 MB). Porträt-Vorschau: `rig-preview.html?only=N&face=1&seed=x`, `hide=teil,…`.
+- NUTZER-AUFTRAG danach (Aufgabe 31): KCD2-Umbau mit ausgewählten Features, u. a. NSCs laufen in
+  Dorf/Burg umher (Tagesabläufe), nicht alles, nur was passt.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

@@ -788,16 +788,16 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
     if style == 3:  # kahl
         return None
     if style == 0:  # kurz: nach hinten gekämmt, kurz
-        for layer, (cnt, lift, L) in enumerate(((340, 0.003, 0.06), (280, 0.007, 0.075), (180, 0.011, 0.07))):
+        for layer, (cnt, lift, L) in enumerate(((600, 0.003, 0.06), (520, 0.008, 0.075), (380, 0.013, 0.072), (200, 0.018, 0.068))):
             for r in sc.sample(rnd, cnt, hairline):
                 dirv = r - crown + np.array([0, 0, -0.06])
                 dirv = np.array([dirv[0] * 0.6, -0.2, -0.8]) if r[2] > cz else dirv
                 pts, ns = grow(sc, r, dirv, L * rnd.uniform(0.8, 1.2), 4, lift, 0.25, rnd, face=face)
-                cards.append((pts, [0.022] * 5, ns, (0.5 + layer * 0.25, rnd.random(), rnd.choice((0.0, 0.25, 0.5)))))
+                cards.append((pts, [0.013] * 5, ns, (0.5 + layer * 0.17, rnd.random(), rnd.choice((0.0, 0.25, 0.5)))))
     elif style in (2, 5):  # lang / wirr
         long_ = style == 2
         atlas = "hair" if long_ else "curly"
-        for layer, (cnt, lift) in enumerate(((320, 0.004), (300, 0.009), (220, 0.015))):
+        for layer, (cnt, lift) in enumerate(((560, 0.004), (520, 0.01), (400, 0.016), (220, 0.022))):
             for r in sc.sample(rnd, cnt, hairline):
                 # vom Mittelscheitel zur Seite und nach unten; vorne erst nach hinten/seitlich
                 side = math.copysign(1.0, r[0] - sc.c[0] if abs(r[0] - sc.c[0]) > 0.003 else rnd.choice((-1, 1)))
@@ -807,11 +807,11 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
                 L = rnd.uniform(0.3, 0.38) if long_ else rnd.uniform(0.1, 0.16)
                 steps = 9 if long_ else 5
                 pts, ns = grow(sc, r, dirv, L, steps, lift, 0.35 if long_ else 0.15, rnd, below=y_neck + 0.03, face=face)
-                w = [0.026] * (steps + 1)
-                cards.append((pts, w, ns, (0.45 + layer * 0.27, rnd.random(), rnd.choice((0.0, 0.25, 0.5)))))
+                w = [0.016] * (steps + 1)
+                cards.append((pts, w, ns, (0.45 + layer * 0.18, rnd.random(), rnd.choice((0.0, 0.25, 0.5)))))
     elif style == 1:  # Zopf: straff nach hinten zur Nackenbinde, dann geflochtener Zopf
         tie = np.array([sc.c[0], y_neck + 0.07, sc.lo[2] - 0.01])
-        for layer, (cnt, lift) in enumerate(((260, 0.004), (180, 0.009))):
+        for layer, (cnt, lift) in enumerate(((440, 0.004), (320, 0.009), (160, 0.014))):
             for r in sc.sample(rnd, cnt, hairline):
                 pts = [r]
                 p = r
@@ -821,7 +821,7 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
                     p, n_ = sc.project(q, lift)
                     pts.append(p)
                 ns = [sc.project(q, 0)[1] for q in pts]
-                cards.append((pts, [0.03] * 6 + [0.02], ns, (0.5 + layer * 0.3, rnd.random(), 0.0)))
+                cards.append((pts, [0.018] * 6 + [0.012], ns, (0.5 + layer * 0.22, rnd.random(), 0.0)))
         # Zopf: drei verdrillte Stränge
         for strand in range(3):
             pts, ns = [], []

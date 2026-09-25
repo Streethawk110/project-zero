@@ -260,7 +260,8 @@ def bake(kind):
         cb_s = cb_s * k
         lum = c_s @ np.array([0.2126, 0.7152, 0.0722])
         lumb = cb_s @ np.array([0.2126, 0.7152, 0.0722])
-        dark = np.clip((lumb - lum) / np.maximum(lumb, 1e-4) * 2.8, 0, 1)
+        # nur deutlich dunklere Härchen als Haarmaske (sonst färbt sich die Haut um die Brauen mit)
+        dark = smooth01((lumb - lum) / np.maximum(lumb, 1e-4), 0.08, 0.3)
         Ps = P[sel]
         ey = (eyeL[1] + eyeR[1]) / 2
         brow_zone = smooth01(Ps[:, 1] - (ey + 0.006), 0.0, 0.006) * smooth01(ey + 0.05 - Ps[:, 1], 0.0, 0.008) * (Ps[:, 2] > J["head"][2])
