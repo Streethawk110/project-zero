@@ -64,6 +64,8 @@ list.forEach((s, i) => {
   for (let k = 0; k < 40; k++) rig.update(s.t / 40 + (k < 20 ? 0.02 : 0), s.speed);
   if (params.get('talk')) { rig.talking = 5; rig.update(Number(params.get('talk')), 0); }
   if (params.get('lod') === '1') rig.setLod(1);
+  // Fehlersuche: Teile ausblenden (?hide=mouth,mouth_cavity)
+  for (const n of (params.get('hide') ?? '').split(',').filter(Boolean)) (rig as unknown as { humanParts: Map<string, THREE.Object3D> }).humanParts?.get(n)?.traverse((o) => { o.visible = false; });
   scene.add(rig.root);
   rigs.push(rig);
 });
@@ -73,7 +75,15 @@ function size() {
   renderer.setSize(w, h, false);
   cam.aspect = w / h;
   const chest = params.get('chest');
-  if (chest) { cam.fov = 22; cam.position.set(0.6, 1.45, 2.6); cam.lookAt(0, 1.3, 0); }
+  const face = params.get('face');
+  if (face && rigs[0]) {
+    // Porträt: Kamera auf Kopfhöhe der (ersten) Figur, leicht seitlich
+    rigs[0].root.updateMatrixWorld(true);
+    const hp = rigs[0].j.head.getWorldPosition(new THREE.Vector3());
+    cam.fov = 9;
+    cam.position.set(hp.x + 0.35, hp.y + 0.08, hp.z + 2.0);
+    cam.lookAt(hp.x, hp.y + 0.06, hp.z);
+  } else if (chest) { cam.fov = 22; cam.position.set(0.6, 1.45, 2.6); cam.lookAt(0, 1.3, 0); }
   else if (close) { cam.fov = 18; cam.position.set(0.5, 1.72, 2.2); cam.lookAt(0, 1.62, 0); }
   else { cam.fov = 30; cam.position.set(0, 1.3, 9.5 * Math.max(1, 1.6 / cam.aspect) * (list.length > 1 ? 1 : 0.45)); cam.lookAt(0, 0.95, 0); }
   cam.updateProjectionMatrix();

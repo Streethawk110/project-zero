@@ -442,7 +442,7 @@ export class HumanoidRig {
       const want = this.humanWant;
       want.clear();
       const vis = (n: string, v: boolean) => { want.set(n, v); };
-      for (const n of ['skin', 'eyes', 'mouth', 'mouth_cavity', 'tunic', 'trousers', 'boots']) vis(n, true);
+      for (const n of ['skin', 'eyes', 'lashes', 'mouth', 'mouth_cavity', 'tunic', 'trousers', 'boots']) vis(n, true);
       vis('tunic_skirt', !o.robe);
       vis('belt', !o.robe);
       vis('robe', !!o.robe);

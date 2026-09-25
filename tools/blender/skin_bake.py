@@ -32,6 +32,8 @@ def rasterize(base, v, size):
     pos = np.zeros((size, size, 3), np.float32)
     nrm = np.zeros((size, size, 3), np.float32)
     cov = np.zeros((size, size), bool)
+    tan = np.zeros((size, size, 3), np.float32)
+    bit = np.zeros((size, size, 3), np.float32)
     # Punktnormalen (Flächennormalen gemittelt)
     vn = np.zeros_like(v)
     body = [(vs, ts) for g, vs, ts in base.faces if g == "body"]
@@ -69,7 +71,14 @@ def rasterize(base, v, size):
             nn = w @ N
             nrm[yy, xx] = nn / np.maximum(np.linalg.norm(nn, axis=1, keepdims=True), 1e-9)
             cov[yy, xx] = True
-    return pos, nrm, cov
+            # Tangentenrahmen (T = dP/du, B = dP/dv) für den Tangentenraum der Normalenkarte
+            e1, e2 = P[1] - P[0], P[2] - P[0]
+            d1, d2 = uv[1] - uv[0], uv[2] - uv[0]
+            r = d1[0] * d2[1] - d2[0] * d1[1]
+            if abs(r) > 1e-12:
+                tan[yy, xx] = (e1 * d2[1] - e2 * d1[1]) / r
+                bit[yy, xx] = (e2 * d1[0] - e1 * d2[0]) / r
+    return pos, nrm, cov, tan, bit
 
 
 def hash3(ix, iy, iz):
@@ -116,7 +125,7 @@ def bake(kind):
     base, v, J, W = human.build_figure(kind)
     male = kind == "male"
     print(f"[haut] {kind}: rastere {SIZE}²", flush=True)
-    pos, nrm, cov = rasterize(base, v, SIZE)
+    pos, nrm, cov, tan, bit = rasterize(base, v, SIZE)
     P = pos[cov]
     N = nrm[cov]
     # Orientierungspunkte des Gesichts
@@ -227,6 +236,78 @@ def bake(kind):
     # Brauen dunkel (Farbe kommt im Client aus der Haarfarbe über die Maske)
     tone *= (1 - brow_mask[:, None] * 0.75)
 
+    # --- Fotografische Gesichtshaut aus dem Kopfscan (Farbe, Falten), weich eingeblendet
+    scan_w = np.zeros(len(P))
+    scan_n = None
+    if os.environ.get("PZ_SKIN_SCAN", "1") == "1":
+        import scan_skin
+        sc = scan_skin.Scan()
+        # Lippenspalte liegt ~8 mm unter der Mitte der Zahnreihen (im Porträt gemessen)
+        sc.fit([eyeL, eyeR], nose, mouth - np.array([0, 0.008, 0]))
+        sel = np.where(P[:, 1] > y_neck - 0.07)[0]
+        Tm, Bm = tan[cov], bit[cov]
+        print(f"[haut] Scan-Projektion für {len(sel)} Texel …", flush=True)
+        c_s, n_s, cb_s, dist, lip_s = sc.project(P[sel], N[sel], Tm[sel], Bm[sel], max_d=0.045)
+        w = smooth01(0.045 - dist, 0.0, 0.015)
+        w[~np.isfinite(dist)] = 0
+        hit = w > 0.5
+        region = smooth01(P[sel, 1] - (y_neck - 0.06), 0.0, 0.05)
+        # Scan-Farbe auf den mittleren Hautton der Figur bringen (Client färbt relativ dazu)
+        face_hit = hit & is_face[sel]
+        mean = np.median(c_s[face_hit], axis=0) if face_hit.any() else BASE_TONE
+        k = BASE_TONE / np.maximum(mean, 1e-4)
+        c_s = c_s * k
+        cb_s = cb_s * k
+        lum = c_s @ np.array([0.2126, 0.7152, 0.0722])
+        lumb = cb_s @ np.array([0.2126, 0.7152, 0.0722])
+        dark = np.clip((lumb - lum) / np.maximum(lumb, 1e-4) * 2.8, 0, 1)
+        Ps = P[sel]
+        ey = (eyeL[1] + eyeR[1]) / 2
+        brow_zone = smooth01(Ps[:, 1] - (ey + 0.006), 0.0, 0.006) * smooth01(ey + 0.05 - Ps[:, 1], 0.0, 0.008) * (Ps[:, 2] > J["head"][2])
+        beard_zone = smooth01(ey - 0.06 - Ps[:, 1], 0.0, 0.02) * smooth01(Ps[:, 1] - (jaw[1] - 0.06), 0.0, 0.02) * (Ps[:, 2] > J["head"][2] - 0.05) * (1 - lips[sel])
+        if not male:
+            # Bartschatten entfernen und Haut insgesamt etwas weicher
+            soft = np.clip(beard_zone * 1.0 + 0.3, 0, 1)
+            c_s = c_s * (1 - soft[:, None]) + cb_s * soft[:, None]
+            dark = dark * (1 - beard_zone)
+        # Lippen: wo der Scan Lippen hat oder die Figur ihre Lippen hat, die eigene (geometrisch passende)
+        # Lippenfarbe verwenden, mit der Hautstruktur des Scans
+        LW = np.array([0.2126, 0.7152, 0.0722])
+        med_lum = float(np.median(lum[face_hit])) if face_hit.any() else float(BASE_TONE @ LW)
+        ours = lips[sel]
+        away = lip_s * (1 - ours)  # Scan-Lippen, die nicht auf unseren Lippen liegen → Haut
+        lum_fix = lum * (1 - lip_s) + med_lum * lip_s
+        skin_like = lum_fix[:, None] * (BASE_TONE / (BASE_TONE @ LW))
+        lip_like = lum_fix[:, None] * 0.92 * (lip_col / (lip_col @ LW))
+        c_s = c_s * (1 - away[:, None]) + skin_like * away[:, None]
+        c_s = c_s * (1 - ours[:, None] * 0.85) + lip_like * ours[:, None] * 0.85
+        own = np.clip(np.maximum(lip_s, ours), 0, 1)
+        dark = dark * (1 - own)
+        if not male:
+            dark = dark * 0.7  # Frauenbrauen feiner
+        hair_s = np.clip(np.maximum(dark * brow_zone * 1.2, dark * beard_zone * (0.8 if male else 0.0)), 0, 1)
+        # Lücken (Strahl verfehlt den Scan) mit den benachbarten Scan-Farben füllen statt den glatten
+        # Grundton durchscheinen zu lassen
+        import foliage_bake as fb_
+        ij = np.argwhere(cov)[sel]
+        y0, x0 = ij.min(0)
+        y1, x1 = ij.max(0) + 1
+        box = np.zeros((y1 - y0, x1 - x0, 3), np.float32)
+        alp = np.zeros((y1 - y0, x1 - x0), np.float32)
+        box[ij[:, 0] - y0, ij[:, 1] - x0] = c_s
+        alp[ij[:, 0] - y0, ij[:, 1] - x0] = (w > 0.5).astype(np.float32)
+        filled = fb_.dilate(box, alp, 48)[ij[:, 0] - y0, ij[:, 1] - x0]
+        c_s = c_s * w[:, None] + filled * (1 - w[:, None])
+        w = region
+        scan_w[sel] = w
+        tone[sel] = tone[sel] * (1 - w[:, None]) + c_s * w[:, None]
+        brow_mask[sel] = brow_mask[sel] * (1 - w) + hair_s * w
+        stub[sel] = stub[sel] * (1 - w)
+        scan_n = (sel, n_s)
+        print(f"[haut] Scan: {hit.mean():.0%} Treffer, Farbfaktor {k.round(3)}", flush=True)
+
+    hair = np.clip(np.maximum(brow_mask, stub * 0.9), 0, 1)
+
     def img(vals, ch):
         a = np.zeros((SIZE, SIZE, ch), np.float32)
         a[cov] = vals if vals.ndim == 2 else vals[:, None]
@@ -243,6 +324,16 @@ def bake(kind):
     k = 2.2
     n = np.stack([-gx * k, -gy * k, np.ones_like(gx)], axis=2)
     n /= np.linalg.norm(n, axis=2, keepdims=True)
+    if scan_n is not None:
+        # Scan-Falten übernehmen, eigene Poren (feine Anteile) darüberlegen
+        sel, n_s = scan_n
+        ij = np.argwhere(cov)[sel]
+        proc = n[ij[:, 0], ij[:, 1]]
+        comb = n_s + (proc - np.array([0, 0, 1.0])) * 0.55
+        comb /= np.linalg.norm(comb, axis=1, keepdims=True)
+        w = scan_w[sel][:, None]
+        mix_ = proc * (1 - w) + comb * w
+        n[ij[:, 0], ij[:, 1]] = mix_ / np.linalg.norm(mix_, axis=1, keepdims=True)
     nimg = n * 0.5 + 0.5
     # Ränder der UV-Inseln ausweiten (keine Nähte in den Mipmaps)
     import foliage_bake as fb

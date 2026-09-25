@@ -274,3 +274,13 @@ Ehrlich festgehalten, was geprüft ist und was nicht:
   und `/pz/`. Die Apache-Konfiguration ist ungetestet.
 - **Umfang:** Hauptgeschichte, Nebenaufträge und Systeme sind vollständig umgesetzt und automatisiert
   getestet, aber noch nicht ausgiebig von Menschen durchgespielt – Balance und Feinschliff brauchen Spieltests.
+
+## Fremdmaterial und Namensnennung
+
+- **Menschliche Figuren:** MakeHuman-Basisfigur, Formziele und Gewichte (CC0,
+  makehumancommunity). Sie werden beim Bauen nach `tools/blender/.mh_cache` geladen.
+- **Gesichtshaut:** Die Hautfarbe und die Faltendetails im Gesicht sind aus dem Kopfscan
+  „Lee Perry-Smith“ von Infinite-Realities gebacken. Lizenz: Creative Commons Attribution 3.0,
+  Bezugsquelle ist das three.js-Repository unter `examples/models/gltf/LeePerrySmith`.
+  Der Scan selbst liegt nicht im Repository, nur die daraus gebackenen Texturen `skin_*`
+  (`tools/blender/scan_skin.py`).

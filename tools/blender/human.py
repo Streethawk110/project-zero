@@ -980,6 +980,48 @@ def add_keys_after_offset(o, used, v, names):
                 k.data[j].co = o.data.vertices[j].co + B(d[i])
 
 
+def eyelashes(base, v, W):
+    """Wimpern aus den Hilfsstreifen der Basisfigur (oben/unten je Auge): Strähnen-Textur der Haare,
+    u entlang der Lidkante, v von der Wurzel (am Lid) zur Spitze. Folgen Blinzeln und Gesichtsform."""
+    groups = {"helper-l-eyelashes-1", "helper-l-eyelashes-2", "helper-r-eyelashes-1", "helper-r-eyelashes-2"}
+    o, used = make_mesh("lashes", base, v, W, groups, "hair_lash")
+    me = o.data
+    # je Streifen: Abstand zur Augapfelmitte → v, Winkel um das Auge → u
+    idx_group = {}
+    for g in groups:
+        for vs, _ in [(vs, ts) for gg, vs, ts in base.faces if gg == g]:
+            for i in vs:
+                idx_group[i] = g
+    ecent = {"l": base.center(v, "helper-l-eye"), "r": base.center(v, "helper-r-eye")}
+    info = {}
+    for j, i in enumerate(used):
+        g = idx_group[i]
+        c = ecent["l" if "-l-" in g else "r"]
+        d = np.linalg.norm(v[i] - c)
+        a = math.atan2(v[i][1] - c[1], v[i][0] - c[0])
+        info[j] = (g, d, a)
+    rng = {}
+    for g in groups:
+        ds = [d for (gg, d, _) in info.values() if gg == g]
+        as_ = [a for (gg, _, a) in info.values() if gg == g]
+        rng[g] = (min(ds), max(ds), min(as_), max(as_))
+    uvl = me.uv_layers[0].data
+    for poly in me.polygons:
+        for li in poly.loop_indices:
+            j = me.loops[li].vertex_index
+            g, d, a = info[j]
+            d0, d1, a0, a1 = rng[g]
+            # nur der lichte Rand der Strähnen-Textur (einzelne Härchen statt dichter Strähne)
+            uvl[li].uv = (0.015 + 0.13 * (a - a0) / max(a1 - a0, 1e-6), (d - d0) / max(d1 - d0, 1e-6))
+    attr = me.color_attributes.new("tree", "FLOAT_COLOR", "POINT")
+    for k in range(len(me.vertices)):
+        attr.data[k].color = (0.0, 0.85, 0.5, 1.0)
+    me.color_attributes.active_color = attr
+    me.color_attributes.render_color_index = me.color_attributes.find("tree")
+    add_shape_keys(o, used, v, W, ["blink"] + SKULL_KEYS)
+    return o
+
+
 def human(kind):
     base, v, J, W = build_figure(kind)
     name = "human_" + kind
@@ -1010,13 +1052,17 @@ def human(kind):
     objs.append(finish_piece(skin, rig, 0))
     # Zähne und Zunge (sichtbar beim Sprechen), folgen Kiefer und Mimik
     mouth, mused = make_mesh("mouth", base, v, W, {"helper-upper-teeth", "helper-lower-teeth", "helper-tongue"}, "teeth")
-    add_shape_keys(mouth, mused, v, W, ["jaw", "smile", "lips"])
+    # Mundinneres folgt auch den Gesichtsformen (sonst sticht es bei schmalem Kinn durch die Haut)
+    add_shape_keys(mouth, mused, v, W, ["jaw", "smile", "lips"] + [k for k in SHAPES if k.startswith("f_")])
     objs.append(finish_piece(mouth, rig, 0))
-    objs.append(finish_piece(mouth_cavity(base, v, J), rig, 0))
+    cav = mouth_cavity(base, v, J)
+    follow_keys(cav, base, v, [k for k in SHAPES if k.startswith("f_")])
+    objs.append(finish_piece(cav, rig, 0))
     eyes, _ = make_mesh("eyes", base, v, W, {"helper-l-eye", "helper-r-eye"}, "eyeball")
     finish_piece(eyes, rig, 2)
     eye_uvs(eyes, [base.center(v, "helper-l-eye"), base.center(v, "helper-r-eye")])
     objs.append(eyes)
+    objs.append(finish_piece(eyelashes(base, v, W), rig, 0))
 
     def piece(pname, group, material, keep, dist, fold=0.0, subdiv=1, calm=0, band=None):
         o, _ = make_mesh(pname, base, v, W, {group}, material, keep)
@@ -1121,7 +1167,7 @@ def lod1(objs):
     out = [rig]
     for o in objs[1:]:
         n = o.name.split(".")[0]
-        if (n.startswith("hair_") and not n.endswith("_cap")) or n.startswith("beard_"):
+        if (n.startswith("hair_") and not n.endswith("_cap")) or n.startswith("beard_") or n == "lashes":
             continue
         c = o.copy()
         c.data = o.data.copy()
