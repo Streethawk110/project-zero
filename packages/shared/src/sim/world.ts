@@ -269,6 +269,9 @@ export class World {
       case 'dice':
         this.diceCmd(p, cmd.op, cmd.keep);
         return;
+      case 'wait':
+        this.waitHours(p, cmd.hours);
+        return;
       case 'interact_cancel':
         p.interacting = null;
         p.revive = null;
@@ -1184,6 +1187,7 @@ export class World {
       const h = this.hour;
       const hours = h < 7 ? 7 - h : 31 - h;
       this.dayTime = 7 / 24;
+      this.snapRoutines();
       this.toast(p, `Du schläfst ${Math.round(hours)} Stunden und wachst ausgeruht auf.`, 'good');
     } else this.toast(p, 'Du ruhst dich im Bett aus und bist wieder ausgeruht.', 'good');
     p.charDirty = true;
@@ -1739,7 +1743,7 @@ export class World {
     n.food = Math.max(0, n.food - 30);
     n.rest = Math.min(100, n.rest + 40);
     this.applyEffects(p, ['rep:folk-5']);
-    if (this.opts.mode === 'sp') this.dayTime = (this.dayTime + 0.5) % 1;
+    if (this.opts.mode === 'sp') { this.dayTime = (this.dayTime + 0.5) % 1; this.snapRoutines(); }
     this.teleport(p, 7, 66.5);
     this.toast(p, this.opts.mode === 'sp' ? 'Zwölf Stunden im Kerker des Vogthauses. Hungrig, aber frei.' : 'Du sitzt deine Strafe im Kerker des Vogthauses ab.', 'bad');
     p.charDirty = true;
@@ -1767,6 +1771,43 @@ export class World {
       this.toast(p, 'Gerold zeigt dir einen Kniff, den du nicht vergisst: +1 Skillpunkt.', 'good');
     } else this.toast(p, 'Eine Stunde auf dem Übungsplatz. Dir tut alles weh – aber du wirst besser.', 'good');
     p.charDirty = true;
+  }
+
+  /**
+   * Warten (nur Einzelspieler, nicht im Kampf): Stunden vergehen, Hunger und Müdigkeit steigen,
+   * die Bewohner stehen danach dort, wo ihr Tagesablauf sie hinführt.
+   */
+  waitHours(p: PlayerEnt, hours: number) {
+    if (this.opts.mode !== 'sp') return this.emit(p, { e: 'error', text: 'Online vergeht die Zeit für alle gleich – Warten geht nur im Einzelspieler.' });
+    if (p.combatT < 8 || p.dead || p.downedT > 0) return this.emit(p, { e: 'error', text: 'Jetzt nicht – Gegner in der Nähe.' });
+    for (const e of this.ents.values()) if (e.kind === 'enemy' && e.state !== 'dead' && e.target === p.id) return this.emit(p, { e: 'error', text: 'Jetzt nicht – du wirst verfolgt.' });
+    const h = clamp(Math.round(hours), 1, 24);
+    this.dayTime = (this.dayTime + h / 24) % 1;
+    const nd = needsOf(p.char);
+    nd.food = Math.max(0, nd.food - h * (100 / 30));
+    nd.rest = Math.max(0, nd.rest - h * (100 / 38));
+    p.needWarn = 0;
+    this.snapRoutines();
+    p.charDirty = true;
+    this.toast(p, `${h} ${h === 1 ? 'Stunde' : 'Stunden'} vergehen.`, 'info');
+  }
+
+  /** Bewohner sofort an den Ort ihres aktuellen Tagesplan-Schritts setzen (nach Zeitsprüngen). */
+  snapRoutines() {
+    for (const n of this.ents.values()) {
+      if (n.kind !== 'npc' || !n.def.routine) continue;
+      const step = this.npcStep(n.def);
+      if (!step) continue;
+      const target = step.at ?? (step.route?.length ? step.route[Math.floor(this.rand.next() * step.route.length)]! : null);
+      const node = target ? navNode(target) : undefined;
+      if (!target || !node) continue;
+      n.m.x = node.x + (this.rand.next() - 0.5) * 0.6;
+      n.m.z = node.z + (this.rand.next() - 0.5) * 0.6;
+      n.m.y = groundHeight(this.moveEnv(null), n.m.x, n.m.z, this.layout.hf.height(n.m.x, n.m.z) + 1);
+      n.lastNode = target; n.pathTarget = target; n.path = []; n.stuckT = 0;
+      n.hidden = step.act === 'sleep';
+      if (step.act === 'patrol') n.patrolIdx = 0;
+    }
   }
 
   /** Waschen am Brunnen (Blut ab, Schmutz größtenteils) oder Bad im Gasthaus (alles). */

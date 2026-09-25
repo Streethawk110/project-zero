@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { clamp, getHeightfield, roadFactor, smoothstep, VILLAGE, WORLD_HALF, riverDistance, RIVER_WIDTH, shoreLine, type Heightfield } from '@pz/shared';
+import { castleLocal, clamp, getHeightfield, roadFactor, smoothstep, VILLAGE, WORLD_HALF, riverDistance, RIVER_WIDTH, shoreLine, type Heightfield } from '@pz/shared';
 import { TEX, bitmapPixels, type PBRSet } from './textures.ts';
 import { settings } from '../settings.ts';
 
@@ -30,6 +30,13 @@ export function splatAt(hf: Heightfield, x: number, z: number, rockSnow = true):
     set(1, 0.35);
     set(7, road);
   } else set(1, road * 0.95);
+  // Burg Haldenstein: festgetretener Hof, gepflasterter Weg vom Tor zum Bergfried, Trampelpfade vor der Mauer
+  const cl = castleLocal(x, z);
+  const inYard = Math.max(Math.abs(cl.x), Math.abs(cl.z));
+  if (inYard < 26) {
+    set(1, (1 - smoothstep(16, 19.5, inYard)) * 0.85 + (1 - smoothstep(19.5, 26, inYard)) * 0.25);
+    set(7, (1 - smoothstep(1.4, 2.2, Math.abs(cl.x))) * (1 - smoothstep(-1, 1, cl.z)) * smoothstep(-25, -23, cl.z));
+  }
   // Fels und Schnee setzt im Freien der Pixel-Shader (feiner als das 2-m-Raster); hier nur für Masken
   if (rockSnow) {
     set(2, smoothstep(0.22, 0.42, slope));

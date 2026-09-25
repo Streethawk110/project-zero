@@ -40,6 +40,7 @@ export const ACTIONS = {
   quickload: 'Schnellladen',
   hideHud: 'Anzeigen aus-/einblenden',
   photo: 'Fotomodus',
+  wait: 'Warten (Zeit vergehen lassen)',
 } as const;
 export type Action = keyof typeof ACTIONS;
 
@@ -81,6 +82,7 @@ export const DEFAULT_KEYS: Record<Action, string[]> = {
   quickload: ['F9'],
   hideHud: ['F1'],
   photo: ['F10'],
+  wait: ['KeyH'],
 };
 
 export type Quality = 'aus' | 'niedrig' | 'mittel' | 'hoch' | 'ultra';

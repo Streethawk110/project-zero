@@ -33,6 +33,7 @@ export type GameCommand =
   | { t: 'rest' }
   | { t: 'lockpick'; id: string; ok: boolean }
   | { t: 'dice'; op: 'roll' | 'bank' | 'quit'; keep?: number[] }
+  | { t: 'wait'; hours: number }
   | { t: 'travel'; rest: string }
   | { t: 'sight'; on: boolean }
   | { t: 'track_quest'; id: string | null }

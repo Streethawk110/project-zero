@@ -71,6 +71,8 @@ Alle Tasten lassen sich unter **Einstellungen → Steuerung** neu belegen. Contr
 | Gruppe / Chat / Emotes | P / Eingabe / T | – |
 | Befehl an Isra (Begleiterin) | R | – |
 | Pause und Menü | Esc | Start |
+| Automatisch laufen / Warten (nur Einzelspieler) | O / H | – |
+| Schnellspeichern / Schnellladen / Anzeigen aus / Fotomodus | F5 / F9 / F1 / F10 | – |
 
 Einstellungen: Grafikprofile (Ultra/Hoch/Mittel/Niedrig), Auflösungsskala, Sichtweite, Schatten, Bloom,
 Gras, Sichtfeld, Lautstärken (Gesamt/Musik/Effekte/Umgebung/Stimmen), Untertitel, reduzierte Effekte
@@ -88,6 +90,13 @@ der Client zeigt nur an und sagt die eigene Bewegung voraus. Oberwelt-Instanzen 
 Dungeon-Instanzen pro Gruppe, Gruppen bis 5, Chat (Umgebung/Gruppe/Welt), Emotes, Kartenmarkierungen,
 Wiederbeleben, faire Beute (jeder sieht eigene Beute), Gleichklang-Kombos, Zwillingstür für zwei Spieler,
 freiwillige Duelle, Handel, dauerhafte Charaktere, Wiederverbindung innerhalb von 90 Sekunden.
+
+**Lebendige Welt (angelehnt an Kingdom Come: Deliverance)** – Bewohner von Haldenbruck und Burg Haldenstein
+haben einen Tagesablauf (Arbeit, Mittag im Gasthaus, Feierabend, Schlaf im eigenen Haus, Wachen mit Fackeln
+auf Streife) und laufen über ein Wegenetz mit Türen. Dazu: Hunger und Müdigkeit, Ruf im Dorf (Preise, Grüße,
+Strenge der Wachen), ertappt werden (zahlen, überreden, einschüchtern, Kerker, Kopfgeld), Schmutz und Blut auf
+der Kleidung (waschen am Brunnen, Bad im Gasthaus), Würfeln gegen Bewohner, Feilschen, Übungskampf beim
+Hauptmann, Schlösser knacken und Warten.
 
 **Trennung:** Einzelspieler-Spielstände und Online-Charaktere sind vollständig getrennt. Es gibt bewusst
 keine Übertragung zwischen beiden – ein lokaler Spielstand lässt sich beliebig bearbeiten und darf deshalb

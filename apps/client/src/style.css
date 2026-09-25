@@ -383,3 +383,7 @@ h3 { font-size: 1.1em; color: var(--gold); }
 .dice-help { color: #857c6b; font-size: 0.78em; text-align: center; line-height: 1.4; }
 #hud .needs .need.wanted { color: #ff8a70; opacity: 1; font-weight: 600; letter-spacing: 0.02em; }
 .recipe .haggle { gap: 0.6em; margin-top: 0.3em; align-items: center; } .haggle-slider { width: 140px; accent-color: #d9b47a; } .btn.small.active { border-color: #d9b47a; color: #f0dcae; }
+.wait-panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; gap: 0.7em; align-items: stretch; width: min(360px, 90vw); padding: 1.2em 1.4em; background: radial-gradient(ellipse at center, rgba(22,17,12,0.95), rgba(8,7,6,0.97)); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); text-align: center; }
+.wait-title { font-family: var(--serif, Georgia, serif); font-size: 1.2em; color: #e6d3a8; letter-spacing: 0.04em; }
+.wait-slider { width: 100%; accent-color: #d9b47a; }
+.wait-label { color: #e8dcc2; font-variant-numeric: tabular-nums; }

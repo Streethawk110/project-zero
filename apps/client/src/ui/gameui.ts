@@ -304,7 +304,7 @@ export class GameUI {
   }
 
   blocksGameInput() {
-    return !!this.current || !!this.pauseEl || this.dialogueOpen || !!this.emoteEl || !!this.settingsEl || !!this.lockpick || !!this.dice || (this.game?.input.typing ?? false);
+    return !!this.current || !!this.pauseEl || this.dialogueOpen || !!this.emoteEl || !!this.settingsEl || !!this.lockpick || !!this.dice || !!this.waitEl || (this.game?.input.typing ?? false);
   }
 
   /** Schlossknacken-Minispiel öffnen (vom Server nach Interaktion mit einer abgeschlossenen Tür). */
@@ -318,6 +318,39 @@ export class GameUI {
     this.lockpick = ui;
     this.root.append(ui.el);
     this.game?.input.releaseLock();
+  }
+
+  private waitEl: HTMLElement | null = null;
+
+  /** Warten wie in KCD: Stunden wählen, Zeit springt (nur Einzelspieler). */
+  openWait() {
+    if (this.mode !== 'sp') { this.hud.toast('Online vergeht die Zeit für alle gleich – Warten geht nur im Einzelspieler.', 'info', 3); return; }
+    let hours = 1;
+    const label = h('div', { class: 'wait-label' });
+    const upd = () => {
+      const now = (this.game?.dayTime ?? 0) * 24;
+      const to = (now + hours) % 24;
+      const hh = Math.floor(to), mm = Math.floor((to - hh) * 60);
+      label.textContent = `${hours} ${hours === 1 ? 'Stunde' : 'Stunden'} → ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} Uhr`;
+    };
+    const slider = h('input', { type: 'range', min: '1', max: '24', step: '1', value: '1', class: 'wait-slider' }) as HTMLInputElement;
+    slider.addEventListener('input', () => { hours = Number(slider.value); upd(); });
+    upd();
+    this.waitEl = h('div', { class: 'wait-panel interactive' },
+      h('div', { class: 'wait-title' }, 'Warten'),
+      slider, label,
+      h('div', { class: 'row', style: { justifyContent: 'center', gap: '0.6em' } },
+        h('button', { class: 'btn primary', onClick: () => { this.cmd({ t: 'wait', hours }); this.closeWait(); } }, 'Warten'),
+        h('button', { class: 'btn ghost', onClick: () => this.closeWait() }, 'Abbrechen')),
+      h('div', { class: 'dim small' }, 'Hunger und Müdigkeit steigen. Nicht möglich, solange Gegner in der Nähe sind.'),
+    );
+    this.root.append(this.waitEl);
+    this.game?.input.releaseLock();
+  }
+
+  closeWait() {
+    this.waitEl?.remove();
+    this.waitEl = null;
   }
 
   /** Würfelspiel: Stand vom Server anzeigen (öffnet den Tisch beim ersten Ereignis). */
@@ -358,6 +391,8 @@ export class GameUI {
       return;
     }
     if (i.pressed('photo', true) && !this.blocksGameInput()) { this.game?.togglePhoto(); return; }
+    if (this.waitEl) { if (i.pressed('pause', true) || i.pressed('wait', true)) this.closeWait(); return; }
+    if (i.pressed('wait', true) && !this.blocksGameInput()) { this.openWait(); return; }
     // Dialogauswahl per Zifferntasten
     if (this.dialogueOpen) {
       for (let k = 0; k < 6; k++) {

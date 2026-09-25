@@ -83,6 +83,12 @@ export function castleToWorld(lx: number, lz: number) {
   const c = Math.cos(CASTLE.rot), s = Math.sin(CASTLE.rot);
   return { x: CASTLE.x + lx * c + lz * s, z: CASTLE.z - lx * s + lz * c };
 }
+/** Welt → lokale Burgkoordinaten (Umkehrung von castleToWorld) */
+export function castleLocal(x: number, z: number) {
+  const c = Math.cos(CASTLE.rot), s = Math.sin(CASTLE.rot);
+  const dx = x - CASTLE.x, dz = z - CASTLE.z;
+  return { x: dx * c - dz * s, z: dx * s + dz * c };
+}
 export const BRIDGE = { x: -75.5, z: 21.1, rot: 1.052, length: 24, width: 4.2 };
 
 export interface RestPointDef { id: string; name: string; x: number; z: number; zone: string }

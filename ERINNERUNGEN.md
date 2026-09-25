@@ -226,6 +226,9 @@ Profiler nicht mitgezählt – behoben).
 - KCD2-Umbau Teil 9: FEILSCHEN im Händlerfenster (Regler 50–95 %, Chance `haggleChance`: Angebot,
   Verstand, Ruf, Äußeres). Abgelehnt → Händler 3 min beleidigt (`p.haggleBlock`), Dorfhändler Ruf −1.
   Befehl `buy` mit `offer`. Burg im Spiel geprüft (Tor mit Wache, Hof mit Übung/Magd/Köchin).
+- KCD2-Umbau Teil 10: WARTEN [H] (nur SP, nicht im Kampf; `waitHours`, `snapRoutines` setzt Bewohner
+  an ihren Tagesplan-Ort, auch nach Schlaf/Kerker). Burghof: Erde + Pflasterweg Tor→Bergfried im
+  Geländesplat (`castleLocal`). README: Tabelle + Abschnitt „Lebendige Welt“. 41 Unit-Tests.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

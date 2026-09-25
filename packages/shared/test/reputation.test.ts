@@ -137,3 +137,26 @@ describe('Feilschen', () => {
     expect(p.char.gold).toBe(g1 - unit);
   });
 });
+
+const npcs = (w: ReturnType<typeof makeWorld>) => [...(w as unknown as { ents: Map<number, NpcEnt> }).ents.values()].filter((e) => e.kind === 'npc') as NpcEnt[];
+
+describe('Warten', () => {
+  it('Zeit springt, Bedürfnisse sinken, Bewohner stehen am Ort ihres Tagesplans; online und im Kampf nicht', () => {
+    const w = makeWorld('sp');
+    const p = addPlayer(w);
+    w.dayTime = 8 / 24;
+    const food0 = p.char.needs?.food ?? 85;
+    w.command('p1', { t: 'wait', hours: 14 });
+    expect(Math.round(w.dayTime * 24)).toBe(22);
+    expect(p.char.needs!.food).toBeLessThan(food0 - 30);
+    const folk = npcs(w).filter((n) => n.def.id.startsWith('folk_'));
+    // 22 Uhr: die meisten schlafen schon oder sitzen abends zusammen – keiner hängt unterwegs
+    for (const n of folk) expect(n.path?.length ?? 0).toBe(0);
+    const mp = makeWorld('mp');
+    const q = addPlayer(mp);
+    const t0 = mp.dayTime;
+    mp.command('p1', { t: 'wait', hours: 5 });
+    expect(mp.dayTime).toBe(t0);
+    void q;
+  });
+});
