@@ -247,7 +247,9 @@ function skinTextures(sex: Sex) {
 export function skinMaterial(sex: Sex, skin: THREE.Color, hair: THREE.Color, old = false, landmarks?: { eyeY: number; neckY: number; cx: number; cz: number }) {
   const t = skinTextures(sex);
   const tint = new THREE.Color(skin.r / BASE_TONE.r, skin.g / BASE_TONE.g, skin.b / BASE_TONE.b);
-  const m = new THREE.MeshStandardMaterial({ map: t.map, normalMap: t.normalMap, normalScale: new THREE.Vector2(old ? 0.85 : 0.45, old ? 0.85 : 0.45), roughnessMap: t.arm, roughness: 1, metalness: 0, color: tint });
+  // Physikalisch: dünner Hautfettfilm (Klarlack, matt), feiner Flaum an Silhouetten (Sheen)
+  const m = new THREE.MeshPhysicalMaterial({ map: t.map, normalMap: t.normalMap, normalScale: new THREE.Vector2(old ? 0.85 : 0.45, old ? 0.85 : 0.45), roughnessMap: t.arm, roughness: 1, metalness: 0, color: tint,
+    clearcoat: 0.12, clearcoatRoughness: 0.42, sheen: 0.35, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.95, 0.72, 0.62) });
   const lm = landmarks ?? { eyeY: 1.68, neckY: 1.5, cx: 0, cz: 0 };
   const u = {
     uHairCol: { value: hair.clone() }, tArm: { value: t.arm },
@@ -275,6 +277,8 @@ export function skinMaterial(sex: Sex, skin: THREE.Color, hair: THREE.Color, old
         // Brauen und Stoppeln in Haarfarbe (Maske aus der Hauttextur)
         diffuseColor.rgb = mix(diffuseColor.rgb, uHairCol * 0.55, armS.b * 0.85);
         diffuseColor.rgb *= armS.r;
+        // In Falten und verdeckten Stellen scheint Blut durch: leicht rötlicher statt nur grauer
+        diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0, 0.84, 0.8), clamp((1.0 - armS.r) * 1.4, 0.0, 1.0));
         // Kopfhaut unter den Haaren: dunkel in Haarfarbe (keine helle Haut zwischen den Strähnen)
         float scalp = scalpMask(vBindP) * uScalp;
         diffuseColor.rgb = mix(diffuseColor.rgb, uHairCol * 0.45, scalp * 0.92);`)
@@ -288,7 +292,8 @@ export function skinMaterial(sex: Sex, skin: THREE.Color, hair: THREE.Color, old
 }
 
 export function eyeMaterial(iris: THREE.Color) {
-  const m = new THREE.MeshStandardMaterial({ map: eyeTex ?? blank, roughness: 0.3, metalness: 0, envMapIntensity: 0.2 });
+  // Feuchte Hornhaut: klarer, glatter Lack über der matten Lederhaut/Iris (scharfer Glanzpunkt)
+  const m = new THREE.MeshPhysicalMaterial({ map: eyeTex ?? blank, roughness: 0.45, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 0.45 });
   const u = { uIris: { value: iris.clone() } };
   m.userData['iris'] = u.uIris;
   m.onBeforeCompile = (s) => {
@@ -297,7 +302,10 @@ export function eyeMaterial(iris: THREE.Color) {
       .replace('#include <common>', '#include <common>\nuniform vec3 uIris;')
       .replace('#include <map_fragment>', `vec4 eyeT = texture2D(map, vMapUv);
         // Iris gedämpft (sonst leuchtet sie), Augapfel insgesamt etwas dunkler: er liegt im Schatten der Lider
-        diffuseColor.rgb *= mix(eyeT.rgb * 0.82, eyeT.rgb * uIris * 1.35, eyeT.a);`);
+        diffuseColor.rgb *= mix(eyeT.rgb * 0.82, eyeT.rgb * uIris * 1.35, eyeT.a);
+        // Lidschatten: zum Rand des sichtbaren Augapfels hin (unter den Lidern) deutlich dunkler
+        float eyeR = length(vMapUv - 0.5) * 2.0;
+        diffuseColor.rgb *= 1.0 - smoothstep(0.28, 0.62, eyeR) * 0.6;`);
   };
   m.customProgramCacheKey = () => 'human-eye';
   return m;

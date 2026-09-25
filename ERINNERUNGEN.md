@@ -250,6 +250,10 @@ Profiler nicht mitgezählt – behoben).
   Augentextur mit Alpha ≥ 0,03; Augen matter (Rauheit 0,3). Gesichtsformen max. 60 %, Frauen eher schmaler
   Kiefer/schlanke Wangen. Frauenhaut: Bartbereich = glatte Wangenhaut, Brauen feiner, Scan-Falten halb,
   Fleck unter der Lippe dunkler. Haarkarten quer durchs Gesicht werden verworfen.
+- NUTZER: „Gesichter noch echter“. In Arbeit: Umgebungsverdeckung per Strahlverfolgung in die Haut
+  gebacken (`bake_ao` in skin_bake.py, Kopf/Hals/Hände, 20 Strahlen, 9 cm, ins arm.R), Haut = Physical-
+  Material (Clearcoat 0,12 Fettfilm, Sheen Flaum), Falten rötlich; Augen: Klarlack-Hornhaut + Lidschatten
+  am Augapfelrand. Texturen werden gerade neu gebacken (2048, je ~5 min).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

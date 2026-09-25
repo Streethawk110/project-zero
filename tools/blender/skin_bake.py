@@ -16,6 +16,7 @@ import os
 import sys
 
 import bpy  # noqa: I001
+import math
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -119,6 +120,41 @@ def gauss(p, c, r):
 def smooth01(x, a, b):
     t = np.clip((x - a) / (b - a), 0, 1)
     return t * t * (3 - 2 * t)
+
+
+def bake_ao(base, v, pos, nrm, mask, rays=20, dist=0.09, stride=2):
+    """Umgebungsverdeckung je Texel per Strahlverfolgung gegen Kopf/Hände und Augäpfel: Augenhöhlen,
+    Nasenflügel, Mundwinkel, Ohrfalten, Fingerzwischenräume werden weich dunkler (sonst wirkt das
+    Gesicht flach). Jeder stride-te Texel wird gerechnet, der Rest übernimmt den Nachbarn."""
+    from mathutils import Vector
+    from mathutils.bvhtree import BVHTree
+    groups = {"body", "helper-l-eye", "helper-r-eye"}
+    faces = [vs for g, vs, _ in base.faces if g in groups]
+    tree = BVHTree.FromPolygons([Vector(p) for p in v], faces)
+    # feste, kosinusgewichtete Halbkugel-Richtungen (Fibonacci)
+    k = np.arange(rays) + 0.5
+    r = np.sqrt(k / rays)
+    th = k * math.pi * (3 - math.sqrt(5))
+    hemi = np.stack([r * np.cos(th), r * np.sin(th), np.sqrt(1 - r * r)], axis=1)
+    ao = np.ones(mask.shape, np.float32)
+    ys, xs = np.nonzero(mask)
+    pick = (ys % stride == 0) & (xs % stride == 0)
+    ys, xs = ys[pick], xs[pick]
+    print(f"[haut] Verdeckung: {len(ys)} Texel × {rays} Strahlen …", flush=True)
+    for y, x in zip(ys, xs):
+        n = nrm[y, x]
+        t = np.cross(n, [0.0, 0.0, 1.0] if abs(n[2]) < 0.9 else [1.0, 0.0, 0.0])
+        t /= np.linalg.norm(t)
+        b = np.cross(n, t)
+        o = Vector(pos[y, x] + n * 0.0012)
+        occ = 0.0
+        for h in hemi:
+            d = t * h[0] + b * h[1] + n * h[2]
+            hit = tree.ray_cast(o, Vector(d), dist)
+            if hit[0] is not None:
+                occ += 1.0 - (hit[3] / dist) ** 2
+        ao[y:y + stride, x:x + stride] = 1.0 - occ / rays
+    return ao
 
 
 def bake(kind):
@@ -324,6 +360,16 @@ def bake(kind):
     hmap = img(height, 1)[..., 0]
     arm = np.zeros((SIZE, SIZE, 3), np.float32)
     arm[cov, 0] = cavity
+    if os.environ.get("PZ_SKIN_AO", "1") == "1":
+        # Umgebungsverdeckung nur, wo Haut sichtbar ist (Kopf, Hals, Hände)
+        vis = np.zeros((SIZE, SIZE), bool)
+        near_hand = (np.linalg.norm(P - J["handL"], axis=1) < 0.16) | (np.linalg.norm(P - J["handR"], axis=1) < 0.16)
+        vis[cov] = is_head | near_hand
+        ao = bake_ao(base, v, pos, nrm, vis)
+        for _ in range(3):  # leicht glätten (Rechenraster, Rauschen der Strahlen)
+            ao = (ao + np.roll(ao, 1, 0) + np.roll(ao, -1, 0) + np.roll(ao, 1, 1) + np.roll(ao, -1, 1)) / 5
+        ao = np.clip(ao, 0, 1) ** 1.8
+        arm[..., 0] *= np.where(cov, 0.25 + 0.75 * ao, 1.0)
     arm[cov, 1] = np.clip(rough, 0.2, 0.9)
     arm[cov, 2] = hair
     # Normale aus der Höhe (Texelraum); Stärke grob auf Millimeter abgestimmt
