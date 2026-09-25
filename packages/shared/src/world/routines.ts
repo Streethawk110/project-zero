@@ -8,6 +8,7 @@
 
 import { getWorldLayout } from './layout.ts';
 import { HOUSES, houseDoor } from './houses.ts';
+import { castleToWorld } from './region.ts';
 import type { Collider, CollisionContext } from './collision.ts';
 
 export type RoutineAct = 'work' | 'idle' | 'sit' | 'sleep' | 'patrol' | 'wander' | 'talk';
@@ -50,6 +51,18 @@ const N: Record<string, NavNode> = {
   // Tore (innen) – Wachposten
   gate_w: { x: -32, z: 36 }, gate_n: { x: 20, z: 88.5 }, gate_s: { x: 8, z: -10 }, gate_e: { x: 69, z: 24 },
 };
+
+// Burg Haldenstein (lokale Burgkoordinaten, Tor bei −z) und der Weg vom Südtor hinauf
+const CASTLE_NODES: Record<string, [number, number]> = {
+  c_gate_out: [0, -22], c_gate_in: [0, -13], c_yard: [0, -4], c_well: [3.4, 2.6], c_train: [6.6, -4.6], c_stable: [10.8, 0],
+  c_keep: [0, 1.6], c_palas: [-8.2, -1.5], c_stall: [-4, -7.6], c_nw: [-7, -13.5], c_ne: [13.3, -13.3], c_se: [13.3, 13.3], c_sw: [-12, 13.3],
+  c_back: [-6.7, 4.5],
+  c_out_nw: [-25, -25], c_out_ne: [25, -25], c_out_se: [25, 25], c_out_sw: [-25, 25], c_out_e: [26, 0], c_out_s: [0, 26], c_out_w: [-26, 0],
+};
+for (const [id, [lx, lz]] of Object.entries(CASTLE_NODES)) N[id] = castleToWorld(lx, lz);
+N['gate_s_out'] = { x: 7, z: -25 };
+N['road_castle_a'] = { x: 28, z: -37 };
+N['road_castle_b'] = { x: 50, z: -40 };
 
 /** Außen-/Innenpunkte der Häuser und des Gasthauses (aus Türlage berechnet). */
 function addHouses() {

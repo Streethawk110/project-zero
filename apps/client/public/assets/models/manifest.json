@@ -24,6 +24,10 @@
  "cart": {
   "file": "cart.glb"
  },
+ "castle": {
+  "file": "castle.glb",
+  "lod1": "castle_lod1.glb"
+ },
  "chapel": {
   "file": "chapel.glb",
   "lod1": "chapel_lod1.glb"

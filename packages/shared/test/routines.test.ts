@@ -12,6 +12,14 @@ describe('Tagesabläufe im Dorf', () => {
     expect(findPath('plaza', 'inn_seat_a')).toContain('h0_in');
   });
 
+  it('Weg vom Dorf zur Burg Haldenstein führt durchs Burgtor', () => {
+    const p = findPath('plaza', 'c_keep');
+    expect(p.length).toBeGreaterThan(2);
+    expect(p).toContain('c_gate_out');
+    // Außen um die Burgmauer herum (Streife)
+    expect(findPath('c_out_nw', 'c_out_se').length).toBeGreaterThan(0);
+  });
+
   it('Bewohner erreichen ihre Ziele, laufen sich nicht fest und schlafen nachts im Haus', () => {
     const w = makeWorld('sp');
     const npcs = () => [...(w as unknown as { ents: Map<number, { kind: string; def: { id: string; routine?: unknown }; hidden?: boolean; stuckT?: number; pathTarget?: string | null; path?: string[]; m: { x: number; z: number } }> }).ents.values()].filter((e) => e.kind === 'npc' && e.def.routine);

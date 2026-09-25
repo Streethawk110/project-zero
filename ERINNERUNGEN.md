@@ -194,6 +194,13 @@ Profiler nicht mitgezählt – behoben).
   erschöpft langsamere Erholung; Hinweise; HUD 🍞 💤). Essen: Brot/Apfel/Käse/Räucherfisch (`use.food`),
   Hedda: Suppe 4 Gold (`need:food:70`), Bett 10 Gold (`sleep`: ausgeruht, EP bis 7 Uhr). Rasten am Feuer =
   ausgeschlafen. NSCs drehen sich beim Plaudern zueinander. Test `needs.test.ts` (31 Unit-Tests).
+- KCD2-Umbau Teil 3: BURG HALDENSTEIN (`castle()` in buildings.py: Ringmauer 36 m mit Zinnen,
+  4 Rundtürme, Torhaus mit Fallgatter/Bannern, Bergfried mit Treppe, Palas, Stand, Übungspuppen).
+  Welt: `CASTLE` (75,−58, Drehung 2,63) in region.ts, Plateau im Gelände, Zone „haldenstein“,
+  Kollision in props.ts, Brunnen/Stand/Laternen in layout.ts, Weg vom Südweg (außerhalb der
+  Palisade – sonst entsteht eine Palisadenlücke!) zum Tor. Wegpunkte `c_*` (Burgkoordinaten →
+  `castleToWorld`). Bewohner: Hauptmann (Dialog `captain_root`), 4 Soldaten (Wache am Tor, Übung,
+  Streife außen um die Mauer), Köchin, Stallknecht, Magd. Test „Weg zur Burg“ (32 Unit-Tests).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

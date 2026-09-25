@@ -24,6 +24,7 @@ export interface ZoneDef {
 export const ZONES: ZoneDef[] = [
   { id: 'haldenbruck', name: 'Haldenbruck', kind: 'village', x: 20, z: 40, r: 78, priority: 5, xp: 20, desc: 'Palisadendorf am Fluss Sael. Letzter sicherer Ort vor der Glasnarbe.' },
   { id: 'fluesterforst', name: 'Flüsterforst', kind: 'forest', x: -190, z: -60, r: 160, priority: 2, xp: 25, desc: 'Dichter Nadelwald. Nachts hört man hier Stimmen, die niemandem gehören.' },
+  { id: 'haldenstein', name: 'Burg Haldenstein', kind: 'village', x: 75, z: -58, r: 34, priority: 6, xp: 25, desc: 'Grenzburg über Haldenbruck. Die Grenzwacht hält hier Mauern, Pferde und die Nachtwache.' },
   { id: 'wegkreuz', name: 'Zerbrochenes Wegkreuz', kind: 'forest', x: -150, z: -40, r: 22, priority: 6, xp: 5, desc: 'Hier liegt der zerstörte Wagen der Expedition.' },
   { id: 'sankt_oda', name: 'Sankt Odas Wacht', kind: 'ruin', x: -60, z: -230, r: 55, priority: 5, xp: 40, desc: 'Ruine eines Heiligtums der Gezeitenheiligen Oda. Die Glockensäulen stehen noch.' },
   { id: 'glasnarbe', name: 'Die Glasnarbe', kind: 'danger', x: 200, z: -60, r: 95, priority: 5, xp: 50, desc: 'Hier riss das Nulllicht die Erde auf. Das Glas wächst weiter.' },
@@ -65,6 +66,8 @@ export const ROADS: readonly (readonly (readonly [number, number])[])[] = [
   [[20, 100], [10, 160], [-20, 220], [-60, 262]],
   // Abzweig → Rabenkanzel
   [[20, 110], [90, 150], [160, 180], [220, 215], [236, 224]],
+  // Dorf (Südtor) → Burg Haldenstein
+  [[4.2, -35], [28, -37], [50, -40], [64.8, -40.5]],
   // Küste → Wrack
   [[-60, 262], [-100, 278], [-126, 286]],
   // Dorfstraßen
@@ -73,6 +76,13 @@ export const ROADS: readonly (readonly (readonly [number, number])[])[] = [
 ];
 
 export const VILLAGE = { x: 20, z: 40, r: 64, height: 7 };
+/** Burg Haldenstein auf der Anhöhe südöstlich des Dorfes (Tor zeigt zum Dorf). */
+export const CASTLE = { x: 75, z: -58, r: 30, height: 12.6, rot: 2.63 };
+/** Lokale Burgkoordinaten (Tor bei −z) → Welt. */
+export function castleToWorld(lx: number, lz: number) {
+  const c = Math.cos(CASTLE.rot), s = Math.sin(CASTLE.rot);
+  return { x: CASTLE.x + lx * c + lz * s, z: CASTLE.z - lx * s + lz * c };
+}
 export const BRIDGE = { x: -75.5, z: 21.1, rot: 1.052, length: 24, width: 4.2 };
 
 export interface RestPointDef { id: string; name: string; x: number; z: number; zone: string }

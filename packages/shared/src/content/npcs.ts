@@ -222,4 +222,55 @@ for (const w of WATCH) {
   });
 }
 
+// ============================ Burg Haldenstein ============================
+// Garnison der Grenzwacht: Hauptmann, Wachen (Tor, Übung, Nachtrunde mit Fackeln) und Gesinde.
+const CASTLE_YAW = 2.63; // Blick aus dem Tor zum Dorf
+const CASTLE_RING = ['c_gate_out', 'c_out_ne', 'c_out_e', 'c_out_se', 'c_out_s', 'c_out_sw', 'c_out_w', 'c_out_nw'];
+const CASTLE_YARD = ['c_gate_in', 'c_ne', 'c_se', 'c_train', 'c_back', 'c_sw', 'c_palas', 'c_nw'];
+NPCS.push({
+  id: 'hauptmann', name: 'Hauptmann Gerold', title: 'Befehlshaber auf Burg Haldenstein', x: 75, z: -58, rot: CASTLE_YAW, dialogue: 'captain_root', gear: ['sword_steel', 'shield_guard'],
+  appearance: { outfit: 'armor_order', skin: 1, hair: 0, hairColor: 5, beard: 3, height: 1.04, body: 0.85 },
+  bark: ['Schwerter hoch, Rücken gerade!', 'Die Mauern halten. Die Frage ist, wie lange noch.'],
+  routine: [
+    { from: 21, to: 6, act: 'sleep', at: 'c_keep' },
+    { from: 6, to: 11, act: 'idle', at: 'c_keep', rot: CASTLE_YAW },
+    { from: 11, to: 17, act: 'talk', at: 'c_train', rot: CASTLE_YAW + 1.2 },
+    { from: 17, to: 21, act: 'wander', route: ['c_gate_in', 'c_yard', 'c_well', 'c_ne'] },
+  ],
+});
+const SOLDIERS: { id: string; name: string; sex: 0 | 1; hairColor: number; beard: number; day: 'gate' | 'train'; night: 'ring' | 'sleep' }[] = [
+  { id: 'soldier_1', name: 'Burgwache Arnulf', sex: 0, hairColor: 1, beard: 1, day: 'gate', night: 'sleep' },
+  { id: 'soldier_2', name: 'Burgwache Detlef', sex: 0, hairColor: 2, beard: 2, day: 'gate', night: 'ring' },
+  { id: 'soldier_3', name: 'Burgwache Wendel', sex: 0, hairColor: 0, beard: 0, day: 'train', night: 'ring' },
+  { id: 'soldier_4', name: 'Burgwache Adelheid', sex: 1, hairColor: 3, beard: 0, day: 'train', night: 'sleep' },
+];
+SOLDIERS.forEach((sd, i) => {
+  const dayStep: RoutineStep = sd.day === 'gate'
+    ? { from: 6, to: 19, act: 'idle', at: 'c_gate_out', rot: CASTLE_YAW }
+    : { from: 6, to: 19, act: 'work', at: 'c_train', rot: CASTLE_YAW + Math.PI };
+  NPCS.push({
+    id: sd.id, name: sd.name, title: 'Grenzwacht, Burg Haldenstein', x: 75 + i, z: -58, rot: CASTLE_YAW, dialogue: 'watch_root', torch: sd.night === 'ring',
+    gear: ['sword_guard', 'shield_guard'],
+    appearance: { sex: sd.sex, outfit: 'guard', skin: i % 3, hair: sd.sex ? 4 : 0, hairColor: sd.hairColor, beard: sd.beard, height: 1.02, body: 0.8 },
+    bark: ['Halt, wer da? … Ach, geh weiter.', 'Der Hauptmann lässt uns üben, bis die Arme abfallen.', 'Nachts sieht man von den Türmen das Glas leuchten.'],
+    routine: sd.night === 'ring'
+      ? [dayStep, { from: 19, to: 20, act: 'patrol', route: CASTLE_YARD }, { from: 20, to: 6, act: 'patrol', route: CASTLE_RING }]
+      : [dayStep, { from: 19, to: 21, act: 'patrol', route: CASTLE_YARD }, { from: 21, to: 6, act: 'sleep', at: 'c_palas' }],
+  });
+});
+const CASTLE_FOLK: { id: string; name: string; title: string; sex: 0 | 1; outfit: string; work: string[]; dialogue: string; hair: number; hairColor: number; beard?: number; bark: string[] }[] = [
+  { id: 'castle_cook', name: 'Walpurga', title: 'Köchin der Burg', sex: 1, outfit: 'maid', work: ['c_well', 'c_stall', 'c_palas'], dialogue: 'folk_c', hair: 2, hairColor: 5, bark: ['Wer Hunger hat, schält Rüben.', 'Die Wachen essen wie Pferde.'] },
+  { id: 'castle_groom', name: 'Pit', title: 'Stallknecht', sex: 0, outfit: 'peasant', work: ['c_stable', 'c_well', 'c_stable'], dialogue: 'folk_b', hair: 5, hairColor: 3, bark: ['Die Pferde scheuen, wenn es nachts leuchtet.', 'Mist schaufeln ist ehrliche Arbeit.'] },
+  { id: 'castle_maid', name: 'Hilde', title: 'Magd auf der Burg', sex: 1, outfit: 'maid', work: ['c_yard', 'c_keep', 'c_palas', 'c_well'], dialogue: 'folk_a', hair: 1, hairColor: 2, bark: ['Der Hauptmann will seine Stiefel geputzt. Schon wieder.'] },
+];
+CASTLE_FOLK.forEach((f, i) => NPCS.push({
+  id: f.id, name: f.name, title: f.title, x: 72 + i, z: -56, rot: 0, dialogue: f.dialogue,
+  appearance: { sex: f.sex, outfit: f.outfit, skin: 1, hair: f.hair, hairColor: f.hairColor, beard: f.beard ?? 0, height: f.sex ? 0.96 : 1.0, body: 0.5 },
+  bark: f.bark,
+  routine: [
+    { from: 21 + i * 0.3, to: 5.5 + i * 0.3, act: 'sleep', at: 'c_palas' },
+    { from: 5.5 + i * 0.3, to: 21 + i * 0.3, act: 'work', route: f.work },
+  ],
+}));
+
 export const NPC_BY_ID: Record<string, NpcDef> = Object.fromEntries(NPCS.map((n) => [n.id, n]));

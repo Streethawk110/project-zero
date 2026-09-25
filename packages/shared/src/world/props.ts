@@ -91,6 +91,21 @@ export const PROPS: Record<string, PropDef> = {
   smithy: { model: 'smithy', colliders: [box(4, 2.2, 6, 0, 1.3), circ(0.6, 1.2, -1.5, -2.2)], clear: 7, light: { color: 0xff6a20, intensity: 30, dist: 12, y: 1.4 } },
   chapel: { model: 'chapel', colliders: [box(3.5, 6, 12), box(1.6, 1.6, 16, 0, 5)], clear: 9 },
   vogthaus: { model: 'vogthaus', colliders: [box(5.5, 4, 10)], clear: 9 },
+  castle: {
+    model: 'castle', clear: 30,
+    colliders: [
+      // Ringmauer (Tor bei −z mit Lücke), Tortürme, Ecktürme
+      box(18, 0.9, 9, 0, 17.1), box(0.9, 18, 9, -17.1, 0), box(0.9, 18, 9, 17.1, 0),
+      box(6.35, 0.9, 9, -10.75, -17.1), box(6.35, 0.9, 9, 10.75, -17.1),
+      box(2.1, 2.5, 11, -4.3, -17.1), box(2.1, 2.5, 11, 4.3, -17.1),
+      circ(3.4, 12, -17.1, -17.1), circ(3.4, 12, 17.1, -17.1), circ(3.4, 12, -17.1, 17.1), circ(3.4, 12, 17.1, 17.1),
+      // Bergfried mit Freitreppe, Palas, Stall (Pfosten, Tröge), Übungspuppen, Fässer
+      box(4.5, 4.5, 18, 0, 10.1), box(1.2, 1.5, 2.2, 0, 4.1), box(3.7, 7.7, 8, -12.6, -1.5),
+      circ(0.25, 3, 12.1, 6), circ(0.25, 3, 12.1, 2), circ(0.25, 3, 12.1, -2), circ(0.25, 3, 12.1, -6),
+      box(0.4, 1.0, 0.6, 14.4, 4), box(0.4, 1.0, 0.6, 14.4, 0), box(0.4, 1.0, 0.6, 14.4, -4),
+      circ(0.3, 2, 4, -6.5), circ(0.3, 2, 6.6, -6.5), circ(0.3, 2, 9.2, -6.5), circ(1.3, 1.1, -4, 1.1),
+    ],
+  },
   kontor: { model: 'kontor', colliders: [box(4.5, 3.5, 8)], clear: 8 },
   stall: { model: 'stall', colliders: [box(1.5, 1, 2.4)] },
   well: { model: 'well', colliders: [circ(1.2, 1)] },

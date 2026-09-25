@@ -699,10 +699,112 @@ def bpy_torus(name, R, r, loc):
     return o
 
 
+def castle():
+    """Burg Haldenstein: Ringmauer (36 m) mit Wehrgang und Zinnen, vier runde Ecktürme, Torhaus mit
+    Fallgitter (Tor zeigt nach Blender +Y = Spiel −Z), Bergfried hinten, Palas an der linken Mauer,
+    Stall rechts, Übungspuppen. Kollision/Platzierung: packages/shared/src/world/props.ts (castle)."""
+    import random
+    rnd = random.Random(11)
+    parts = []
+    H = 18.0           # halbe Seitenlänge der Ringmauer (Außenkante)
+    T = 1.8            # Mauerstärke
+    WH = 7.5           # Mauerhöhe bis Wehrgang
+    GATE = 2.2         # halbe Torbreite
+    # Mauerzüge (vorn mit Torlücke)
+    def wall(x0, y0, x1, y1):
+        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+        L = math.hypot(x1 - x0, y1 - y0)
+        ang = math.atan2(y1 - y0, x1 - x0)
+        w = box("curtain", (L, T, WH + 1.5), (cx, cy, (WH + 1.5) / 2 - 1.5), rot=(0, 0, ang), material="stone_block", bevel=0.04)
+        parts.append(w)
+        # Zinnen auf der Außenkante, Brüstung innen niedrig
+        n = int(L / 1.6)
+        ox, oy = -math.sin(ang), math.cos(ang)
+        for i in range(n):
+            t = (i + 0.5) / n
+            px, py = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+            side = 1 if (px * ox + py * oy) > 0 else -1   # nach außen
+            parts.append(box("merlon", (0.95, 0.5, 1.1), (px + ox * side * (T / 2 - 0.25), py + oy * side * (T / 2 - 0.25), WH + 0.55), rot=(0, 0, ang), material="stone_block"))
+        parts.append(box("walk", (L, T - 0.2, 0.12), (cx, cy, WH + 0.02), rot=(0, 0, ang), material="stone"))
+    c = H - T / 2
+    wall(-c, -c, c, -c)                 # hinten
+    wall(-c, -c, -c, c)                 # links
+    wall(c, -c, c, c)                   # rechts
+    wall(-c, c, -GATE - 2.2, c)         # vorn links (bis Torhaus)
+    wall(GATE + 2.2, c, c, c)           # vorn rechts
+    # Ecktürme
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            x, y = sx * c, sy * c
+            parts.append(cyl("tower", 3.4, 12.0, (x, y, 4.5), material="stone_block", seg=16))
+            parts.append(cyl("towerlip", 3.7, 0.5, (x, y, 10.6), material="stone", seg=16))
+            for k in range(10):
+                a = k / 10 * math.tau
+                parts.append(box("tmerlon", (0.9, 0.55, 1.0), (x + math.cos(a) * 3.35, y + math.sin(a) * 3.35, 11.3), rot=(0, 0, a + math.pi / 2), material="stone_block"))
+            parts.append(cone("towerroof", 3.9, 5.0, (x, y, 13.8), material="roof", seg=16))
+            parts.append(beam("finial", (x, y, 16.2), (x, y, 17.2), 0.07, material="metal_dark"))
+            # Schießscharten
+            for k in range(3):
+                a = (k / 3 + 0.12) * math.tau
+                parts.append(box("slit", (0.18, 0.4, 1.3), (x + math.cos(a) * 3.38, y + math.sin(a) * 3.38, 6.0 + k), rot=(0, 0, a), material="wood_dark"))
+    # Torhaus: zwei Tortürme, Torbogenblock, Fallgitter, Torflügel offen, Wappen
+    gy = c
+    for sx in (-1, 1):
+        parts.append(box("gatetower", (4.2, 5.0, 11.0), (sx * (GATE + 2.1), gy, 4.0), material="stone_block", bevel=0.05))
+        for k in range(3):
+            parts.append(box("gmerlon", (0.9, 0.5, 1.0), (sx * (GATE + 2.1) + (k - 1) * 1.4, gy + 2.3, 10.0), material="stone_block"))
+        parts.append(box("banner", (1.1, 0.05, 2.6), (sx * (GATE + 2.1), gy + 2.55, 6.4), material="cloth_blue"))
+        parts.append(box("bannermark", (0.45, 0.07, 0.45), (sx * (GATE + 2.1), gy + 2.58, 6.8), material="metal_gold"))
+        parts.append(box("gateleaf", (GATE - 0.1, 0.18, 4.2), (sx * (GATE + 0.3), gy - 2.2 + 0.9, 2.1), rot=(0, 0, sx * 1.35), material="wood_dark"))
+    parts.append(extrude_shape("arch", [(-GATE - 0.2, 0), (GATE + 0.2, 0), (GATE + 0.2, 4.2), (0, 5.4), (-GATE - 0.2, 4.2)], 0.3,
+                               material="stone", loc=(0, gy + 2.55, 0.0)))
+    parts.append(box("gatelintel", (2 * GATE + 0.4, 5.0, 4.6), (0, gy, 7.9), material="stone_block"))
+    for k in range(7):  # hochgezogenes Fallgitter
+        parts.append(box("portcullis", (0.1, 0.1, 2.2), (-GATE + 0.3 + k * (2 * GATE - 0.6) / 6, gy + 1.9, 5.3), material="metal_dark"))
+    parts.append(box("portcullis_h", (2 * GATE, 0.1, 0.1), (0, gy + 1.9, 4.4), material="metal_dark"))
+    # Bergfried hinten
+    ky = -c + 7.0
+    parts.append(box("keep", (9.0, 9.0, 18.0), (0, ky, 8.5), material="stone_block", bevel=0.06))
+    parts.append(box("keeplip", (9.8, 9.8, 0.5), (0, ky, 17.6), material="stone"))
+    for sx in (-1, 1):
+        for k in range(5):
+            parts.append(box("kmerlon", (0.9, 0.55, 1.1), (sx * 4.65, ky - 3.6 + k * 1.8, 18.4), material="stone_block"))
+            parts.append(box("kmerlon", (0.55, 0.9, 1.1), (-3.6 + k * 1.8, ky + sx * 4.65, 18.4), material="stone_block"))
+    parts.append(extrude_shape("keepdoor", [(-0.8, 0), (0.8, 0), (0.8, 2.2), (0, 2.9), (-0.8, 2.2)], 0.12, material="wood_dark", loc=(0, ky + 4.52, 2.4)))
+    for i in range(6):  # Freitreppe zum Hocheingang
+        parts.append(box("kstair", (2.4, 0.55, 0.4), (0, ky + 4.5 + 3.0 - i * 0.55, 0.2 + i * 0.4), material="stone_block"))
+    for k in range(3):
+        parts.append(extrude_shape("kwin", [(-0.3, 0), (0.3, 0), (0.3, 1.1), (0, 1.5), (-0.3, 1.1)], 0.1, material="window", loc=(-2.5 + k * 2.5, ky + 4.52, 9.0)))
+    # Palas an der linken Mauer (Fachwerk über Steinsockel)
+    pal = join(timber_house(15, 7, 7.2, 3.6, floors=2, seed=7, jetty=True, lower_mat="stone_block", windows=5), "palas")
+    pal.rotation_euler = (0, 0, -math.pi / 2)
+    pal.location = (-c + T / 2 + 3.6, 1.5, 0)
+    parts.append(pal)
+    # Stall an der rechten Mauer: Pultdach auf Pfosten, Tröge, Heu
+    sx0 = c - T / 2 - 2.2
+    for k in range(4):
+        parts.append(hewn("stallpost", (sx0 - 1.9, -6 + k * 4, 0), (sx0 - 1.9, -6 + k * 4, 3.0), 0.2))
+    r = box("stallroof", (4.8, 14.5, 0.18), (sx0 - 0.3, 0, 3.6), rot=(0, -0.28, 0), material="roof")
+    parts.append(r)
+    for k in range(3):
+        parts.append(box("trough", (0.7, 2.0, 0.5), (sx0 + 0.4, -4 + k * 4, 0.25), material="wood"))
+        parts.append(ico("hay", 0.7, (sx0 + 1.1, -2 + k * 4, 0.45), material="hay", sub=1, scale=(1.2, 1.4, 0.7)))
+    # Übungsplatz: Puppen mit Querholz und Strohsack
+    for k in range(3):
+        x, y = 4.0 + k * 2.6, 6.5
+        parts.append(hewn("dummypost", (x, y, 0), (x, y, 1.9), 0.14))
+        parts.append(hewn("dummyarm", (x - 0.6, y, 1.45), (x + 0.6, y, 1.45), 0.08))
+        parts.append(cyl("dummysack", 0.28, 0.8, (x, y, 1.35), material="hay", seg=8))
+    # Fässer und Kisten im Hof
+    for k in range(5):
+        parts.append(cyl("barrel", 0.42, 1.0, (-4 + rnd.uniform(-1, 1), -3 + k * 0.95, 0.5), material="wood", seg=10))
+    return join(parts, "castle")
+
+
 ASSETS = {
     "door_leaf": (door_leaf, None),
     "house_a": (house_a, 0.5), "house_b": (house_b, 0.5), "inn": (inn, 0.5), "smithy": (smithy, 0.5), "chapel": (chapel, 0.5),
     "vogthaus": (vogthaus, 0.5), "kontor": (kontor, 0.5), "stall": (stall, None), "well": (well, None), "palisade": (palisade, 0.5),
     "tower": (tower, 0.5), "mine_entrance": (mine_entrance, None), "mine_house": (mine_house, None), "fish_hut": (fish_hut, None),
-    "dock": (dock, None), "watchpost": (watchpost, None), "shipwreck": (shipwreck, None),
+    "dock": (dock, None), "watchpost": (watchpost, None), "shipwreck": (shipwreck, None), "castle": (castle, 0.5),
 }

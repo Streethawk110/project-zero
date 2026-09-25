@@ -1,5 +1,5 @@
 import { clamp, distToPolyline, fbm, lerp, makeNoise2D, smoothstep } from '../math.ts';
-import { BRIDGE, DUNGEON_ORIGIN, RIVER, RIVER_WIDTH, ROADS, VILLAGE, WORLD_HALF, WORLD_SEED } from './region.ts';
+import { BRIDGE, CASTLE, DUNGEON_ORIGIN, RIVER, RIVER_WIDTH, ROADS, VILLAGE, WORLD_HALF, WORLD_SEED } from './region.ts';
 
 const nBase = makeNoise2D(WORLD_SEED);
 const nDetail = makeNoise2D(WORLD_SEED + 1);
@@ -99,6 +99,10 @@ export function heightRaw(x: number, z: number): number {
   // Felsnadel der Ertrunkenen Kapelle im Meer
   const needle = disc(x, z, -262, 352, 10, 12);
   h = lerp(h, 6, needle);
+
+  // Burg-Plateau (Burg Haldenstein)
+  const cas = disc(x, z, CASTLE.x, CASTLE.z, CASTLE.r, 26);
+  h = lerp(h, CASTLE.height + fbm(nDetail, x / 30, z / 30, 2) * 0.2, cas);
 
   // Dorf-Plateau
   const vil = disc(x, z, VILLAGE.x, VILLAGE.z, VILLAGE.r, 36);

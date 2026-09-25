@@ -5,7 +5,7 @@ import { clamp, fbm, makeNoise2D, rng, smoothstep } from '../math.ts';
 import { HOUSES, houseDoor } from './houses.ts';
 import { CollisionWorld } from './collision.ts';
 import { PROPS } from './props.ts';
-import { BRIDGE, DUNGEON_ORIGIN, PLAY_HALF, REST_POINTS, VILLAGE, WORLD_SEED } from './region.ts';
+import { BRIDGE, CASTLE, castleToWorld, DUNGEON_ORIGIN, PLAY_HALF, REST_POINTS, VILLAGE, WORLD_SEED } from './region.ts';
 import { bridgeSegments, getHeightfield, riverDistance, roadFactor, type Heightfield } from './terrain.ts';
 import { INTERACTABLES } from '../content/interactables.ts';
 
@@ -89,6 +89,14 @@ function buildLayout(): WorldLayout {
     place('door_leaf', d.hinge.x, d.hinge.z, h.rot, 1, { id: d.id, door: d.id, y: o.y + 0.64 });
   });
   place('well', 14, 34);
+  // ---------------- Burg Haldenstein ----------------
+  {
+    const castle = place('castle', CASTLE.x, CASTLE.z, CASTLE.rot);
+    const lp = (t: string, lx: number, lz: number, r = 0) => { const w = castleToWorld(lx, lz); return place(t, w.x, w.z, CASTLE.rot + r, 1, { y: castle.y }); };
+    lp('well', 5.5, 2.5);
+    lp('stall', -4, -10, Math.PI);
+    for (const [lx, lz] of [[-3.2, -21], [3.2, -21], [8, -8], [-8, 8], [8, 8]] as const) lp('lamp', lx, lz);
+  }
   for (const [x, z, r] of [[28, 47, Math.PI], [12, 49, Math.PI], [30, 30, 0], [6, 30, 0.3]] as const) place('stall', x, z, r);
   place('anvil', 4, 49, 0.2);
   place('workbench', -4, 48, 0);

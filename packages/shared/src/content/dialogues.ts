@@ -330,6 +330,15 @@ const nodes: DialogueNode[] = [
   ]),
   N('folk_c_news', 'Hedda sagt, im Keller der Laterne kratzt es nachts. Die Wachen gehen jetzt mit Fackeln Streife, jede Nacht zwei Runden ums Dorf. Hilft es? Wer weiß.', [back('folk_c', 'Noch etwas?'), end()]),
   N('folk_where', 'Oswin schmiedet an der Esse bis zum Abend, mittags isst er in der Laterne. Pell steht tagsüber am Markt, nachts ist sein Laden zu. Den Vogt findest du am Vogthaus im Norden – abends sitzt er meist im Gasthaus. Und nachts schlafen anständige Leute.', [end('Danke.')]),
+  // ============================ BURG HALDENSTEIN ============================
+  N('captain_root', 'Hauptmann Gerold, Grenzwacht. Wenn du keine Botschaft hast, halt die Leute nicht vom Üben ab.', [
+    { text: 'Was ist das für eine Burg?', next: 'cap_castle' },
+    { text: 'Was macht die Grenzwacht gegen das Nulllicht?', next: 'cap_null' },
+    end('Ich gehe schon.'),
+  ]),
+  N('cap_castle', 'Haldenstein. Früher saß hier der Vogt, bevor er ins Dorf zog, wo es wärmer ist. Jetzt ist es Kaserne, Pferdestall und Wachturm in einem. Von den Türmen sieht man bis zur Glasnarbe.', [back('captain_root', 'Und sonst?'), end()]),
+  N('cap_null', 'Wir halten die Straßen offen und zählen die Nächte. Tagsüber üben die Männer, nachts gehen zwei Mann mit Fackeln um die Mauern. Mehr kann Stahl gegen Licht nicht tun.', [back('captain_root', 'Verstehe.'), end()]),
+
   // ============================ DORFWACHE ============================
   N('watch_root', 'Halt. Was willst du?', [
     { text: 'Nur vorbei.', next: null },
