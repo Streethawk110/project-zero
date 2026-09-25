@@ -288,7 +288,8 @@ Profiler nicht mitgezählt – behoben).
   Danach: Wimpern u 0,66–0,90 (Einzelhaar-Spalte allein zu spärlich), Frauenbraue breiter (0,0052),
   Scan-Brauenende ab ex+0,03 geglättet. Atemhauch geprüft (Zähler: 8 Teilchen in 4 s Spielzeit; ohne GPU
   vergeht Spielzeit ~15× langsamer – Atemzug 3,7 s!). ACHTUNG: `pkill -f`/`pgrep -f` mit Text aus dem
-  eigenen Befehl trifft die eigene Shell.
+  eigenen Befehl trifft die eigene Shell. Web-Artifact VERSION 13 (gleicher Link; unveränderte Texturen aus v12
+  übernommen, nur Figuren, Haut und Code hochgeladen).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.
