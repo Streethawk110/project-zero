@@ -189,6 +189,11 @@ Profiler nicht mitgezählt – behoben).
   Lina, Ute, Ysolde, Aldric, Tam), 10 Dorfbewohner (eigene Häuser, Arbeit, Gerüchte-Dialoge folk_a/b/c)
   und 4 Dorfwachen (Tore, zwei Nachtstreifen mit Fackeln `torch`, verhängen Strafen). Questmarkierungen
   folgen sichtbaren NSCs (`liveNpcMarker`). Test `routines.test.ts` (kein Festlaufen, nachts schlafen).
+- KCD2-Umbau Teil 2: Grundbedürfnisse (Sättigung/Ausgeruhtheit, `CharacterData.needs`, `needsOf`,
+  sinken mit der Zeit, schneller bei Kampf/Sprint; hungrig −25 %/ausgehungert −40 % Ausdauer, müde/
+  erschöpft langsamere Erholung; Hinweise; HUD 🍞 💤). Essen: Brot/Apfel/Käse/Räucherfisch (`use.food`),
+  Hedda: Suppe 4 Gold (`need:food:70`), Bett 10 Gold (`sleep`: ausgeruht, EP bis 7 Uhr). Rasten am Feuer =
+  ausgeschlafen. NSCs drehen sich beim Plaudern zueinander. Test `needs.test.ts` (31 Unit-Tests).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

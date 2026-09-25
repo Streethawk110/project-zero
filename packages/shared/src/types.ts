@@ -56,7 +56,7 @@ export interface ItemDef {
   attrs?: Partial<Record<Attr, number>>;
   req?: { level?: number } & Partial<Record<Attr, number>>;
   /** Verbrauchseffekt */
-  use?: { heal?: number; mana?: number; stamina?: number; status?: StatusId; statusDur?: number; touch?: number; cleanse?: boolean; cooldown?: number };
+  use?: { heal?: number; mana?: number; stamina?: number; status?: StatusId; statusDur?: number; touch?: number; cleanse?: boolean; cooldown?: number; /** Sättigung (Hunger) */ food?: number };
   /** Spezialeffekt-ID (Relikte/Unikate) */
   special?: string;
   specialDesc?: string;
@@ -268,6 +268,8 @@ export interface CharacterData {
   stats: { kills: number; deaths: number; crafted: number; chests: number; perfectBlocks: number; perfectDodges: number };
   lastRespawnAt?: number;
   nodes: Record<string, number>; // Ressourcenknoten: Zeitpunkt der Wiederkehr
+  /** Grundbedürfnisse (KCD2): Sättigung und Ausgeruhtheit, 0–100 (fehlt in alten Spielständen → voll) */
+  needs?: { food: number; rest: number };
   created: number;
 }
 

@@ -35,6 +35,8 @@ interface BaseEnt {
 }
 
 export interface PlayerEnt extends BaseEnt {
+  /** zuletzt gemeldete Bedürfnis-Stufe (Hunger*10 + Müdigkeit) */
+  needWarn?: number;
   /** Laufendes Schlossknacken (Server prüft die Mindestdauer) */
   lockpick?: { id: string; t: number } | null;
   kind: 'player';

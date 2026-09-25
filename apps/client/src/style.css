@@ -346,3 +346,13 @@ h3 { font-size: 1.1em; color: var(--gold); }
 /* Anzeigen ausgeblendet (F1) / Fotomodus */
 #hud.hidden-all { display: none; }
 .photo-help { position: absolute; left: 50%; bottom: 1.2em; transform: translateX(-50%); padding: 0.5em 1em; background: rgba(0,0,0,0.55); color: #ddd4c2; border-radius: 4px; font-size: 0.85em; white-space: nowrap; pointer-events: none; }
+
+/* Grundbedürfnisse unter den Balken */
+#hud .needs { display: flex; gap: 10px; margin-top: 4px; font-size: 12px; }
+#hud .needs .need { display: inline-flex; align-items: center; gap: 4px; opacity: 0.8; }
+#hud .needs .need i { display: inline-block; height: 4px; width: 40px; max-width: 40px; background: linear-gradient(90deg, #c9b27a, #e8d9a8); border-radius: 2px; }
+#hud .needs .need.low i { background: #e0a640; }
+#hud .needs .need.low { opacity: 1; }
+#hud .needs .need.crit i { background: #e05040; }
+#hud .needs .need.crit { opacity: 1; animation: needPulse 1.2s ease-in-out infinite; }
+@keyframes needPulse { 50% { opacity: 0.45; } }

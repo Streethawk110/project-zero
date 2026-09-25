@@ -22,6 +22,8 @@ export class Hud {
   private mpFill = h('div', { class: 'fill' });
   private mpText = h('span');
   private stFill = h('div', { class: 'fill' });
+  /** Grundbedürfnisse (Sättigung, Ausgeruhtheit) */
+  private needsEl = h('div', { class: 'needs' });
   private xpFill = h('div', { class: 'fill' });
   private levelEl = h('div', { class: 'level-badge' });
   private statusEl = h('div', { class: 'statuses' });
@@ -67,6 +69,7 @@ export class Hud {
       h('div', { class: 'bar hp' }, this.hpGhost, this.hpFill, this.hpShield, this.hpText),
       h('div', { class: 'bar mana' }, this.mpFill, this.mpText),
       h('div', { class: 'bar stamina' }, this.stFill),
+      this.needsEl,
       h('div', { class: 'bar xp' }, this.xpFill),
     );
     this.resEl.append(h('div', { class: 'small' }, 'Gleichklang'), h('div', { class: 'bar' }, this.resFill));
@@ -130,6 +133,14 @@ export class Hud {
     this.mpFill.style.transform = `scaleX(${me.mp / Math.max(1, me.mmp)})`;
     this.mpText.textContent = `${me.mp} / ${me.mmp}`;
     this.stFill.style.transform = `scaleX(${me.st / Math.max(1, me.mst)})`;
+    if (me.fd !== undefined && me.rs !== undefined) {
+      const need = (icon: string, label: string, v: number, low: string, crit: string) => {
+        const cls = v < 8 ? 'crit' : v < 25 ? 'low' : '';
+        return `<span class="need ${cls}" title="${label}: ${v} %${cls ? ' – ' + (cls === 'crit' ? crit : low) : ''}">${icon}<i style="width:${Math.max(2, Math.round(v * 0.4))}px"></i></span>`;
+      };
+      const html = need('🍞', 'Sättigung', me.fd, 'hungrig (weniger Ausdauer)', 'ausgehungert') + need('💤', 'Ausgeruht', me.rs, 'müde (Ausdauer erholt sich langsamer)', 'erschöpft');
+      if (this.needsEl.dataset['h'] !== html) { this.needsEl.innerHTML = html; this.needsEl.dataset['h'] = html; }
+    }
     this.vignette.classList.toggle('low', hpf < 0.3);
     this.sightOverlay.classList.toggle('hidden', !me.sight);
     clear(this.statusEl);

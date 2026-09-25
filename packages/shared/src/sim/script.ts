@@ -126,6 +126,8 @@ export type Effect =
   | { t: 'teleport'; x: number; z: number }
   | { t: 'skillpoint'; n: number }
   | { t: 'restore' }
+  | { t: 'need'; food?: number; rest?: number }
+  | { t: 'sleep' }
   | { t: 'respec' }
   | { t: 'toast'; text: string };
 
@@ -178,6 +180,8 @@ function parseEffectRaw(s: string): Effect {
     case 'event': return { t: 'event', id: a };
     case 'teleport': return { t: 'teleport', x: num(parts[0]), z: num(parts[1]) };
     case 'skillpoint': return { t: 'skillpoint', n: num(a, 1) };
+    case 'need': return parts[0] === 'rest' ? { t: 'need', rest: num(parts[1]) } : { t: 'need', food: num(parts[1]) };
+    case 'sleep': return { t: 'sleep' };
     case 'restore': return { t: 'restore' };
     case 'respec': return { t: 'respec' };
     case 'toast': return { t: 'toast', text: a };

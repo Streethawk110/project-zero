@@ -50,6 +50,8 @@ export interface SnapshotMe {
   x: number; y: number; z: number; vx: number; vy: number; vz: number; yaw: number;
   og: boolean; dT: number; dCd: number; sw: boolean; dsT: number; dsX: number; dsZ: number;
   hp: number; mhp: number; mp: number; mmp: number; st: number; mst: number; sh: number;
+  /** Sättigung und Ausgeruhtheit 0–100 */
+  fd?: number; rs?: number;
   cds: Record<string, number>;
   stat: string[];
   act: string;

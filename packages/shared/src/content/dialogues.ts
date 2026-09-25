@@ -263,7 +263,8 @@ const nodes: DialogueNode[] = [
     { text: 'Du wirkst besorgt.', cond: '!quest:s_hedda:any & quest:mq_1:done', next: 'he_quest' },
     { text: 'Die Stimme ist verstummt.', cond: 'quest:s_hedda=return', next: 'he_done' },
     { text: 'Erzähl mir Gerüchte.', next: 'he_rumor' },
-    { text: 'Ich brauche Ruhe und eine Suppe.', effects: ['restore'], next: 'he_rest' },
+    { text: 'Eine Schüssel Suppe, bitte. (4 Gold)', cond: 'gold>=4', effects: ['gold:-4', 'need:food:70'], next: 'he_soup' },
+    { text: 'Ein Bett für die Nacht. (10 Gold)', cond: 'gold>=10', effects: ['gold:-10', 'sleep'], next: 'he_rest' },
     end('Tschüss.'),
   ]),
   N('he_quest', 'Jede Nacht, wenn es still wird, flüstert jemand meinen Namen. Es klingt wie Bertram, mein Mann. Er ist vor zwei Wintern im Wald geblieben. Ich weiß, dass er tot ist. Aber … könntest du nachsehen? Nachts, im Flüsterforst, bei den alten Eichen östlich von Marens Schrein.', [{ text: 'Ich sehe nach.', effects: ['quest:start:s_hedda'], next: null }]),
@@ -274,7 +275,8 @@ const nodes: DialogueNode[] = [
       { cond: 'quest:mq_3:any', text: 'Die Leute sagen, in Tiefenrast singt nachts jemand ein Kinderlied. Ich glaube, ich will nicht wissen, wer.' },
     ],
   }),
-  N('he_rest', 'Nimm dir einen Teller und setz dich ans Feuer. Du siehst aus, als hättest du seit Tagen nicht geschlafen.', [end()]),
+  N('he_rest', 'Die Kammer oben links. Das Bett ist hart, aber trocken. Schlaf gut – und wenn du nachts etwas kratzen hörst … schlaf trotzdem.', [end()]),
+  N('he_soup', 'Rübensuppe mit Speck. Die Rüben leuchten nicht, versprochen. Iss, solange sie warm ist.', [back('hedda_root', 'Danke.'), end()]),
 
   // ============================ BRANN ============================
   N('brann_root', 'Westtor. Augen offen.', [

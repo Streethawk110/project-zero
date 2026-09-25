@@ -1066,6 +1066,7 @@ export class World {
     if (u.status && def.special !== 'tide_bell') this.addStatus(p, u.status, u.statusDur ?? 5, 1, p.id);
     if (u.cleanse) p.statuses = p.statuses.filter((s) => !['burning', 'bleeding', 'slowed', 'weakened', 'blinded'].includes(s.id));
     if (u.touch) this.changeTouch(p, u.touch);
+    if (u.food) { const n = needsOf(p.char); n.food = clamp(n.food + u.food, 0, 100); p.needWarn = 0; }
     p.quickCd = u.cooldown ?? 3;
     if (def.cat !== 'relic') inv.removeItem(p.char, id, 1);
     this.emitNear(p.m.x, p.m.z, { e: 'fx', kind: 'use_item', x: p.m.x, y: p.m.y + 1, z: p.m.z, src: p.id }, 40);
@@ -1138,11 +1139,40 @@ export class World {
     return false;
   }
 
+  /** Schlafen (Bett im Gasthaus): ausgeruht, geheilt; im Einzelspieler vergeht die Nacht bis 7 Uhr. */
+  sleep(p: PlayerEnt) {
+    const n = needsOf(p.char);
+    n.rest = 100;
+    n.food = Math.max(0, n.food - 12);
+    p.hp = p.stats.maxHp; p.mana = p.stats.maxMana; p.stamina = p.stats.maxStamina;
+    p.needWarn = 0;
+    if (this.opts.mode === 'sp') {
+      const h = this.hour;
+      const hours = h < 7 ? 7 - h : 31 - h;
+      this.dayTime = 7 / 24;
+      this.toast(p, `Du schläfst ${Math.round(hours)} Stunden und wachst ausgeruht auf.`, 'good');
+    } else this.toast(p, 'Du ruhst dich im Bett aus und bist wieder ausgeruht.', 'good');
+    p.charDirty = true;
+  }
+
+  /** Einmalige Hinweise, wenn Hunger oder Müdigkeit eine Schwelle unterschreiten. */
+  private needWarnings(p: PlayerEnt, n: { food: number; rest: number }) {
+    const lvl = (n.food < 8 ? 2 : n.food < 25 ? 1 : 0) * 10 + (n.rest < 8 ? 2 : n.rest < 25 ? 1 : 0);
+    if (lvl === (p.needWarn ?? 0)) return;
+    const prev = p.needWarn ?? 0;
+    p.needWarn = lvl;
+    if (lvl <= prev) return;
+    const food = Math.floor(lvl / 10), rest = lvl % 10;
+    if (food > Math.floor(prev / 10)) this.toast(p, food === 2 ? 'Du bist ausgehungert – deine Ausdauer schwindet. Iss etwas!' : 'Du bist hungrig. Brot, Käse oder eine Suppe in der Laterne helfen.', 'warn');
+    if (rest > prev % 10) this.toast(p, rest === 2 ? 'Du bist völlig erschöpft. Schlaf dich aus – am Feuer oder in einem Bett.' : 'Du bist müde. Rasten oder ein Bett im Gasthaus hilft.', 'warn');
+  }
+
   rest(p: PlayerEnt) {
     if (p.combatT < 5) return this.emit(p, { e: 'error', text: 'Du kannst nicht rasten, solange Gegner in der Nähe sind.' });
     const rp = REST_POINTS.find((r) => dist2(r.x, r.z, p.m.x, p.m.z) < 6);
     if (!rp) return;
     p.char.restPoint = rp.id;
+    needsOf(p.char).rest = 100;
     p.hp = p.stats.maxHp;
     p.mana = p.stats.maxMana;
     p.stamina = p.stats.maxStamina;
@@ -1495,6 +1525,16 @@ export class World {
         case 'restore':
           p.hp = p.stats.maxHp; p.mana = p.stats.maxMana; p.stamina = p.stats.maxStamina;
           break;
+        case 'need': {
+          const n = needsOf(p.char);
+          if (ef.food) n.food = clamp(n.food + ef.food, 0, 100);
+          if (ef.rest) n.rest = clamp(n.rest + ef.rest, 0, 100);
+          p.needWarn = 0;
+          break;
+        }
+        case 'sleep':
+          this.sleep(p);
+          break;
         case 'respec':
           this.emit(p, { e: 'respec_open' });
           break;
@@ -1745,7 +1785,16 @@ export class World {
     const sprinting = p.anim === 'sprint';
     if (sprinting) { p.stamina -= 14 * dt; p.regenDelay = 0.5; }
     if (p.blocking) p.regenDelay = Math.max(p.regenDelay, 0.3);
-    if (p.regenDelay <= 0) p.stamina = Math.min(st.maxStamina, p.stamina + st.staminaRegen * dt);
+    // Grundbedürfnisse: Hunger begrenzt die Ausdauer, Müdigkeit bremst ihre Erholung
+    const nd = needsOf(c);
+    const busy = sprinting || p.combatT < 5;
+    nd.food = Math.max(0, nd.food - dt * (100 / (DAY_LENGTH * 1.25)) * (busy ? 1.6 : 1));
+    nd.rest = Math.max(0, nd.rest - dt * (100 / (DAY_LENGTH * 1.6)) * (busy ? 1.4 : 1));
+    const maxSta = st.maxStamina * needStaminaMult(nd);
+    const staRegen = st.staminaRegen * needRegenMult(nd);
+    this.needWarnings(p, nd);
+    if (p.stamina > maxSta) p.stamina = maxSta;
+    if (p.regenDelay <= 0) p.stamina = Math.min(maxSta, p.stamina + staRegen * dt);
     if (p.stamina <= 0) { p.stamina = 0; p.staminaLock = 1.2; }
     p.staminaLock = Math.max(0, p.staminaLock - dt);
     const manaRegen = st.manaRegen * (p.combatT > 5 ? 2 : 1) * (p.bond ? 1.3 : 1);
@@ -2219,7 +2268,18 @@ export class World {
     }
     n.anim = step.act === 'work' ? 'work' : step.act === 'sit' ? 'sit' : step.act === 'talk' ? 'talk' : 'idle';
     if (step.act === 'wander' || step.act === 'patrol') n.anim = 'idle';
-    if (step.rot !== undefined) n.m.yaw = import_turnToward(n.m.yaw, step.rot, dt * 2);
+    // Plaudern: dem nächsten Gesprächspartner zuwenden
+    let faced = false;
+    if (step.act === 'talk') {
+      let best: NpcEnt | null = null, bd = 3.5 * 3.5;
+      for (const e of this.ents.values()) {
+        if (e === n || e.kind !== 'npc' || e.hidden) continue;
+        const d = dist2(e.m.x, e.m.z, n.m.x, n.m.z);
+        if (d < bd) { bd = d; best = e; }
+      }
+      if (best) { n.m.yaw = import_turnToward(n.m.yaw, yawTo(n.m.x, n.m.z, best.m.x, best.m.z), dt * 2); faced = true; }
+    }
+    if (!faced && step.rot !== undefined) n.m.yaw = import_turnToward(n.m.yaw, step.rot, dt * 2);
   }
 
   // ======================= Druckplatten =======================
@@ -2396,7 +2456,7 @@ export class World {
     if (a && !a.lockMove) spd *= a.moveMult;
     return {
       x: r2(m.x), y: r2(m.y), z: r2(m.z), vx: r2(m.vx), vy: r2(m.vy), vz: r2(m.vz), yaw: r2(m.yaw), og: m.onGround, dT: r2(m.dodgeT), dCd: r2(m.dodgeCd), sw: m.swim, dsT: r2(m.dashT), dsX: r2(m.dashX), dsZ: r2(m.dashZ),
-      hp: Math.ceil(p.hp), mhp: p.stats.maxHp, mp: Math.floor(p.mana), mmp: p.stats.maxMana, st: Math.floor(p.stamina), mst: p.stats.maxStamina, sh: Math.ceil(p.shield),
+      hp: Math.ceil(p.hp), mhp: p.stats.maxHp, mp: Math.floor(p.mana), mmp: p.stats.maxMana, st: Math.floor(p.stamina), mst: Math.round(p.stats.maxStamina * needStaminaMult(needsOf(p.char))), fd: Math.round(needsOf(p.char).food), rs: Math.round(needsOf(p.char).rest), sh: Math.ceil(p.shield),
       cds: Object.fromEntries(Object.entries(p.cds).map(([k, v]) => [k, Math.round(v * 10) / 10])),
       stat: p.statuses.map((s) => s.id),
       act: p.action?.id ?? '',
@@ -2539,3 +2599,16 @@ function sanitizeInput(i: MoveInput): MoveInput {
 }
 
 export { sanitizeInput };
+
+/** Grundbedürfnisse eines Charakters (alte Spielstände: voll). */
+export function needsOf(c: CharacterData) {
+  return (c.needs ??= { food: 85, rest: 85 });
+}
+/** Hunger: weniger Ausdauer (hungrig −25 %, ausgehungert −40 %). */
+export function needStaminaMult(n: { food: number }) {
+  return n.food < 8 ? 0.6 : n.food < 25 ? 0.75 : 1;
+}
+/** Müdigkeit: langsamere Erholung der Ausdauer (müde −30 %, erschöpft −50 %). */
+export function needRegenMult(n: { rest: number }) {
+  return n.rest < 8 ? 0.5 : n.rest < 25 ? 0.7 : 1;
+}

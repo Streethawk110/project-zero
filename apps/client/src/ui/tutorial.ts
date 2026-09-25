@@ -38,7 +38,7 @@ const STEPS: Step[] = [
   { title: 'Karte und Aufträge', text: (k) => `${k('map')} öffnet die Karte, ${k('quests')} deine Aufträge, ${k('journal')} das Tagebuch. Die Richtung zum verfolgten Auftrag zeigt der Kompass oben.`, done: (s) => s.opened.has('map') && s.opened.has('journal') },
   { title: 'Kämpfen', text: (k) => `${k('attack')} schlägt zu (gedrückt halten: schwerer Schlag), ${k('block')} blockt. Wer genau im Moment des Treffers blockt, pariert. Probier es aus.`, done: (s) => s.attacked >= 3 && s.blocked },
   { title: 'Fertigkeiten', text: (k) => `Fertigkeiten liegen auf ${k('skill1')}–${k('skill6')}, ein Schnellgegenstand auf ${k('quick')}. Neue Fertigkeiten lernst du mit ${k('skills')}.`, done: (s) => s.skillUsed || s.opened.has('skills') },
-  { title: 'Rasten und Speichern', text: (k) => `An Ruhepunkten (Feuerstellen, Schreine) rastest du mit ${k('interact')}: Zeit vergeht, das Spiel speichert. Über ${k('pause')} kannst du jederzeit speichern oder laden.`, done: (s) => s.t > 9 },
+  { title: 'Rasten und Speichern', text: (k) => `An Ruhepunkten (Feuerstellen, Schreine) rastest du mit ${k('interact')}: Zeit vergeht, du schläfst dich aus, das Spiel speichert. Iss regelmäßig (Brot, Käse, Suppe in der Laterne) – Hunger und Müdigkeit kosten Ausdauer (🍞 💤 unter den Balken).`, done: (s) => s.t > 9 },
   { title: 'Schlösser', text: (k) => `Manche Häuser sind abgeschlossen. Mit einem Dietrich (Krämer Pell) knackst du Schlösser – aber lass dich nicht erwischen. Türen öffnest du mit ${k('interact')}.`, done: (s) => s.t > 9 },
 ];
 
