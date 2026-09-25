@@ -139,12 +139,15 @@ def load_weights(n_verts):
 
 # Figurtypen: Formvorgaben (Datei, Gewicht) und Zielgröße in Metern
 FIGURES = {
+    # Normale (nicht „ideale“) Proportionen: ideal = Superheldenfigur mit kleinem Kopf und kantigen Schultern.
+    # Durchschnittsform (averagemuscle/averageweight) als Grundlage, Männer leicht muskulöser.
     "male": ([("macrodetails/caucasian-male-young.target", 1.0),
-              ("macrodetails/universal-male-young-maxmuscle-averageweight.target", 0.35),
-              ("macrodetails/proportions/male-young-averagemuscle-averageweight-idealproportions.target", 0.6)], 1.80),
+              ("macrodetails/universal-male-young-averagemuscle-averageweight.target", 0.8),
+              ("macrodetails/universal-male-young-maxmuscle-averageweight.target", 0.2),
+              ("macrodetails/proportions/male-young-averagemuscle-averageweight-idealproportions.target", 0.15)], 1.80),
     "female": ([("macrodetails/caucasian-female-young.target", 1.0),
-                ("macrodetails/universal-female-young-averagemuscle-averageweight.target", 0.0),
-                ("macrodetails/proportions/female-young-averagemuscle-averageweight-idealproportions.target", 0.6)], 1.68),
+                ("macrodetails/universal-female-young-averagemuscle-averageweight.target", 1.0),
+                ("macrodetails/proportions/female-young-averagemuscle-averageweight-idealproportions.target", 0.15)], 1.68),
 }
 
 
@@ -868,6 +871,10 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
                 pts.append(knot + np.array([0, 0.012, 0]) + q * (R + 0.002 * (i % 3)))
                 ns.append(q)
             cards.append((pts, [0.022, 0.024, 0.024, 0.018], ns, (0.8, rnd.random(), 0.25)))
+    # Keine Strähne quer durchs Gesicht (Stirn/Augen): solche Karten verwerfen
+    def crosses_face(pts):
+        return any(p[2] > cz + 0.045 and eye_y - 0.1 < p[1] < eye_y + 0.07 and abs(p[0] - sc.c[0]) < 0.06 for p in pts)
+    cards = [c for c in cards if not crosses_face(c[0])]
     o = hair_mesh(f"hair_{style}", cards, "hair_" + atlas)
     # Grundkappe: eng anliegende, haarfarbene Schicht auf der Kopfhaut (keine helle Haut zwischen Karten)
     # Kappe etwas hinter dem Haaransatz enden lassen: die Kante verschwindet unter den Strähnen

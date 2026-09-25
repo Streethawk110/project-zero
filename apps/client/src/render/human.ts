@@ -288,7 +288,7 @@ export function skinMaterial(sex: Sex, skin: THREE.Color, hair: THREE.Color, old
 }
 
 export function eyeMaterial(iris: THREE.Color) {
-  const m = new THREE.MeshStandardMaterial({ map: eyeTex ?? blank, roughness: 0.08, metalness: 0 });
+  const m = new THREE.MeshStandardMaterial({ map: eyeTex ?? blank, roughness: 0.3, metalness: 0, envMapIntensity: 0.2 });
   const u = { uIris: { value: iris.clone() } };
   m.userData['iris'] = u.uIris;
   m.onBeforeCompile = (s) => {

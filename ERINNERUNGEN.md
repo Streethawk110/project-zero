@@ -242,6 +242,14 @@ Profiler nicht mitgezählt – behoben).
 - Web-Artifact VERSION 9 (gleicher Link): Modelle jetzt gzip-gepackt in `.glb.json` (`{gz}`, Client
   entpackt mit `DecompressionStream`) → 45 MB statt 73 MB, Männerfigur 10,9 MB statt 21 (Grenze 16 MB/Datei).
   Lokal geprüft: 70/70 Modelle, 20/20 Texturen, Figur neu.
+- NUTZER: „Hauptproblem ist die Statur und das Gesicht.“ Ursachen gefunden + behoben:
+  STATUR: FIGURES nutzte 60 % „idealproportions“ (Superheld: kleiner Kopf, kantige breite Schultern) und
+  beim Mann 35 % maxmuscle ohne Durchschnittsform → jetzt universal averagemuscle 0,8 + maxmuscle 0,2 (Frau
+  averagemuscle 1,0), ideal nur 0,15. Ruhepose: Arme nah am Körper, Ellbogen gebeugt, Kontrapost, Hände
+  halb geschlossen (grip 0,45). GESICHT: helles Kreuz in den Pupillen = WebP verwarf Farbe bei Alpha 0 →
+  Augentextur mit Alpha ≥ 0,03; Augen matter (Rauheit 0,3). Gesichtsformen max. 60 %, Frauen eher schmaler
+  Kiefer/schlanke Wangen. Frauenhaut: Bartbereich = glatte Wangenhaut, Brauen feiner, Scan-Falten halb,
+  Fleck unter der Lippe dunkler. Haarkarten quer durchs Gesicht werden verworfen.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

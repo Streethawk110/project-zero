@@ -267,9 +267,15 @@ def bake(kind):
         brow_zone = smooth01(Ps[:, 1] - (ey + 0.006), 0.0, 0.006) * smooth01(ey + 0.05 - Ps[:, 1], 0.0, 0.008) * (Ps[:, 2] > J["head"][2])
         beard_zone = smooth01(ey - 0.06 - Ps[:, 1], 0.0, 0.02) * smooth01(Ps[:, 1] - (jaw[1] - 0.06), 0.0, 0.02) * (Ps[:, 2] > J["head"][2] - 0.05) * (1 - lips[sel])
         if not male:
-            # Bartschatten entfernen und Haut insgesamt etwas weicher
-            soft = np.clip(beard_zone * 1.0 + 0.3, 0, 1)
+            # Bartschatten entfernen: im Bartbereich glatte Wangenhaut (Grundton mit leichter Helligkeits-
+            # variation des geglätteten Scans) statt verwischter grauer Stoppeln; sonst Haut etwas weicher
+            LW0 = np.array([0.2126, 0.7152, 0.0722])
+            med0 = float(np.median(lumb[face_hit])) if face_hit.any() else float(BASE_TONE @ LW0)
+            cheek = BASE_TONE[None, :] * np.clip(1.0 + 0.35 * (lumb - med0) / max(med0, 1e-4), 0.85, 1.1)[:, None]
+            bz = np.clip(beard_zone * 1.15, 0, 1)
+            soft = np.clip(0.3 * (1 - bz), 0, 1)
             c_s = c_s * (1 - soft[:, None]) + cb_s * soft[:, None]
+            c_s = c_s * (1 - bz[:, None]) + cheek * bz[:, None]
             dark = dark * (1 - beard_zone)
         # Lippen: wo der Scan Lippen hat oder die Figur ihre Lippen hat, die eigene (geometrisch passende)
         # Lippenfarbe verwenden, mit der Hautstruktur des Scans
@@ -278,14 +284,15 @@ def bake(kind):
         ours = lips[sel]
         away = lip_s * (1 - ours)  # Scan-Lippen, die nicht auf unseren Lippen liegen → Haut
         lum_fix = lum * (1 - lip_s) + med_lum * lip_s
-        skin_like = lum_fix[:, None] * (BASE_TONE / (BASE_TONE @ LW))
+        # etwas dunkler als der Durchschnitt: unter der Unterlippe liegt Schatten (sonst heller Fleck)
+        skin_like = lum_fix[:, None] * 0.9 * (BASE_TONE / (BASE_TONE @ LW))
         lip_like = lum_fix[:, None] * 0.92 * (lip_col / (lip_col @ LW))
         c_s = c_s * (1 - away[:, None]) + skin_like * away[:, None]
         c_s = c_s * (1 - ours[:, None] * 0.85) + lip_like * ours[:, None] * 0.85
         own = np.clip(np.maximum(lip_s, ours), 0, 1)
         dark = dark * (1 - own)
         if not male:
-            dark = dark * 0.7  # Frauenbrauen feiner
+            dark = dark * 0.5  # Frauenbrauen feiner
         hair_s = np.clip(np.maximum(dark * brow_zone * 1.2, dark * beard_zone * (0.8 if male else 0.0)), 0, 1)
         # Lücken (Strahl verfehlt den Scan) mit den benachbarten Scan-Farben füllen statt den glatten
         # Grundton durchscheinen zu lassen
@@ -330,6 +337,9 @@ def bake(kind):
         sel, n_s = scan_n
         ij = np.argwhere(cov)[sel]
         proc = n[ij[:, 0], ij[:, 1]]
+        # Frauen: Falten des (männlichen) Scans nur halb – wirken sonst wie Streifen auf Stirn und Lidern
+        n_s = n_s if male else n_s * 0.5 + np.array([0, 0, 0.5])
+        n_s = n_s / np.linalg.norm(n_s, axis=1, keepdims=True)
         comb = n_s + (proc - np.array([0, 0, 1.0])) * 0.55
         comb /= np.linalg.norm(comb, axis=1, keepdims=True)
         w = scan_w[sel][:, None]
@@ -373,6 +383,8 @@ def bake_eye(size=512):
     col = np.where((r < R_IRIS)[..., None], iris_v[..., None].repeat(3, -1), sclera)
     col = np.where((r < R_PUPIL)[..., None], 0.015, col)
     mask = (r < R_IRIS).astype(np.float32) * (r >= R_PUPIL)
+    # Nie ganz 0: WebP verwirft bei Alpha 0 die Farbe (Pupille wurde hell, Äderchen verschwanden)
+    mask = np.maximum(mask, 0.03)
     import foliage_bake as fb
     rgba = np.concatenate([fb.linear_to_srgb(np.clip(col, 0, 1)), mask[..., None]], axis=2).astype(np.float32)
     fb.save_webp(rgba, os.path.join(OUT, "eye_color.webp"), True, False)

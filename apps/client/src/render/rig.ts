@@ -737,7 +737,12 @@ export class HumanoidRig {
     for (let i = 0; i < this.faceSeed.length; i++) { h ^= this.faceSeed.charCodeAt(i); h = Math.imul(h, 16777619); }
     const rnd = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; };
     const pairs: [string, string][] = [['f_nose_big', 'f_nose_small'], ['f_jaw_strong', 'f_narrow'], ['f_gaunt', 'f_round']];
-    for (const [a, b] of pairs) { const x = rnd() * 2 - 1; this.face[a] = Math.max(0, x) * 0.9; this.face[b] = Math.max(0, -x) * 0.9; }
+    // Gemäßigte Ausprägung (Extremwerte wirken aufgedunsen/karikiert); Frauen eher schmaler Kiefer, schlanke Wangen
+    const bias: Record<string, number> = this.sex === 'female' ? { f_jaw_strong: -0.45, f_gaunt: 0.35 } : {};
+    for (const [a, b] of pairs) {
+      const x = Math.max(-1, Math.min(1, rnd() * 2 - 1 + (bias[a] ?? 0)));
+      this.face[a] = Math.max(0, x) * 0.6; this.face[b] = Math.max(0, -x) * 0.6;
+    }
     this.face['f_lips'] = rnd() * (this.sex === 'female' ? 0.8 : 0.4);
     this.face['f_brow'] = rnd() * (this.sex === 'male' ? 0.8 : 0.3);
     this.face['f_old'] = Math.max(0, rnd() * 1.4 - 0.6);
@@ -824,8 +829,8 @@ export class HumanoidRig {
     // Griff: Faust um Waffe/Schild/Bogen, sonst locker halb gebeugte Finger
     const wt = this.weaponType;
     const offT = ITEMS[this.offhandId]?.offhand?.type;
-    this.setMorph('gripR', wt === 'bow' ? 0.5 : wt !== 'none' ? 1 : 0.22);
-    this.setMorph('gripL', offT === 'shield' || offT === 'focus' || wt === 'bow' ? 1 : 0.22);
+    this.setMorph('gripR', wt === 'bow' ? 0.5 : wt !== 'none' ? 1 : 0.45);
+    this.setMorph('gripL', offT === 'shield' || offT === 'focus' || wt === 'bow' ? 1 : 0.45);
   }
 
   private computePose(anim: string, t: number): Pose {
@@ -861,7 +866,11 @@ export class HumanoidRig {
     switch (anim) {
       case 'idle': case 'recover': case 'idle_boss': {
         const b = s(t * 1.6);
-        return ready({ chest: [b * 0.02, 0, 0], head: [b * 0.015, s(t * 0.4) * 0.1, 0], upperArmL: [0, 0, 0.12 + b * 0.02], upperArmR: [0, 0, -0.12 - b * 0.02], foreArmL: [-0.15, 0, 0], foreArmR: [-0.15, 0, 0], thighL: [0.02, 0, 0.04], thighR: [-0.02, 0, -0.04], root: [0, b * 0.005, 0] });
+        // Entspannt stehen: Arme hängen nah am Körper, Ellbogen leicht gebeugt, Füße etwa hüftbreit,
+        // Gewicht auf einem Bein (Kontrapost) statt Schaufensterpuppen-Haltung
+        return ready({ chest: [b * 0.02, 0, 0], head: [b * 0.015, s(t * 0.4) * 0.1, 0],
+          upperArmL: [0.04, 0.12, -0.1 + b * 0.015], upperArmR: [0.04, -0.12, 0.1 - b * 0.015], foreArmL: [-0.28, 0.25, 0], foreArmR: [-0.28, -0.25, 0],
+          thighL: [0.03, 0.08, -0.06], thighR: [-0.05, -0.12, 0.0], shinR: [0.1, 0, 0], footR: [-0.05, 0, 0], root: [0, b * 0.005 - 0.004, 0] });
       }
       case 'talk': {
         const g = s(t * 2.3);
