@@ -363,6 +363,7 @@ export class Game {
         case 'puzzle': if (e.id === 'bells') this.audio.bell(Number(e.state.split(':')[1])); break;
         case 'dialogue': this.speakDialogue(e); break;
         case 'lockpick': this.ui.openLockpick(e.id, e.level, e.picks); break;
+        case 'dice': this.ui.onDice(e); break;
         case 'dialogue_end': voice.stop(); this.talkPartner = null; break;
         case 'bark': this.speakBark(e); break;
       }

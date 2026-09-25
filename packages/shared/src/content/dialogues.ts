@@ -313,18 +313,24 @@ const nodes: DialogueNode[] = [
   // ============================ DORFBEWOHNER ============================
   N('folk_a', 'Hm? Ich hab zu tun. Aber sag schon.', [
     { text: 'Was gibt es Neues im Dorf?', next: 'folk_a_news' },
+    { text: 'Lust auf eine Runde Würfel? (10 Gold Einsatz)', cond: 'gold>=10', effects: ['dice:10'], next: null },
+    { text: 'Würfeln um 30 Gold?', cond: 'gold>=30', effects: ['dice:30'], next: null },
     { text: 'Wo finde ich hier was?', next: 'folk_where' },
     end('Nichts. Mach weiter.'),
   ]),
   N('folk_a_news', 'Seit die Expedition kam, schläft keiner mehr richtig. Nachts leuchtet es über dem Nordwald, und der Vogt tut, als wäre nichts. Frag ihn mal, ob er selbst noch schläft.', [back('folk_a', 'Und sonst?'), end()]),
   N('folk_b', 'Na, Fremder. Suchst du Arbeit oder Ärger?', [
     { text: 'Gerüchte?', next: 'folk_b_news' },
+    { text: 'Lust auf eine Runde Würfel? (10 Gold Einsatz)', cond: 'gold>=10', effects: ['dice:10'], next: null },
+    { text: 'Würfeln um 30 Gold?', cond: 'gold>=30', effects: ['dice:30'], next: null },
     { text: 'Wo finde ich hier was?', next: 'folk_where' },
     end('Weder noch.'),
   ]),
   N('folk_b_news', 'Rotbarts Leute sind am Fluss gesehen worden. Und der Kontor kauft jedes Stück Nullglas, das man ihm bringt – zu Preisen, die zu gut sind, um ehrlich zu sein.', [back('folk_b', 'Noch was?'), end()]),
   N('folk_c', 'Oh – hallo. Brauchst du was?', [
     { text: 'Was erzählt man sich?', next: 'folk_c_news' },
+    { text: 'Lust auf eine Runde Würfel? (10 Gold Einsatz)', cond: 'gold>=10', effects: ['dice:10'], next: null },
+    { text: 'Würfeln um 30 Gold?', cond: 'gold>=30', effects: ['dice:30'], next: null },
     { text: 'Wo finde ich hier was?', next: 'folk_where' },
     end('Nein, danke.'),
   ]),

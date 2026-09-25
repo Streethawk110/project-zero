@@ -206,6 +206,11 @@ Profiler nicht mitgezählt – behoben).
   Händler Pell/Oswin/Jorun Preise nach Ruf, Bewohner/Burgleute mit `faction: 'folk'` (≤−40 kein
   Gespräch). Grüße im Vorbeigehen (`World.greet`, 3,2 m, je nach Ruf/Wache/Nacht, sonst eigene
   `bark`-Sätze, die vorher nie benutzt wurden). Test `reputation.test.ts` (34 Unit-Tests).
+- KCD2-Umbau Teil 5: WÜRFELN (`sim/dice.ts`: Wertung wie KCD, Ziel 2000, Gegner-KI `opponentTurn`).
+  Dialog der Bewohner (folk_a/b/c): „Runde Würfel? (10/30 Gold)“ → Effekt `dice:N`. Server prüft
+  jede Auswahl (`World.diceCmd`, Befehl `dice` roll/bank/quit, validate.ts), Gewinn = doppelter
+  Einsatz. Client `ui/dice.ts` (Holztisch, anklickbare Würfel, Tasten 1–6/Leertaste/Enter/Esc,
+  Gegnerzüge werden Wurf für Wurf gezeigt), Klang `dice_roll`. Test `dice.test.ts` (37 Unit-Tests).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

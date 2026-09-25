@@ -41,6 +41,8 @@ export interface PlayerEnt extends BaseEnt {
   greetAt?: number;
   /** Laufendes Schlossknacken (Server prüft die Mindestdauer) */
   lockpick?: { id: string; t: number } | null;
+  /** Laufendes Würfelspiel gegen einen Bewohner */
+  dice?: { npc: string; name: string; bet: number; you: number; them: number; turn: number; roll: number[]; left: number } | null;
   kind: 'player';
   pid: string;
   char: CharacterData;

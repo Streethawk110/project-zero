@@ -9,6 +9,7 @@ import { MapWin } from './win_map.ts';
 import { CraftWin, RestWin, ShopWin, SteleWin, TradeWin } from './win_misc.ts';
 import { settingsPanel } from './settingsPanel.ts';
 import { LockpickUI } from './lockpick.ts';
+import { DiceUI } from './dice.ts';
 import { Tutorial } from './tutorial.ts';
 import type { Win } from './win.ts';
 import type { Game } from '../game/game.ts';
@@ -54,6 +55,7 @@ export class GameUI {
   private duelFrom: number | null = null;
   private lastInteractLabel = '';
   private lockpick: LockpickUI | null = null;
+  private dice: DiceUI | null = null;
   private tutorial: Tutorial | null = null;
   private photoEl = h('div', { class: 'photo-help hidden' });
   private hudHidden = false;
@@ -302,7 +304,7 @@ export class GameUI {
   }
 
   blocksGameInput() {
-    return !!this.current || !!this.pauseEl || this.dialogueOpen || !!this.emoteEl || !!this.settingsEl || !!this.lockpick || (this.game?.input.typing ?? false);
+    return !!this.current || !!this.pauseEl || this.dialogueOpen || !!this.emoteEl || !!this.settingsEl || !!this.lockpick || !!this.dice || (this.game?.input.typing ?? false);
   }
 
   /** Schlossknacken-Minispiel öffnen (vom Server nach Interaktion mit einer abgeschlossenen Tür). */
@@ -318,12 +320,23 @@ export class GameUI {
     this.game?.input.releaseLock();
   }
 
+  /** Würfelspiel: Stand vom Server anzeigen (öffnet den Tisch beim ersten Ereignis). */
+  onDice(ev: Extract<GameEvent, { e: 'dice' }>) {
+    if (!this.dice) {
+      const ui = new DiceUI((op, keep) => this.cmd({ t: 'dice', op, keep }), () => { this.dice = null; }, (sid) => this.game?.audio.sfx(sid));
+      this.dice = ui;
+      this.root.append(ui.el);
+      this.game?.input.releaseLock();
+    }
+    this.dice.update(ev);
+  }
+
   wantsPointerLock() {
     return false;
   }
 
   handleHotkeys(i: Input) {
-    if (this.lockpick) { i.pressed('pause', true); return; }
+    if (this.lockpick || this.dice) { i.pressed('pause', true); return; }
     if (this.game?.input.typing) return;
     // Fotomodus: nur eigene Tasten
     if (this.game?.photo) {

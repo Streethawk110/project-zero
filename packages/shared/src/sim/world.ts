@@ -7,6 +7,7 @@ import { ITEMS } from '../content/items.ts';
 import { LOOT } from '../content/loot.ts';
 import { NPCS } from '../content/npcs.ts';
 import { FACTIONS } from '../content/meta.ts';
+import { DICE_TARGET, bestSelection, opponentTurn, rollDice, scoreDice, type DiceTurnLog } from './dice.ts';
 import { HOUSES, doorLockLevel } from '../world/houses.ts';
 import { findPath, navNode, nearestNode, routineStep, type RoutineStep } from '../world/routines.ts';
 import { SKILL_BY_ID } from '../content/skills.ts';
@@ -264,6 +265,9 @@ export class World {
         return;
       case 'lockpick':
         this.lockpickResult(p, cmd.id, !!cmd.ok);
+        return;
+      case 'dice':
+        this.diceCmd(p, cmd.op, cmd.keep);
         return;
       case 'interact_cancel':
         p.interacting = null;
@@ -1541,6 +1545,9 @@ export class World {
         case 'sleep':
           this.sleep(p);
           break;
+        case 'dice':
+          if (p.dialogue) this.startDice(p, p.dialogue.npc, ef.bet);
+          break;
         case 'respec':
           this.emit(p, { e: 'respec_open' });
           break;
@@ -1636,6 +1643,81 @@ export class World {
     } else {
       this.toast(p, `${best.def.name} hat dich gesehen.`, 'warn');
     }
+  }
+
+  // ======================= Würfeln =======================
+
+  startDice(p: PlayerEnt, npcId: string, bet: number) {
+    const npc = [...this.ents.values()].find((e): e is NpcEnt => e.kind === 'npc' && e.def.id === npcId);
+    if (!npc || p.dice) return;
+    bet = clamp(Math.floor(bet), 1, 100);
+    if (p.char.gold < bet) return this.emit(p, { e: 'error', text: `Nicht genug Gold (${bet} Einsatz).` });
+    p.char.gold -= bet;
+    p.charDirty = true;
+    p.dice = { npc: npcId, name: npc.def.name, bet, you: 0, them: 0, turn: 0, roll: [], left: 6 };
+    this.diceNewRoll(p, 'Du beginnst. Wähle punktende Würfel, dann weiterwürfeln oder sichern.');
+  }
+
+  private diceSend(p: PlayerEnt, note: string, over: '' | 'won' | 'lost' | 'quit' = '', opp?: DiceTurnLog) {
+    const d = p.dice!;
+    this.emit(p, { e: 'dice', npc: d.npc, name: d.name, bet: d.bet, target: DICE_TARGET, you: d.you, them: d.them, turn: d.turn, roll: d.roll, over, note, opp });
+    if (over) p.dice = null;
+  }
+
+  /** Neuer Wurf mit den übrigen Würfeln; nichts getroffen → Runde verloren, Gegner ist dran. */
+  private diceNewRoll(p: PlayerEnt, note: string) {
+    const d = p.dice!;
+    d.roll = rollDice(d.left, this.rand);
+    if (bestSelection(d.roll).score > 0) return this.diceSend(p, note);
+    d.turn = 0;
+    this.diceOpponent(p, `Nichts getroffen (${d.roll.join(' ')}) – die Punkte der Runde sind weg.`);
+  }
+
+  private diceOpponent(p: PlayerEnt, note: string) {
+    const d = p.dice!;
+    const log = opponentTurn(this.rand, d.them, d.you);
+    d.them += log.bust ? 0 : log.gained;
+    d.turn = 0;
+    d.left = 6;
+    if (d.them >= DICE_TARGET) {
+      d.roll = [];
+      return this.diceSend(p, `${note} ${d.name} erreicht ${d.them} und gewinnt. Dein Einsatz ist weg.`, 'lost', log);
+    }
+    const opp = log.bust ? `${d.name} würfelt daneben.` : `${d.name} sichert ${log.gained}.`;
+    d.roll = rollDice(6, this.rand);
+    if (bestSelection(d.roll).score > 0) return this.diceSend(p, `${note} ${opp} Du bist dran.`, '', log);
+    // Auch der neue Wurf trifft nichts: Gegner ist gleich wieder dran
+    this.diceSend(p, `${note} ${opp}`, '', log);
+    this.diceOpponent(p, `Dein Wurf (${d.roll.join(' ')}) trifft nichts.`);
+  }
+
+  diceCmd(p: PlayerEnt, op: 'roll' | 'bank' | 'quit', keep?: number[]) {
+    const d = p.dice;
+    if (!d) return;
+    const npc = [...this.ents.values()].find((e) => e.kind === 'npc' && e.def.id === d.npc);
+    if (op === 'quit' || !npc || dist2(npc.m.x, npc.m.z, p.m.x, p.m.z) > 8 * 8) {
+      this.diceSend(p, `Du gibst auf. ${d.name} streicht den Einsatz ein.`, 'quit');
+      return;
+    }
+    const idx = [...new Set((Array.isArray(keep) ? keep : []).filter((i) => Number.isInteger(i) && i >= 0 && i < d.roll.length))];
+    const score = scoreDice(idx.map((i) => d.roll[i]!));
+    if (score <= 0) return this.diceSend(p, 'Diese Auswahl punktet nicht. Jeder beiseitegelegte Würfel muss zählen.');
+    d.turn += score;
+    d.left -= idx.length;
+    if (d.left === 0) d.left = 6;
+    if (op === 'roll') return this.diceNewRoll(p, `+${score}. Runde: ${d.turn}.${d.left === 6 ? ' Alle Würfel gezählt – sechs neue!' : ''}`);
+    // Sichern
+    d.you += d.turn;
+    const gained = d.turn;
+    if (d.you >= DICE_TARGET) {
+      d.roll = [];
+      const win = d.bet * 2;
+      p.char.gold += win;
+      p.charDirty = true;
+      this.emit(p, { e: 'sfx', id: 'coins' });
+      return this.diceSend(p, `Du erreichst ${d.you} und gewinnst ${win} Gold!`, 'won');
+    }
+    this.diceOpponent(p, `Du sicherst ${gained}.`);
   }
 
   /**

@@ -305,6 +305,8 @@ export class AudioEngine {
       case 'lock_open': this.noiseBurst(o, t, 0.06, 'bandpass', 3200, 1500, 8, 0.6); this.tone(o, t + 0.05, 1400, 0.08, 'square', 0.05, 900); this.noiseBurst(o, t + 0.12, 0.12, 'bandpass', 1200, 600, 5, 0.5); break;
       case 'pick_break': this.noiseBurst(o, t, 0.05, 'highpass', 5000, 4000, 2, 0.8); this.tone(o, t, 2600, 0.12, 'triangle', 0.08, 1900); break;
       case 'pick_tick': this.noiseBurst(o, t, 0.025, 'bandpass', 4200, 2000, 10, 0.35); break;
+      // Würfel im Becher und auf dem Holztisch: viele kurze, harte Klacke mit abnehmendem Abstand
+      case 'dice_roll': { let tt = t; for (let i = 0; i < 9; i++) { tt += 0.03 + Math.random() * 0.06 * (1 - i / 12); this.noiseBurst(o, tt, 0.02, 'bandpass', 2200 + Math.random() * 1800, 1200, 6, 0.5 - i * 0.03); } break; }
       default:
         if (id.startsWith('alert_')) {
           const fam = id.slice(6);

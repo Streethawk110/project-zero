@@ -15,6 +15,7 @@ export * from './sim/inventory.ts';
 export * from './sim/character.ts';
 export * from './sim/entities.ts';
 export * from './sim/world.ts';
+export * from './sim/dice.ts';
 export { BELL_SOLUTION, RAIL_SOLUTION, STELE_SOLUTION } from './sim/puzzles.ts';
 export { EVENT_DEFS } from './sim/worldEvents.ts';
 export * from './content/items.ts';

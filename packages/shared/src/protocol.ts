@@ -32,6 +32,7 @@ export type GameCommand =
   | { t: 'sell'; shop: string; uid: string; n: number }
   | { t: 'rest' }
   | { t: 'lockpick'; id: string; ok: boolean }
+  | { t: 'dice'; op: 'roll' | 'bank' | 'quit'; keep?: number[] }
   | { t: 'travel'; rest: string }
   | { t: 'sight'; on: boolean }
   | { t: 'track_quest'; id: string | null }
@@ -132,6 +133,7 @@ export type GameEvent =
   | { e: 'dialogue'; npc: string; speaker: string; name: string; text: string; choices: { text: string; idx: number; tag?: string; disabled?: boolean }[] }
   | { e: 'dialogue_end' }
   | { e: 'lockpick'; id: string; level: number; picks: number }
+  | { e: 'dice'; npc: string; name: string; bet: number; target: number; you: number; them: number; turn: number; roll: number[]; over: '' | 'won' | 'lost' | 'quit'; note: string; opp?: { rolls: { roll: number[]; keep: number[] }[]; bust: boolean; gained: number } }
   | { e: 'shop'; id: string }
   | { e: 'craft_open'; station: 'camp' | 'bench'; name: string }
   | { e: 'rest_open'; id: string }
