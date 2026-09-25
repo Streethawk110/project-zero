@@ -262,7 +262,7 @@ def bake(kind):
         # Krähenfüße
         e = eyeL if sx == 1 else eyeR
         cf = gauss(P, e + np.array([sx * 0.03, 0, -0.01]), np.array([0.01, 0.012, 0.02]))
-        height += np.sin((P[:, 1] - e[1]) * 1500 + (P[:, 0]) * 400 * sx) * cf * 0.25
+        height += np.sin((P[:, 1] - e[1]) * 1500 + (P[:, 0]) * 400 * sx) * cf * 0.05  # fein (stärker wirkte es wie Striche)
     height -= brow_mask * 0.15
     # Rauheit: T-Zone glänzender, Lippen feucht
     rough = 0.6 - 0.06 * gauss(P, nose, np.array([0.02, 0.05, 0.05])) - 0.08 * gauss(P, np.array([0, eyeL[1] + 0.06, eyeL[2]]), np.array([0.04, 0.03, 0.05]))
