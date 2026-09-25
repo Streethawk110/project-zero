@@ -3,6 +3,7 @@
 //   node tools/dev/make-web-artifact.mjs <zielordner>
 import { cp, readdir, readFile, rm, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { gzipSync } from 'node:zlib';
 import { Logger, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
@@ -21,7 +22,8 @@ for (const f of (await readdir(dir)).filter((f) => f.endsWith('.glb'))) {
   const doc = await io.read(join(dir, f));
   for (const e of doc.getRoot().listExtensionsUsed()) if (e.extensionName === 'EXT_meshopt_compression') e.dispose();
   const glb = await io.writeBinary(doc);
-  await writeFile(join(dir, f.replace(/\.glb$/, '.glb.json')), JSON.stringify({ glb: Buffer.from(glb).toString('base64') }));
+  // gzip halbiert die großen Figuren (Artifact: höchstens 16 MB je Datei, 64 MB je Version)
+  await writeFile(join(dir, f.replace(/\.glb$/, '.glb.json')), JSON.stringify({ gz: gzipSync(Buffer.from(glb), { level: 9 }).toString('base64') }));
   await unlink(join(dir, f));
 }
 const noise = join(out, 'assets/textures/cloud-noise-64.bin');

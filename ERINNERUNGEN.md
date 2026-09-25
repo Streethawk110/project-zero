@@ -239,6 +239,9 @@ Profiler nicht mitgezählt – behoben).
   Kieferlinie (Winkel 2 cm unter Mundlinie bei z = cz−0,02 → Kinnunterkante), Seiten zum Kinn gekämmt,
   hinten kürzer. Namensschilder dicht stehender Figuren stapeln sich (hud.ts). Alchemie-UI im Spiel
   geprüft. Nutzerfrage: Projekt ≈ 33.900 Zeilen (TS ~25.900, Python ~7.100).
+- Web-Artifact VERSION 9 (gleicher Link): Modelle jetzt gzip-gepackt in `.glb.json` (`{gz}`, Client
+  entpackt mit `DecompressionStream`) → 45 MB statt 73 MB, Männerfigur 10,9 MB statt 21 (Grenze 16 MB/Datei).
+  Lokal geprüft: 70/70 Modelle, 20/20 Texturen, Figur neu.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

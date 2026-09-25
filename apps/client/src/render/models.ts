@@ -139,7 +139,10 @@ async function loadGlb(file: string) {
     // data:-Adressen oder WebAssembly erlaubt sind (tools/dev/make-web-artifact.mjs)
     const r = await fetch(base + file);
     if (!r.ok) throw new Error(`${file}: ${r.status}`);
-    const bin = Uint8Array.from(atob(((await r.json()) as { glb: string }).glb), (c) => c.charCodeAt(0));
+    const j = (await r.json()) as { glb?: string; gz?: string };
+    let bin = Uint8Array.from(atob(j.gz ?? j.glb ?? ''), (c) => c.charCodeAt(0));
+    // gzip-gepackt (große Figuren): mit dem eingebauten DecompressionStream entpacken
+    if (j.gz) bin = new Uint8Array(await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
     gltf = await loader.parseAsync(bin.buffer, base);
   } else {
     gltf = await loader.loadAsync(base + file);
