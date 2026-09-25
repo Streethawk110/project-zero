@@ -1,6 +1,7 @@
 // Spielsitzung: verbindet Simulation (lokal oder Server), Darstellung, Eingabe, Ton und Oberfläche.
 
 import * as THREE from 'three';
+import { setWindowGlow } from '../render/models.ts';
 import {
   copyMoveState, EMPTY_INPUT, getWorldLayout, INTERACTABLES, ITEMS, MOVE, PROPS, newMoveState, SKILL_BY_ID, stepMovement, TICK_DT, yawDir, yawTo, zoneAt,
   type CharacterData, type CollisionContext, type GameEvent, type MoveInput, type MoveState, type Snapshot, type SnapshotMe, type Collider, rank,
@@ -491,6 +492,7 @@ export class Game {
     const e = this.env;
     this.camera.updateMatrixWorld();
     setFoliageSun(e.sunDir, e.sun.color, e.sun.intensity * (1 - e.nightFactor), this.camera);
+    setWindowGlow(e.nightFactor);
     // Nachts leuchtet der Mond aus der Gegenrichtung (wie die Schattenkamera)
     setImpostorLight(e.atmosphere().sunDir, e.sun.color, e.sun.intensity, e.hemi, this.scene.environmentIntensity);
   }

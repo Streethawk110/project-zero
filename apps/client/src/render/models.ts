@@ -28,6 +28,35 @@ let base = './assets/models/';
 
 /** Materialbibliothek: Namen aus Blender → Materialien mit prozeduralen Texturen. */
 const matCache = new Map<string, THREE.Material>();
+/** Nachts leuchtende Fenster (Kerzen-/Herdschein), aber nicht alle: je Fenster per Lage entschieden. */
+const windowGlow = { value: 0 };
+export function setWindowGlow(night: number) {
+  windowGlow.value = night;
+}
+function windowMaterial() {
+  const m = new THREE.MeshStandardMaterial({ color: 0x2a3036, roughness: 0.18, metalness: 0, emissive: 0xff9a48, emissiveIntensity: 1 });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms['uGlow'] = windowGlow;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWinW;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        #ifdef USE_INSTANCING
+          vWinW = (modelMatrix * instanceMatrix * vec4(position, 1.0)).xyz;
+        #else
+          vWinW = (modelMatrix * vec4(position, 1.0)).xyz;
+        #endif`);
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWinW;\nuniform float uGlow;')
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        vec3 wcell = floor(vWinW * vec3(0.9, 0.7, 0.9));
+        float wr = fract(sin(dot(wcell, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+        // etwa zwei Drittel der Fenster erleuchtet, unterschiedlich hell; tagsüber aus
+        totalEmissiveRadiance *= step(0.33, wr) * mix(0.5, 1.4, fract(wr * 7.13)) * smoothstep(0.35, 0.8, uGlow) * 1.6;`);
+  };
+  m.customProgramCacheKey = () => 'pz-window';
+  return m;
+}
+
 export function namedMaterial(name: string, fallbackColor?: THREE.Color): THREE.Material {
   const key = name.toLowerCase().replace(/\.\d+$/, '');
   const hit = matCache.get(key);
@@ -68,6 +97,7 @@ export function namedMaterial(name: string, fallbackColor?: THREE.Color): THREE.
     case key.startsWith('salt'): m = std({ color: 0xeeeae0, roughness: 0.7 }); break;
     case key.startsWith('ore'): m = tex(TEX.rock(), 1, { color: 0xb07a60 }); break;
     case key.startsWith('herb'): m = std({ color: 0x9ab8a8, roughness: 0.8, emissive: 0x203a30 }); break;
+    case key.startsWith('window'): m = windowMaterial(); break;
     default: m = std({ color: fallbackColor ?? 0x8a8378, roughness: 0.85 });
   }
   m.name = key;

@@ -167,6 +167,10 @@ Profiler nicht mitgezählt – behoben).
   Testseiten jetzt mit fpsCap 15.
 - Menschen: Iris gedämpft (leuchtete), Stoff-Glitzern reduziert (Sheen/Normalen), Dutt (Frisur 4) als
   runde Kugel aus gewickelten Strähnen, Schläfen-Haaransatz bis Augenhöhe (Modell + `scalpMask`).
+- Kleidung: Webung gedämpft (kein Karomuster), Kettenhemd Wiederholung 90, Gürtel weiter außen.
+  Wände: Regenspuren/Flecken (weathering.ts). Nacht filmischer: Belichtung nachts begrenzt (uMax 1,05),
+  Nachthimmel blau getönt, Mondlicht 0,55, feinere Sterne, Fenster leuchten nachts (`windowMaterial`,
+  `setWindowGlow`, ~2/3 der Fenster je Lage). Im Spiel geprüft (Tag, Abend, Nacht).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

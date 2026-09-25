@@ -122,13 +122,15 @@ export class Environment {
       pos[i * 3] = Math.sin(ph) * Math.cos(th) * 3000;
       pos[i * 3 + 1] = Math.cos(ph) * 3000;
       pos[i * 3 + 2] = Math.sin(ph) * Math.sin(th) * 3000;
-      const w = 0.7 + Math.random() * 0.3;
-      col[i * 3] = w; col[i * 3 + 1] = w; col[i * 3 + 2] = w + Math.random() * 0.2;
+      // Wenige helle, viele schwache Sterne; zum Horizont hin blasser (Dunst)
+      const w = (0.25 + Math.pow(Math.random(), 4) * 0.75) * Math.min(1, Math.cos(ph) * 3 + 0.15);
+      const tint = Math.random();
+      col[i * 3] = w * (tint < 0.2 ? 1.0 : 0.9); col[i * 3 + 1] = w * 0.95; col[i * 3 + 2] = w * (tint > 0.7 ? 1.15 : 1.0);
     }
     const sg = new THREE.BufferGeometry();
     sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     sg.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ size: 2.2, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0, depthWrite: false, fog: false }));
+    this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ size: 1.5, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0, depthWrite: false, fog: false }));
     this.stars.frustumCulled = false;
     scene.add(this.stars);
 
@@ -185,7 +187,7 @@ export class Environment {
     lerpColor([[-1, 0x02040a], [-0.08, 0x0a1224], [0.05, 0x46526e], [0.25, 0x3f6ea8], [1, 0x3a6db0]], elev, this.skyTop);
     lerpColor([[-1, 0x05080f], [-0.08, 0x1a2234], [0.04, 0xe39a6a], [0.25, 0xb7c6d6], [1, 0xc4d3e0]], elev, this.skyHorizon);
     const fogDay = lerpColor([[-1, 0x0b1220], [-0.08, 0x141c2c], [0.05, 0xc98a62], [0.25, 0xa2b6cc], [1, 0xa9bfd8]], elev, new THREE.Color());
-    let sunI = elev > -0.05 ? THREE.MathUtils.lerp(0.4, 3.2, THREE.MathUtils.smoothstep(elev, -0.05, 0.4)) : 0.35; // Mondlicht
+    let sunI = elev > -0.05 ? THREE.MathUtils.lerp(0.4, 3.2, THREE.MathUtils.smoothstep(elev, -0.05, 0.4)) : 0.55; // Mondlicht (kühl, genug zum Sehen)
     sunI *= 1 - overcast * 0.55;
     let hemiI = THREE.MathUtils.lerp(0.18, 0.75, day);
     let fogDensity = 0.0018 + overcast * 0.002;

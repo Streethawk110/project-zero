@@ -265,6 +265,8 @@ const atmosphereFrag = /* glsl */ `
         vec4 c = texture2D(tClouds, vUv);
         col = col * (1.0 - c.a) + c.rgb;
       }
+      // Nachthimmel kühl-blau statt grau-braun (Mondnacht)
+      col = mix(col, col * vec3(0.55, 0.72, 1.3) + vec3(0.002, 0.004, 0.01), uNight * 0.85);
     } else {
       if (uAOOn > 0.5) {
         vec4 vp4 = uInvProj * vec4(vUv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
@@ -615,6 +617,12 @@ export class Renderer {
     u['uHeightFalloff']!.value = a.inDungeon ? 0 : 0.018;
     u['uFogBase']!.value = 0;
     u['uNight']!.value = a.night;
+    // Nachts nicht auf Tageshelligkeit hochregeln: die Nacht soll dunkel bleiben (Mondlicht, warme Fenster)
+    if (this.exposure) {
+      const eu = this.exposure.applyMat.uniforms;
+      eu['uMax']!.value = a.inDungeon ? 1.7 : THREE.MathUtils.lerp(1.7, 1.05, a.night);
+      eu['uKey']!.value = a.inDungeon ? 0.05 : THREE.MathUtils.lerp(0.05, 0.03, a.night);
+    }
     u['uCoverage']!.value = a.coverage;
     u['uWind']!.value.copy(this.windOffset);
     u['uCloudsOn']!.value = this.clouds && !a.inDungeon ? 1 : 0;
