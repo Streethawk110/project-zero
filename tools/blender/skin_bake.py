@@ -305,6 +305,14 @@ def bake(kind):
         ex = abs(eyeL[0])
         brow_zone *= smooth01(ex + 0.045 - np.abs(Ps[:, 0]), 0.0, 0.012)
         beard_zone = smooth01(ey - 0.06 - Ps[:, 1], 0.0, 0.02) * smooth01(Ps[:, 1] - (jaw[1] - 0.06), 0.0, 0.02) * (Ps[:, 2] > J["head"][2] - 0.05) * (1 - lips[sel])
+        # Brauenende des Scans liegt weiter außen als unsere Braue: dort glatte Haut im Umgebungston
+        LW1 = np.array([0.2126, 0.7152, 0.0722])
+        med1 = float(np.median(lumb[face_hit])) if face_hit.any() else float(BASE_TONE @ LW1)
+        tail = smooth01(np.abs(Ps[:, 0]) - (ex + 0.038), 0.0, 0.01) * smooth01(Ps[:, 1] - (ey - 0.004), 0.0, 0.006) \
+            * smooth01(ey + 0.05 - Ps[:, 1], 0.0, 0.01) * smooth01(Ps[:, 2] - (J["head"][2] + 0.004), 0.0, 0.01)
+        smooth_skin = BASE_TONE[None, :] * np.clip(0.97 + 0.2 * (lumb - med1) / max(med1, 1e-4), 0.9, 1.05)[:, None]
+        c_s = c_s * (1 - tail[:, None]) + smooth_skin * tail[:, None]
+        brow_zone = brow_zone * (1 - tail)
         if not male:
             # Koteletten des Scans (seitlich vor dem Ohr, bis Augenhöhe) gehören auch weg
             side_burn = smooth01(np.abs(Ps[:, 0]) - (ex + 0.02), 0.0, 0.01) * smooth01(ey + 0.01 - Ps[:, 1], 0.0, 0.01) * smooth01(Ps[:, 1] - (ey - 0.09), 0.0, 0.01) * smooth01(Ps[:, 2] - (J["head"][2] + 0.004), 0.0, 0.01)
