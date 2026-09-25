@@ -132,6 +132,7 @@ export type Effect =
   | { t: 'sleep' }
   | { t: 'dice'; bet: number }
   | { t: 'wash'; full: boolean }
+  | { t: 'train' }
   | { t: 'fine'; op: 'pay' | 'talk' | 'scare' | 'jail' }
   | { t: 'respec' }
   | { t: 'toast'; text: string };
@@ -189,6 +190,7 @@ function parseEffectRaw(s: string): Effect {
     case 'sleep': return { t: 'sleep' };
     case 'dice': return { t: 'dice', bet: num(a, 10) };
     case 'wash': return { t: 'wash', full: a === 'bath' };
+    case 'train': return { t: 'train' };
     case 'fine': return { t: 'fine', op: a as 'pay' };
     case 'restore': return { t: 'restore' };
     case 'respec': return { t: 'respec' };

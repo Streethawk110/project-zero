@@ -1564,6 +1564,9 @@ export class World {
         case 'wash':
           this.wash(p, ef.full);
           break;
+        case 'train':
+          this.train(p);
+          break;
         case 'respec':
           this.emit(p, { e: 'respec_open' });
           break;
@@ -1722,6 +1725,30 @@ export class World {
     if (this.opts.mode === 'sp') this.dayTime = (this.dayTime + 0.5) % 1;
     this.teleport(p, 7, 66.5);
     this.toast(p, this.opts.mode === 'sp' ? 'Zwölf Stunden im Kerker des Vogthauses. Hungrig, aber frei.' : 'Du sitzt deine Strafe im Kerker des Vogthauses ab.', 'bad');
+    p.charDirty = true;
+  }
+
+  /**
+   * Übungskampf mit dem Hauptmann (wie das Training bei Bernard in KCD): einmal pro Spieltag,
+   * Erfahrung, Erschöpfung und blaue Flecken; jede dritte Übung bringt einen Skillpunkt (höchstens drei).
+   */
+  train(p: PlayerEnt) {
+    const c = p.char, f = c.flags;
+    if (this.now() < (f['train_next'] ?? 0)) { this.toast(p, 'Für heute hast du genug geübt. Komm morgen wieder.', 'warn'); return; }
+    if (c.gold < 5) return;
+    c.gold -= 5;
+    f['train_next'] = this.now() + DAY_LENGTH * 1000;
+    f['train_count'] = (f['train_count'] ?? 0) + 1;
+    const nd = needsOf(c);
+    nd.rest = Math.max(0, nd.rest - 20);
+    nd.food = Math.max(0, nd.food - 10);
+    nd.dirt = Math.min(100, (nd.dirt ?? 0) + 20);
+    p.stamina = 0;
+    this.giveXp(p, 40 + c.level * 15, 'Übungskampf');
+    if (f['train_count'] % 3 === 0 && f['train_count'] <= 9) {
+      c.freeSkill += 1;
+      this.toast(p, 'Gerold zeigt dir einen Kniff, den du nicht vergisst: +1 Skillpunkt.', 'good');
+    } else this.toast(p, 'Eine Stunde auf dem Übungsplatz. Dir tut alles weh – aber du wirst besser.', 'good');
     p.charDirty = true;
   }
 

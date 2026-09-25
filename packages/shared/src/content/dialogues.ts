@@ -342,8 +342,14 @@ const nodes: DialogueNode[] = [
   N('captain_root', 'Hauptmann Gerold, Grenzwacht. Wenn du keine Botschaft hast, halt die Leute nicht vom Üben ab.', [
     { text: 'Was ist das für eine Burg?', next: 'cap_castle' },
     { text: 'Was macht die Grenzwacht gegen das Nulllicht?', next: 'cap_null' },
+    { text: 'Bringt Ihr mir das Kämpfen bei? (Übungskampf, 5 Gold)', cond: 'gold>=5', next: 'cap_train' },
     end('Ich gehe schon.'),
   ]),
+  N('cap_train', 'Fünf Gold, und du blutest nicht zu sehr. Stumpfe Klingen, volle Härte. Wer jammert, fliegt. Bereit?', [
+    { text: 'Bereit.', cond: 'gold>=5', effects: ['train'], next: 'cap_train_done' },
+    back('captain_root', 'Lieber nicht.'),
+  ]),
+  N('cap_train_done', 'Nicht schlecht. Deine Deckung ist ein Scheunentor, aber du stehst wieder auf. Das ist mehr, als die meisten schaffen.', [back('captain_root', 'Danke.'), end()]),
   N('cap_castle', 'Haldenstein. Früher saß hier der Vogt, bevor er ins Dorf zog, wo es wärmer ist. Jetzt ist es Kaserne, Pferdestall und Wachturm in einem. Von den Türmen sieht man bis zur Glasnarbe.', [back('captain_root', 'Und sonst?'), end()]),
   N('cap_null', 'Wir halten die Straßen offen und zählen die Nächte. Tagsüber üben die Männer, nachts gehen zwei Mann mit Fackeln um die Mauern. Mehr kann Stahl gegen Licht nicht tun.', [back('captain_root', 'Verstehe.'), end()]),
 

@@ -221,6 +221,8 @@ Profiler nicht mitgezählt – behoben).
   (`kind: 'wash'`), Hedda: Bad 3 Gold (`wash:bath`). Ab 50 teurer beim Händler (+10 %), Bewohner
   kommentieren. Snapshot `gr` (4 Bit Schmutz, 4 Bit Blut) → `rig.setGrime` → Kleidungsshader nutzt
   Ruhelage-Position (`vGPos`, Meter): Dreck von unten, Blutspritzer oben. Vorschau `?grime=N`.
+- KCD2-Umbau Teil 8: ÜBUNGSKAMPF beim Hauptmann (5 Gold, 1× pro Spieltag über `flags.train_next`,
+  EP, erschöpft/dreckig, jede 3. Übung +1 Skillpunkt, max. 3). 39 Unit-Tests.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

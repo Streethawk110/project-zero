@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as inv from '../src/sim/inventory.ts';
+import { SKILL_PER_LEVEL } from '../src/sim/stats.ts';
 import type { NpcEnt } from '../src/sim/entities.ts';
 import { addPlayer, makeWorld } from './helpers.ts';
 
@@ -87,5 +88,22 @@ describe('Schmutz und Blut (KCD2-artig)', () => {
     p.char.needs!.dirt = 80;
     w.applyEffects(p, ['wash:bath']);
     expect(p.char.needs!.dirt).toBe(0);
+  });
+});
+
+describe('Übungskampf auf der Burg', () => {
+  it('kostet Gold, gibt Erfahrung, einmal pro Spieltag, jede dritte Übung einen Skillpunkt', () => {
+    const w = makeWorld('sp');
+    const p = addPlayer(w);
+    p.char.gold = 100;
+    const xp0 = p.char.xp, sp0 = p.char.freeSkill, lv0 = p.char.level;
+    w.train(p);
+    expect(p.char.gold).toBe(95);
+    expect(p.char.xp + p.char.level * 1000).toBeGreaterThan(xp0 + 1000);
+    w.train(p);
+    expect(p.char.gold).toBe(95);
+    for (let i = 0; i < 2; i++) { p.char.flags['train_next'] = 0; w.train(p); }
+    expect(p.char.flags['train_count']).toBe(3);
+    expect(p.char.freeSkill).toBe(sp0 + 1 + (p.char.level - lv0) * SKILL_PER_LEVEL);
   });
 });
