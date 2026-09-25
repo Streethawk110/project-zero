@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { getHeightfield } from '@pz/shared';
 import { settings } from '../settings.ts';
 import { VLight } from './lights.ts';
+import { inDryRoom } from './wetness.ts';
 
 function softDot() {
   const c = document.createElement('canvas');
@@ -365,8 +366,12 @@ export class FX {
       spawn(1, (x, y, z) => this.alpha.emit(x, y, z, (Math.random() - 0.5) * 0.1, -0.05, (Math.random() - 0.5) * 0.1, c, 0.08, 5, 0, 0.1), 12);
     }
     if (weather === 'rain' && wInt > 0.1 && !inDungeon && !settings.reducedEffects) {
-      const c = this.col(0xa8b8c8);
-      spawn(Math.round(30 * wInt), (x, _y, z) => this.alpha.emit(x, cam.y + 12 + Math.random() * 6, z, 0.8, -20, 0.3, c, 0.07, 1.0, 0, 0), 22);
+      // Tropfen selbst: render/rain.ts (Streifen auf der GPU); hier nur Spritzer am Boden rund um die Kamera
+      const c = this.col(0xb8c4d0);
+      spawn(Math.round(10 * wInt), (x, y, z) => {
+        if (inDryRoom(x, y + 0.5, z)) return;
+        for (let k = 0; k < 3; k++) this.alpha.emit(x, y + 0.03, z, (Math.random() - 0.5) * 0.9, 0.9 + Math.random() * 0.8, (Math.random() - 0.5) * 0.9, c, 0.025, 0.2 + Math.random() * 0.1, -9.8, 0);
+      }, 9);
     }
   }
 

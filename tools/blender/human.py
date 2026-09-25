@@ -792,6 +792,8 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
     def hairline(p, front_y=eye_y + 0.074, back_y=y_neck + 0.045):
         ang = abs(math.atan2(p[0] - sc.c[0], p[2] - cz))  # 0 vorn … π hinten
         y = front_y + (back_y - front_y) * (ang / math.pi) ** 1.3
+        # Rund statt gerade: zu den Schläfen hin tiefer (die Stirn wird von einem Bogen eingerahmt)
+        y -= 0.016 * min(ang / 0.9, 1.0) ** 2 * (1.0 - min(max((ang - 0.9) / 1.2, 0.0), 1.0))
         # Schläfen etwas zurückgesetzt, über den Ohren frei
         if 0.9 < ang < 1.9 and p[1] < eye_y + 0.0:
             return False
@@ -817,6 +819,9 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
                 # vom Mittelscheitel zur Seite und nach unten; vorne erst nach hinten/seitlich
                 side = math.copysign(1.0, r[0] - sc.c[0] if abs(r[0] - sc.c[0]) > 0.003 else rnd.choice((-1, 1)))
                 dirv = np.array([side * 0.8, -0.35, -0.5 if r[2] > cz else (r[2] - cz) * 4])
+                # Stirnhaar: flach zur Seite gestrichen (nicht nach unten ins Gesicht), rundet den Ansatz
+                if r[2] > cz + 0.035:
+                    dirv = np.array([side * 1.0, -0.08, -0.35])
                 if not long_:
                     dirv += np.array([rnd.uniform(-0.6, 0.6), rnd.uniform(-0.2, 0.3), rnd.uniform(-0.6, 0.6)])
                 L = rnd.uniform(0.3, 0.38) if long_ else rnd.uniform(0.1, 0.16)
@@ -885,7 +890,7 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
             cards.append((pts, [0.022, 0.024, 0.024, 0.018], ns, (0.8, rnd.random(), 0.25)))
     # Keine Strähne quer durchs Gesicht (Stirn/Augen): solche Karten verwerfen
     def crosses_face(pts):
-        return any(p[2] > cz + 0.045 and eye_y - 0.1 < p[1] < eye_y + 0.07 and abs(p[0] - sc.c[0]) < 0.06 for p in pts)
+        return any(p[2] > cz + 0.045 and eye_y - 0.1 < p[1] < eye_y + 0.048 and abs(p[0] - sc.c[0]) < 0.06 for p in pts)
     # Karten mit scharfem Knick (Ausweichen am Gesicht) wirken seitlich betrachtet wie Zickzack-Linien
     def kinked(pts):
         for i in range(1, len(pts) - 1):
@@ -1060,8 +1065,9 @@ def eyelashes(base, v, W):
             j = me.loops[li].vertex_index
             g, d, a = info[j]
             d0, d1, a0, a1 = rng[g]
-            # nur der lichte Rand der Strähnen-Textur (einzelne Härchen statt dichter Strähne)
-            uvl[li].uv = (0.015 + 0.13 * (a - a0) / max(a1 - a0, 1e-6), (d - d0) / max(d1 - d0, 1e-6))
+            # Übergang lockeres Büschel → Einzelhaare im Haaratlas – dichte Büschel ergäben einen dicken
+            # schwarzen Lidstrich, nur Einzelhaare wirken wimpernlos
+            uvl[li].uv = (0.66 + 0.24 * (a - a0) / max(a1 - a0, 1e-6), (d - d0) / max(d1 - d0, 1e-6))
     # Untere Wimpern: echte sind kurz und spärlich – sonst wirkt es wie ein dicker Kajalstrich
     lower = {}
     for g in groups:

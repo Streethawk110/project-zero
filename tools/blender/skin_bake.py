@@ -224,7 +224,7 @@ def bake(kind):
         t = np.clip((dx + 0.026) / 0.06, 0, 1)
         # Bogen: höchster Punkt bei ~60 %, außen abfallend; innen dicker, außen spitz zulaufend
         arch = e[1] + 0.02 + 0.007 * np.sin(np.clip(t, 0, 1) * np.pi * 0.85) - 0.004 * t * t
-        half = (0.0068 if male else 0.0042) * (1.0 - 0.7 * t ** 1.5)
+        half = (0.0068 if male else 0.0052) * (1.0 - 0.7 * t ** 1.5)
         inside = smooth01(half - np.abs(P[:, 1] - arch), 0.0, 0.0018)
         band = inside * smooth01(dx, -0.027, -0.02) * smooth01(0.036 - dx, 0.0, 0.006) * (P[:, 2] > e[2] - 0.02)
         brow = np.maximum(brow, band)
@@ -308,7 +308,7 @@ def bake(kind):
         # Brauenende des Scans liegt weiter außen als unsere Braue: dort glatte Haut im Umgebungston
         LW1 = np.array([0.2126, 0.7152, 0.0722])
         med1 = float(np.median(lumb[face_hit])) if face_hit.any() else float(BASE_TONE @ LW1)
-        tail = smooth01(np.abs(Ps[:, 0]) - (ex + 0.038), 0.0, 0.01) * smooth01(Ps[:, 1] - (ey - 0.004), 0.0, 0.006) \
+        tail = smooth01(np.abs(Ps[:, 0]) - (ex + 0.03), 0.0, 0.012) * smooth01(Ps[:, 1] - (ey - 0.004), 0.0, 0.006) \
             * smooth01(ey + 0.05 - Ps[:, 1], 0.0, 0.01) * smooth01(Ps[:, 2] - (J["head"][2] + 0.004), 0.0, 0.01)
         smooth_skin = BASE_TONE[None, :] * np.clip(0.97 + 0.2 * (lumb - med1) / max(med1, 1e-4), 0.9, 1.05)[:, None]
         c_s = c_s * (1 - tail[:, None]) + smooth_skin * tail[:, None]
@@ -327,6 +327,16 @@ def bake(kind):
             c_s = c_s * (1 - soft[:, None]) + cb_s * soft[:, None]
             c_s = c_s * (1 - bz[:, None]) + cheek * bz[:, None]
             dark = dark * (1 - beard_zone)
+            # Brauen des (männlichen) Scans sind buschig und verwischt – bei Frauen samt Nasenwurzel durch
+            # glatte Haut ersetzen; die Braue selbst kommt fein gezeichnet aus der prozeduralen Haarmaske
+            # Füllfarbe = Stirnton des Scans direkt darüber; weiche Ränder (sonst sichtbares Band)
+            front = Ps[:, 2] > J["head"][2]
+            fsel = front & (Ps[:, 1] > ey + 0.058) & (Ps[:, 1] < ey + 0.078) & (np.abs(Ps[:, 0]) < ex) & hit
+            fh = np.median(c_s[fsel], axis=0) if fsel.any() else BASE_TONE * 0.97
+            bzf = smooth01(Ps[:, 1] - (ey + 0.002), 0.0, 0.01) * smooth01(ey + 0.062 - Ps[:, 1], 0.0, 0.02) * front \
+                * smooth01(ex + 0.05 - np.abs(Ps[:, 0]), 0.0, 0.015)
+            var = np.clip(1.0 + 0.25 * (lumb - med1) / max(med1, 1e-4), 0.94, 1.04)
+            c_s = c_s * (1 - bzf[:, None]) + (fh[None, :] * var[:, None]) * bzf[:, None]
         # Lippen: wo der Scan Lippen hat oder die Figur ihre Lippen hat, die eigene (geometrisch passende)
         # Lippenfarbe verwenden, mit der Hautstruktur des Scans
         LW = np.array([0.2126, 0.7152, 0.0722])
@@ -344,6 +354,10 @@ def bake(kind):
         if not male:
             dark = dark * 0.5  # Frauenbrauen feiner
         hair_s = np.clip(np.maximum(dark * brow_zone * 1.2, dark * beard_zone * (0.8 if male else 0.0)), 0, 1)
+        if not male:
+            # fein gezeichnete Braue: kräftiger in der Maske und leicht dunkler in der Grundfarbe
+            hair_s = np.clip(brow_mask[sel] * 1.6, 0, 1)
+            c_s = c_s * (1 - hair_s[:, None] * 0.45)
         # Lücken (Strahl verfehlt den Scan) mit den benachbarten Scan-Farben füllen statt den glatten
         # Grundton durchscheinen zu lassen
         import foliage_bake as fb_

@@ -19,7 +19,8 @@ export const wetness = {
 };
 
 let roomsBuilt = false;
-function buildRooms() {
+/** Innenräume einmalig aus dem Weltaufbau bestimmen (vor dem ersten Shader mit Innenraumprüfung). */
+export function buildRooms() {
   if (roomsBuilt) return;
   roomsBuilt = true;
   const rects: THREE.Vector4[] = [], tops: number[] = [];
@@ -48,6 +49,14 @@ export function updateWetness(dt: number, raining: boolean, intensity: number, i
 }
 
 /** Überschreibt die Nässe direkt (Teleport, Laden, Wetterwechsel ohne Übergang). */
+/** Liegt der Punkt unter dem Dach eines begehbaren Hauses? */
+export function inDryRoom(x: number, y: number, z: number) {
+  buildRooms();
+  const r = wetness.uDryRoom.value, t = wetness.uDryTop.value;
+  for (let i = 0; i < r.length; i++) if (x > r[i]!.x && x < r[i]!.z && z > r[i]!.y && z < r[i]!.w && y < t[i]!) return true;
+  return false;
+}
+
 export function setWetness(v: number) {
   wetness.uWet.value = Math.max(0, Math.min(1, v));
 }

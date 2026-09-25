@@ -270,6 +270,7 @@ export function skinMaterial(sex: Sex, skin: THREE.Color, hair: THREE.Color, old
         float scalpMask(vec3 p) {
           float ang = abs(atan(p.x - uLm.z, p.z - uLm.w));
           float y = uLm.x + 0.071 + ((uLm.y + 0.05) - (uLm.x + 0.071)) * pow(ang / PI, 1.3);
+          y -= 0.016 * pow(min(ang / 0.9, 1.0), 2.0) * (1.0 - clamp((ang - 0.9) / 1.2, 0.0, 1.0));
           float temple = (ang > 0.9 && ang < 1.9) ? smoothstep(uLm.x - 0.008, uLm.x + 0.016, p.y) : 1.0;
           return smoothstep(y - 0.004, y + 0.014, p.y) * temple;
         }`)

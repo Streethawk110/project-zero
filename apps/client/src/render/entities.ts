@@ -307,6 +307,11 @@ export class EntityManager {
   camPos = new THREE.Vector3();
   /** 0 = Tag … 1 = Nacht (für Fackeln) */
   night = 0;
+  /** 0 = warm … 1 = kalt: ab ~0,3 sieht man den Atem (Nacht, Gebirge, Regen) */
+  cold = 0;
+  private breathPos = new THREE.Vector3();
+  private breathDir = new THREE.Vector3();
+  private breathCol = new THREE.Color(0.9, 0.92, 0.95);
 
   update(dt: number, renderTime: number, groundAt: (x: number, z: number) => number, time: number) {
     for (const v of this.views.values()) {
@@ -325,6 +330,21 @@ export class EntityManager {
         const gr = groundAt(v.pos.x - Math.cos(v.yaw) * 0.12, v.pos.z + Math.sin(v.yaw) * 0.12) - v.pos.y;
         v.rig.update(dt, hSpeed, clampG(gl), clampG(gr));
         v.rig.setLod(v.pos.distanceToSquared(this.camPos) > 16 * 16 ? 1 : 0);
+        if (v.rig.exhaled) {
+          v.rig.exhaled = false;
+          const near = v.pos.distanceToSquared(this.camPos) < 14 * 14;
+          const cold = this.cold + (v.pos.y > 70 ? (v.pos.y - 70) / 60 : 0);
+          if (near && cold > 0.3) {
+            v.rig.mouthWorld(this.breathPos, this.breathDir);
+            const k = Math.min(1, (cold - 0.3) * 2);
+            for (let i = 0; i < 4; i++) {
+              const sp = 0.18 + Math.random() * 0.2;
+              this.fx.alpha.emit(this.breathPos.x, this.breathPos.y, this.breathPos.z,
+                this.breathDir.x * sp + (Math.random() - 0.5) * 0.05, this.breathDir.y * sp + 0.04, this.breathDir.z * sp + (Math.random() - 0.5) * 0.05,
+                this.breathCol, 0.05 + 0.03 * k, 0.9 + Math.random() * 0.5, -0.03, 1.2, 0.18);
+            }
+          }
+        }
         if (v.torch) {
           const on = this.night > 0.45;
           v.torch.visible = on;

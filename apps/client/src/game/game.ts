@@ -27,6 +27,7 @@ import { makeColossus, makeCrystalPillar, makeGlassrunner, makeMoth } from '../r
 import { OUTFITS, makeWeapon } from '../render/rig.ts';
 import type { AudioEngine } from '../audio/audio.ts';
 import type { GameUI } from '../ui/gameui.ts';
+import { Rain } from '../render/rain.ts';
 
 export interface InteractTarget { label: string; key: string; id?: string; eid?: number; kind: string; x: number; z: number }
 
@@ -38,6 +39,7 @@ export class Game {
   env: Environment;
   terrain: Terrain;
   water: Water;
+  rain: Rain;
   grass: Grass;
   world: WorldView;
   fx: FX;
@@ -105,6 +107,8 @@ export class Game {
     this.scene.add(this.world.group);
     this.fx = new FX();
     this.scene.add(this.fx.group);
+    this.rain = new Rain(this.terrain.heightTex, settings.graphics === 'niedrig' ? 4000 : 9000);
+    this.scene.add(this.rain.mesh);
     this.ents = new EntityManager(this.fx);
     this.scene.add(this.ents.group);
     // Namen für Messungen (tools/dev/profile.mjs)
@@ -572,6 +576,8 @@ export class Game {
     const renderTime = performance.now() / 1000 - (this.serverTimeOffset ?? 0) - this.interpDelay;
     this.ents.camPos.copy(this.camera.position);
     this.ents.night = this.env.nightFactor;
+    // Kälte für sichtbaren Atem: nachts, im Regen, im Nebel am Morgen; im Gebirge zusätzlich je Höhe (EntityManager)
+    this.ents.cold = this.inDungeon ? 0 : this.env.nightFactor * 0.55 + (this.weather === 'rain' || this.weather === 'fog' ? 0.15 * (this.snap?.wInt ?? 0) : 0);
     if (!this.paused) this.ents.update(dt, renderTime, this.groundAt, this.time);
     void pv;
 
@@ -596,6 +602,11 @@ export class Game {
     this.updateDynamicObjects();
     this.fx.ambient(dt, this.camera.position, zoneAt(ppos.x, ppos.z)?.id ?? null, this.isNight, this.inDungeon, this.weather, this.snap?.wInt ?? 0);
     this.fx.update(this.paused ? 0 : dt);
+    {
+      const raining = (this.weather === 'rain' || this.weather === 'nullstorm') && !this.inDungeon && !settings.reducedEffects;
+      const light = this.env.hemi.color.clone().multiplyScalar(this.env.hemi.intensity * 0.9).add(new THREE.Color(0.04, 0.045, 0.05));
+      this.rain.update(this.camera.position, this.time, raining ? (this.snap?.wInt ?? 0) : 0, this.env.indoor, light);
+    }
 
     // Nachbearbeitung: Nullsicht, Schadenstönung
     const grade = this.renderer.grade;

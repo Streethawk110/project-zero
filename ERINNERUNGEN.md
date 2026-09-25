@@ -275,6 +275,16 @@ Profiler nicht mitgezählt – behoben).
   Streifen, Händler, Schlafende bleiben), Grüße wetterabhängig („Sauwetter!“ statt „Schönes Wetter“).
   Umplanen mitten auf der Strecke schnitt Hausecken (Elsa blieb hängen) → Startpunkt nur überspringen,
   wenn man dort steht. Test „Bei Regen …“ (44 Unit-Tests grün).
+  Teil 4: REGEN als Streifen auf der GPU (`render/rain.ts`: weltfestes Tropfenraster um die Kamera, schräg im
+  Wind, endet am Boden (Höhentextur) und unter Dächern (`uDryRoom`), aus im Haus), Bodenspritzer in fx.ts
+  (`inDryRoom`). ACHTUNG Tests: Grafikprofile heißen 'ultra'|'hoch'|'mittel'|'niedrig' – "low" ist ungültig.
+  Teil 5: ATEMHAUCH in der Kälte (Nacht, Regen/Nebel, Höhe > 70 m): `rig.exhaled` beim Ausatmen,
+  `rig.mouthWorld`, `EntityManager.cold`, nur im Umkreis 14 m.
+  Teil 6: Gesichter/Haare: Haaransatz-„Kerbe“ = gerade Kappenkante über freier Stirn → Haaransatz zu den
+  Schläfen hin gerundet (human.py `hairline` + Shader `scalpMask` gleich), Stirnhaar flach zur Seite,
+  Gesichtsfilter nur bis eye+0,048. Wimpern nutzten die dichten Büschel des neuen Haaratlas (dicker schwarzer
+  Lidstrich) → Spalte mit Einzelhaaren (u 0,77–0,97). Frauen: buschige Scan-Brauen + Nasenwurzel durch
+  Stirnton ersetzt (weiche Ränder), Braue aus prozeduraler Maske ×1,6.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

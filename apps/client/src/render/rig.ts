@@ -247,6 +247,9 @@ export class HumanoidRig {
   private blinkT = 1 + Math.random() * 3;
   private blinkK = 0;
   private lifeT = Math.random() * 100;
+  private lastBr = 0;
+  /** Einmal-Merker: Figur hat gerade ausgeatmet (EntityManager holt ihn ab) */
+  exhaled = false;
   /** > 0: Figur spricht (Sekunden), Kiefer und Lippen bewegen sich */
   talking = 0;
   /** Stimmung für die Mimik: -1 (grimmig) … 0 … 1 (freundlich) */
@@ -805,6 +808,13 @@ export class HumanoidRig {
     }
   }
 
+  /** Weltposition vor dem Mund und Blickrichtung (für Atemhauch). */
+  mouthWorld(pos: THREE.Vector3, dir: THREE.Vector3) {
+    this.j.head.updateWorldMatrix(true, false);
+    pos.set(0, 0.035, 0.11).applyMatrix4(this.j.head.matrixWorld);
+    dir.set(0, -0.15, 1).transformDirection(this.j.head.matrixWorld);
+  }
+
   /**
    * Was eine Figur lebendig wirkt: Atmen, Gewichtsverlagerung, Kopf folgt dem Blickziel,
    * Blinzeln (auch doppelt), Kiefer und Lippen beim Sprechen, Grundstimmung, Griff um die Waffe.
@@ -815,6 +825,9 @@ export class HumanoidRig {
     const calm = grounded && speed < 0.3 && (this.anim === 'idle' || this.anim === 'talk' || this.anim === 'recover');
     // Atmung (Brustkorb hebt sich), in Ruhe langsam, nach Bewegung schneller
     const br = s(t * (speed > 3 ? 3.2 : 1.7));
+    // Ausatmen beginnt (Brustkorb senkt sich): für den sichtbaren Atemhauch in der Kälte
+    if (this.lastBr > 0 && br <= 0) this.exhaled = true;
+    this.lastBr = br;
     this.j.chest.rotateX(-br * 0.012);
     this.j.shoulderL.rotateZ(br * 0.01);
     this.j.shoulderR.rotateZ(-br * 0.01);
