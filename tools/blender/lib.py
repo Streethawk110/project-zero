@@ -347,7 +347,7 @@ def export(name, objs=None, lod_ratio=None, uv_scale=None, lod1_objs=None):
     skinned = any(o.type == "ARMATURE" for o in targets)
     bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True, export_apply=not skinned, export_yup=True,
                               export_texcoords=True, export_normals=True, export_materials="EXPORT", export_extras=False,
-                              export_animations=False, export_skins=skinned, export_vertex_color="ACTIVE")
+                              export_animations=False, export_skins=skinned, export_vertex_color="ACTIVE", export_morph_normal=False)
     entry = {"file": f"{name}.glb"}
     if lod1_objs:
         bpy.ops.object.select_all(action="DESELECT")

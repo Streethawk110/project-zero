@@ -864,8 +864,8 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
     cap_keep = lambda p: hairline(p, front_y=eye_y + 0.088, back_y=y_neck + 0.06)
     cap, cused = make_mesh(f"hair_{style}_cap", base, v, W, {"body"}, "hair_cap", lambda c, vs: c[1] > y_neck - 0.03 and cap_keep(c))
     offset(cap, 0.0025)
-    add_keys_after_offset(cap, cused, v, FACE_KEYS)
-    follow_keys(o, base, v, FACE_KEYS)
+    add_keys_after_offset(cap, cused, v, SKULL_KEYS)
+    follow_keys(o, base, v, SKULL_KEYS)
     return [o, cap]
 
 
@@ -912,11 +912,15 @@ def beard_style(style, base, v, J, W):
 
 
 FACE_KEYS = [k for k in SHAPES if k.startswith("f_")] + ["brows", "frown"]
+# Formziele, die den Schädel verändern (für Haarkappe und Strähnen – Nase/Lippen/Mimik brauchen sie nicht)
+SKULL_KEYS = ["f_jaw_strong", "f_narrow", "f_round", "f_old", "f_brow"]
+# Bart: Kiefer, Wangen, Kinn
+BEARD_KEYS = ["f_jaw_strong", "f_narrow", "f_gaunt", "f_round", "f_old"]
 
 
 def beard_follow_jaw(o, base, v):
     """Bart folgt Kiefer und Gesichtsform (siehe follow_keys)."""
-    follow_keys(o, base, v, ["jaw"] + FACE_KEYS)
+    follow_keys(o, base, v, ["jaw"] + BEARD_KEYS)
 
 
 def follow_keys(o, base, v, names):
@@ -944,7 +948,7 @@ def follow_keys(o, base, v, names):
         for lst in near:
             tot = sum(w for _, w in lst)
             vals.append(sum((d[i] * w for i, w in lst), np.zeros(3)) / max(tot, 1e-9))
-        if max(float(np.abs(x).max()) for x in vals) < 1e-6:
+        if max(float(np.abs(x).max()) for x in vals) < 5e-4:
             continue
         k = o.shape_key_add(name=nm, from_mix=False)
         for vt, dv in zip(o.data.vertices, vals):

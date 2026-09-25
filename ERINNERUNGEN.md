@@ -159,6 +159,9 @@ Profiler nicht mitgezählt – behoben).
   Frei hängende Strähnen fallen jetzt nach unten. Haar: weniger Himmelsglanz, Gegenlicht-Saum,
   Alpha-to-Coverage bei MSAA. Falten je Alter (graues Haar → kräftiger). Kettenhemd: Lücken zeigen
   dunklen Gambeson statt schwarzem Metall, feinere Ringe. Gesprächskamera: Gesicht höher im Bild.
+- Haare: Kajiya-Kay-Glanz (2 Bänder), Strähnenvariation; Formziele nur Schädel (`SKULL_KEYS`), Bart
+  `BEARD_KEYS`, Export ohne Formnormalen (`export_morph_normal=False`) → human_male 11,3 MB statt 17,6.
+  Web-Artifact Version 7 (59 MB, Texturen 1024).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.
