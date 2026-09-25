@@ -301,8 +301,14 @@ def bake(kind):
         Ps = P[sel]
         ey = (eyeL[1] + eyeR[1]) / 2
         brow_zone = smooth01(Ps[:, 1] - (ey + 0.006), 0.0, 0.006) * smooth01(ey + 0.05 - Ps[:, 1], 0.0, 0.008) * (Ps[:, 2] > J["head"][2])
+        # seitlich nicht über das Brauenende hinaus (sonst dunkler Schatten bis zur Schläfe)
+        ex = abs(eyeL[0])
+        brow_zone *= smooth01(ex + 0.045 - np.abs(Ps[:, 0]), 0.0, 0.012)
         beard_zone = smooth01(ey - 0.06 - Ps[:, 1], 0.0, 0.02) * smooth01(Ps[:, 1] - (jaw[1] - 0.06), 0.0, 0.02) * (Ps[:, 2] > J["head"][2] - 0.05) * (1 - lips[sel])
         if not male:
+            # Koteletten des Scans (seitlich vor dem Ohr, bis Augenhöhe) gehören auch weg
+            side_burn = smooth01(np.abs(Ps[:, 0]) - (ex + 0.02), 0.0, 0.01) * smooth01(ey + 0.01 - Ps[:, 1], 0.0, 0.01) * smooth01(Ps[:, 1] - (ey - 0.09), 0.0, 0.01) * smooth01(Ps[:, 2] - (J["head"][2] + 0.004), 0.0, 0.01)
+            beard_zone = np.maximum(beard_zone, side_burn)
             # Bartschatten entfernen: im Bartbereich glatte Wangenhaut (Grundton mit leichter Helligkeits-
             # variation des geglätteten Scans) statt verwischter grauer Stoppeln; sonst Haut etwas weicher
             LW0 = np.array([0.2126, 0.7152, 0.0722])

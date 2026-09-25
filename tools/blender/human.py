@@ -1041,6 +1041,19 @@ def eyelashes(base, v, W):
             d0, d1, a0, a1 = rng[g]
             # nur der lichte Rand der Strähnen-Textur (einzelne Härchen statt dichter Strähne)
             uvl[li].uv = (0.015 + 0.13 * (a - a0) / max(a1 - a0, 1e-6), (d - d0) / max(d1 - d0, 1e-6))
+    # Untere Wimpern: echte sind kurz und spärlich – sonst wirkt es wie ein dicker Kajalstrich
+    lower = {}
+    for g in groups:
+        c = ecent["l" if "-l-" in g else "r"]
+        ys = [v[used[j]][1] - c[1] for j, (gg, _, _) in info.items() if gg == g]
+        lower[g] = float(np.mean(ys)) < 0
+    for j, (g, d, _) in info.items():
+        if not lower[g]:
+            continue
+        d0, d1, _, _ = rng[g]
+        c = B(ecent["l" if "-l-" in g else "r"])
+        s_ = (d0 + (d - d0) * 0.4) / max(d, 1e-6)
+        me.vertices[j].co = c + (me.vertices[j].co - c) * s_
     attr = me.color_attributes.new("tree", "FLOAT_COLOR", "POINT")
     for k in range(len(me.vertices)):
         attr.data[k].color = (0.0, 0.85, 0.5, 1.0)
