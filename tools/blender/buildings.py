@@ -361,6 +361,7 @@ def smithy():
     parts.append(box("coals", (0.9, 0.9, 0.1), (-1.5, 2.2, 1.02), material="glow_warm"))
     parts.append(cyl("hood", 0.7, 1.0, (-1.5, 2.2, 2.2), material="stone_block", r2=0.3, seg=8))
     parts.append(box("flue", (0.5, 0.5, 3.0), (-1.5, 2.2, 3.9), material="stone_block"))
+    parts.append(box("chimneycap", (0.62, 0.62, 0.08), (-1.5, 2.2, 5.44), material="stone"))
     parts.append(cyl("quench", 0.45, 0.6, (0.6, 2.9, 0.3), material="wood_dark", seg=12))
     parts.append(cyl("quenchwater", 0.4, 0.05, (0.6, 2.9, 0.58), material="water", seg=12))
     parts.append(box("rack", (2.0, 0.1, 1.4), (2.5, 0.95, 1.5), material="wood_dark"))
@@ -742,7 +743,9 @@ def castle():
                 a = k / 10 * math.tau
                 parts.append(box("tmerlon", (0.9, 0.55, 1.0), (x + math.cos(a) * 3.35, y + math.sin(a) * 3.35, 11.3), rot=(0, 0, a + math.pi / 2), material="stone_block"))
             parts.append(cone("towerroof", 3.9, 5.0, (x, y, 13.8), material="roof", seg=16))
-            parts.append(beam("finial", (x, y, 16.2), (x, y, 17.2), 0.07, material="metal_dark"))
+            parts.append(beam("finial", (x, y, 16.2), (x, y, 18.4), 0.07, material="metal_dark"))
+            # Wimpel an der Turmspitze (weht im Client als Stoff; hier nur Lage/Größe)
+            parts.append(box("flag", (1.6, 0.03, 0.7), (x + 0.82, y, 17.9), material="cloth_blue"))
             # Schießscharten
             for k in range(3):
                 a = (k / 3 + 0.12) * math.tau

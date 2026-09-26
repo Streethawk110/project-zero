@@ -28,6 +28,8 @@ import { OUTFITS, makeWeapon } from '../render/rig.ts';
 import type { AudioEngine } from '../audio/audio.ts';
 import type { GameUI } from '../ui/gameui.ts';
 import { Rain } from '../render/rain.ts';
+import { Life, updateWind, wind } from '../render/life.ts';
+import { windUniforms } from '../render/foliage.ts';
 
 export interface InteractTarget { label: string; key: string; id?: string; eid?: number; kind: string; x: number; z: number }
 
@@ -40,6 +42,7 @@ export class Game {
   terrain: Terrain;
   water: Water;
   rain: Rain;
+  life: Life;
   grass: Grass;
   world: WorldView;
   fx: FX;
@@ -108,6 +111,8 @@ export class Game {
     this.fx = new FX();
     this.scene.add(this.fx.group);
     this.rain = new Rain(this.terrain.heightTex, settings.graphics === 'niedrig' ? 4000 : 9000);
+    this.life = new Life();
+    this.scene.add(this.life.group);
     this.scene.add(this.rain.mesh);
     this.ents = new EntityManager(this.fx);
     this.scene.add(this.ents.group);
@@ -412,6 +417,7 @@ export class Game {
     this.water.update(this.time, this.env.sunDir, this.env.sun.color, this.env.fog.color, this.env.nightFactor, 0, this.env.skyTop, this.env.skyHorizon);
     this.grass.update(this.camera.position, new THREE.Vector3(9999, 0, 9999), this.time, 1, this.env.sun.color, this.env.sun.intensity, this.env.hemi.color.clone().multiplyScalar(this.env.hemi.intensity), true);
     this.world.update(this.camera.position, this.env.nightFactor, dt, this.time, false);
+    this.updateLife(dt, 'clear', 0, false);
     this.updateVegetationLight();
     lightManager.update(this.camera.position, dt);
     this.fx.ambient(dt, this.camera.position, 'haldenbruck', false, false, 'clear', 0);
@@ -597,6 +603,7 @@ export class Game {
     this.terrain.group.visible = !this.inDungeon;
     this.grass.update(this.camera.position, ppos, this.time, this.weather === 'rain' || this.weather === 'nullstorm' ? 2.2 : 1, this.env.sun.color, this.env.sun.intensity * (this.inDungeon ? 0 : 1), this.env.hemi.color.clone().multiplyScalar(this.env.hemi.intensity), !this.inDungeon);
     this.world.update(this.camera.position, this.env.nightFactor, dt, this.time, this.inDungeon);
+    this.updateLife(dt, this.weather, this.snap?.wInt ?? 0, this.inDungeon);
     this.updateVegetationLight();
     lightManager.update(this.camera.position, dt);
     this.updateDynamicObjects();
@@ -731,6 +738,17 @@ export class Game {
     let n = 0;
     for (const v of this.ents.views.values()) if (v.kind === 'e' && v.anim !== 'die' && v.anim !== 'dead' && v.target === this.conn.eid && v.pos.distanceTo(p) < 30) n++;
     return n;
+  }
+
+  /** Wind, Rauch, Stoffe und Tiere der Umgebung (lebendige Welt). */
+  private updateLife(dt: number, weather: string, wInt: number, inDungeon: boolean) {
+    updateWind(this.time, weather, wInt);
+    windUniforms.uWindStrength.value = 0.7 + wind.strength * 0.5;
+    const sunDir = this.env.sun.position.clone().sub(this.env.sun.target.position).normalize();
+    const sun = this.env.sun.color.clone().multiplyScalar(this.env.sun.intensity);
+    const amb = this.env.hemi.color.clone().multiplyScalar(this.env.hemi.intensity);
+    this.life.update(dt, this.time, this.camera, sunDir, sun, amb, this.env.nightFactor, weather, inDungeon);
+    (this.rain as unknown as { mat: THREE.ShaderMaterial }).mat.uniforms['uWind']!.value.copy(wind.dir).multiplyScalar(0.6 + wind.strength * 0.8);
   }
 
   private footT2 = 0;

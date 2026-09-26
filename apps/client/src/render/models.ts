@@ -24,7 +24,20 @@ export interface ModelTemplate {
 }
 
 const templates = new Map<string, ModelTemplate>();
-let manifest: Record<string, { file: string; lod1?: string }> = {};
+export interface ModelEmitters {
+  /** Rauchquellen (Schornsteinkappen) im Modellraum */
+  smoke?: [number, number, number][];
+  /** Hängende Banner: Mitte, Breite, Höhe, Breitenrichtung (x, z) */
+  banner?: { p: [number, number, number]; w: number; h: number; d: [number, number] }[];
+  /** Wimpel: Stangenpunkt (Mitte der Stangenkante), Richtung zur Spitze (x, z), Länge, Höhe */
+  flag?: { p: [number, number, number]; w: number; h: number; d: [number, number] }[];
+}
+let manifest: Record<string, { file: string; lod1?: string; emit?: ModelEmitters }> = {};
+
+/** Aus Blender exportierte Effektpunkte eines Modells (Rauch, Banner, Wimpel). */
+export function modelEmitters(name: string): ModelEmitters | undefined {
+  return manifest[name]?.emit;
+}
 let base = './assets/models/';
 
 /** Materialbibliothek: Namen aus Blender → Materialien mit prozeduralen Texturen. */

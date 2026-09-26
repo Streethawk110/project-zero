@@ -72,6 +72,48 @@ const GradeShader = {
   `,
 };
 
+/**
+ * Durchscheinende Effekte (Rauch, Staub) werden NACH der Atmosphäre gezeichnet – sonst legt die Atmosphäre
+ * Wolken und Dunst über sie, weil sie keine Tiefe schreiben. Sie vergleichen selbst mit der Szenentiefe
+ * („weiche Partikel“ wie in der Unreal Engine): kein hartes Abschneiden an Dächern und Wänden.
+ */
+export const overlayScene = new THREE.Scene();
+export const softDepth = {
+  tSceneDepth: { value: null as THREE.Texture | null },
+  uNearFar: { value: new THREE.Vector2(0.1, 3000) },
+  uSoftRes: { value: new THREE.Vector2(1, 1) },
+  uSoftOn: { value: 0 },
+};
+/** GLSL für weiche Partikel: Faktor 0–1 aus dem Abstand zur Szenentiefe (Übergang über `range` Meter). */
+export const SOFT_GLSL = /* glsl */ `
+  uniform sampler2D tSceneDepth; uniform vec2 uNearFar; uniform vec2 uSoftRes; uniform float uSoftOn;
+  float softFade(float viewZ, float range) {
+    if (uSoftOn < 0.5) return 1.0;
+    float d = texture2D(tSceneDepth, gl_FragCoord.xy / uSoftRes).x;
+    float n = uNearFar.x, f = uNearFar.y;
+    float sceneZ = (n * f) / ((f - n) * d - f);
+    return clamp((viewZ - sceneZ) / range, 0.0, 1.0);
+  }
+`;
+
+class OverlayPass extends Pass {
+  constructor(private camera: THREE.PerspectiveCamera, private depth: THREE.Texture) {
+    super();
+    this.needsSwap = false;
+  }
+  override render(renderer: THREE.WebGLRenderer, _w: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget) {
+    softDepth.tSceneDepth.value = this.depth;
+    softDepth.uNearFar.value.set(this.camera.near, this.camera.far);
+    softDepth.uSoftRes.value.set(readBuffer.width, readBuffer.height);
+    softDepth.uSoftOn.value = 1;
+    const ac = renderer.autoClear;
+    renderer.autoClear = false;
+    renderer.setRenderTarget(readBuffer);
+    renderer.render(overlayScene, this.camera);
+    renderer.autoClear = ac;
+  }
+}
+
 /** Rendert die Szene in ein eigenes HDR-Ziel mit Tiefentextur (für AO und Atmosphäre). */
 class ScenePass extends Pass {
   rt: THREE.WebGLRenderTarget;
@@ -547,6 +589,7 @@ export class Renderer {
     const ao = settings.ao ? new AOPass(depthTex, settings.graphics === 'ultra' ? 16 : 10) : null;
     this.atmosphere = new AtmospherePass(depthTex, this.clouds, rays, ao, camera);
     c.addPass(this.atmosphere);
+    c.addPass(new OverlayPass(camera, depthTex));
     this.exposure = new ExposurePass();
     c.addPass(this.exposure);
     if (settings.graphics !== 'niedrig') {
@@ -666,7 +709,15 @@ export class Renderer {
       camera.updateMatrixWorld();
       if (this.clouds && (this.atmosphere?.material.uniforms['uCloudsOn']!.value ?? 0) > 0) this.clouds.render(this.renderer, camera);
       this.composer.render(dt);
-    } else this.renderer.render(scene, camera);
+    } else {
+      this.renderer.render(scene, camera);
+      // ohne Nachbearbeitung: Effekte direkt darüber (ohne weiche Kanten)
+      softDepth.uSoftOn.value = 0;
+      const ac = this.renderer.autoClear;
+      this.renderer.autoClear = false;
+      this.renderer.render(overlayScene, camera);
+      this.renderer.autoClear = ac;
+    }
   }
 
   setBloom(strength: number) {

@@ -243,8 +243,89 @@ def apply_transform(o):
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
 
 
+_EMIT_ID = [0]
+
+
+def _tag_emitters(objs):
+    """Schornsteinkappen und Banner als Vertexgruppen markieren: die Gruppen überleben das Zusammenfügen und
+    jede spätere Transformation, beim Export werden daraus Rauchquellen und (wehende) Banner im Manifest."""
+    for o in objs:
+        if o.type != "MESH":
+            continue
+        base = o.name.split(".")[0]
+        kind = "smoke" if base in ("chimneycap", "fire") else "banner" if base == "banner" else "flag" if base == "flag" else None
+        if kind is None or any(g.name.startswith("emit_") for g in o.vertex_groups):
+            continue
+        _EMIT_ID[0] += 1
+        g = o.vertex_groups.new(name=f"emit_{kind}_{_EMIT_ID[0]}")
+        g.add([v.index for v in o.data.vertices], 1.0, "REPLACE")
+        if kind == "flag":
+            # Fahnenstangenseite (lokal kleinstes x) gesondert merken → Richtung Stange → Spitze
+            x0 = min(v.co.x for v in o.data.vertices)
+            gp = o.vertex_groups.new(name=f"emit_flagpole_{_EMIT_ID[0]}")
+            gp.add([v.index for v in o.data.vertices if v.co.x < x0 + 1e-4], 1.0, "REPLACE")
+
+
+def collect_emitters(objs, remove_banners=True):
+    """Markierte Punkte in glTF-Koordinaten (x, z, −y) auslesen; Banner-Geometrie danach entfernen."""
+    import bmesh
+    smoke, banners, flags = [], [], []
+    for o in objs:
+        if o.type != "MESH":
+            continue
+        groups = {g.index: g.name for g in o.vertex_groups if g.name.startswith("emit_")}
+        if not groups:
+            continue
+        pts = {}
+        for v in o.data.vertices:
+            for ge in v.groups:
+                if ge.group in groups and ge.weight > 0.5:
+                    pts.setdefault(groups[ge.group], []).append(o.matrix_world @ v.co)
+        for gname, ps in pts.items():
+            xs = [p.x for p in ps]; ys = [p.y for p in ps]; zs = [p.z for p in ps]
+            cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+            if gname.startswith("emit_flagpole"):
+                continue
+            if gname.startswith("emit_flag_"):
+                pole = pts.get("emit_flagpole_" + gname.split("_")[-1], ps)
+                px = sum(p.x for p in pole) / len(pole); py = sum(p.y for p in pole) / len(pole)
+                dx, dy = cx - px, cy - py
+                ln = max((dx * dx + dy * dy) ** 0.5, 1e-6)
+                flags.append({"p": [round(px, 3), round((min(zs) + max(zs)) / 2, 3), round(-py, 3)], "d": [round(dx / ln, 4), round(-dy / ln, 4)],
+                              "w": round(2 * ln, 3), "h": round(max(zs) - min(zs), 3)})
+                continue
+            if gname.startswith("emit_smoke"):
+                smoke.append([round(cx, 3), round(max(zs) + 0.05, 3), round(-cy, 3)])
+            else:
+                dx, dy = max(xs) - min(xs), max(ys) - min(ys)
+                # Breite entlang der längeren waagerechten Achse (Blender x/y → glTF x/−z)
+                wdir = (1.0, 0.0) if dx >= dy else (0.0, -1.0)
+                banners.append({"p": [round(cx, 3), round((min(zs) + max(zs)) / 2, 3), round(-cy, 3)],
+                                "w": round(max(dx, dy), 3), "h": round(max(zs) - min(zs), 3), "d": list(wdir)})
+        if remove_banners:
+            bgroups = {i for i, n in groups.items() if n.startswith("emit_banner") or n.startswith("emit_flag")}
+            if bgroups:
+                bm = bmesh.new()
+                bm.from_mesh(o.data)
+                dl = bm.verts.layers.deform.active
+                if dl is not None:
+                    kill = [v for v in bm.verts if any(k in bgroups and w > 0.5 for k, w in v[dl].items())]
+                    bmesh.ops.delete(bm, geom=kill, context="VERTS")
+                    bm.to_mesh(o.data)
+                bm.free()
+    out = {}
+    if smoke:
+        out["smoke"] = smoke
+    if banners:
+        out["banner"] = banners
+    if flags:
+        out["flag"] = flags
+    return out
+
+
 def join(objs, name):
     objs = [o for o in objs if o is not None]
+    _tag_emitters(objs)
     bpy.ops.object.select_all(action="DESELECT")
     for o in objs:
         o.select_set(True)
@@ -341,6 +422,7 @@ def export(name, objs=None, lod_ratio=None, uv_scale=None, lod1_objs=None):
         if o.type == "MESH" and not o.data.uv_layers:
             dims = max(o.dimensions) if o.dimensions else 1.0
             box_uv(o, uv_scale if uv_scale else (0.5 if dims > 3 else 1.0))
+    emit = collect_emitters(targets)
     for o in targets:
         o.select_set(True)
     # Mit Armatur: Skin (Gelenke + Gewichte) exportieren, Modifikatoren dann nicht anwenden
@@ -349,6 +431,8 @@ def export(name, objs=None, lod_ratio=None, uv_scale=None, lod1_objs=None):
                               export_texcoords=True, export_normals=True, export_materials="EXPORT", export_extras=False,
                               export_animations=False, export_skins=skinned, export_vertex_color="ACTIVE", export_morph_normal=False)
     entry = {"file": f"{name}.glb"}
+    if emit:
+        entry["emit"] = emit
     if lod1_objs:
         bpy.ops.object.select_all(action="DESELECT")
         for o in lod1_objs:

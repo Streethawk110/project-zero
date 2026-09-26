@@ -326,6 +326,16 @@ Profiler nicht mitgezählt – behoben).
   Wange, lösen, absenken) – vorher griff der linke Arm in die Luft. STAB: Ruhe/Gehen Hand X 2,3 (Kristall oben,
   vorher verkehrt herum), ZAUBER aufrichten → Stoß nach vorn; Handwinkel +2π (4,28/4,78), damit die Überblendung
   nicht durch „Kristall unten“ dreht. Vorschau `&weapon=staff_oak`. Web-Artifact VERSION 15 (gleicher Link).
+- NUTZER (26.9.): „Grafik besser, dynamische Welt, alles animiert, keine Grafik auslassen, UE-Inspiration, aus
+  Sicht des Betrachters gut“. LEBENDIGE WELT Teil 1: Blender markiert Schornsteinkappen/`fire` (Rauch), `banner`
+  (hängend) und `flag` (Wimpel, + Stangenkante) per VERTEXGRUPPEN vor `join` (überleben spätere Transformationen,
+  z. B. Palas) → `collect_emitters` beim Export → Manifest `emit` {smoke, banner, flag}; Banner/Wimpel werden aus
+  dem Gebäude entfernt. Neu: Schmiede-Esse mit Kappe, Wimpel auf den 4 Burgtürmen. Client `render/life.ts`: gemeinsamer
+  Wind (`wind`, `updateWind`, Böen; treibt Rauch, Wimpel, Regen, Baum-Windstärke), Rauch = GPU-Instanzen (je Quelle
+  10–22 Schwaden, kugelig beleuchtet, abtreibend), Banner/Wimpel = Stoff-Shader (Wimpel drehen in den Wind).
+  UE-artige OVERLAY-Stufe nach der Atmosphäre (`overlayScene`, `softDepth`, `SOFT_GLSL` in renderer.ts): durch-
+  scheinende Effekte mit WEICHEN PARTIKELN (Tiefenvergleich) – vorher legte die Atmosphäre Wolken über den Rauch.
+  Test-Hinweis: Bildhelligkeit schwankt zwischen Läufen (Wolken/Belichtung) – nicht jede Dunst-Änderung ist ein Fehler.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.
