@@ -226,7 +226,7 @@ def bake(kind):
         arch = e[1] + 0.02 + 0.007 * np.sin(np.clip(t, 0, 1) * np.pi * 0.85) - 0.004 * t * t
         half = (0.0068 if male else 0.0052) * (1.0 - 0.7 * t ** 1.5)
         inside = smooth01(half - np.abs(P[:, 1] - arch), 0.0, 0.0018)
-        band = inside * smooth01(dx, -0.027, -0.02) * smooth01(0.036 - dx, 0.0, 0.006) * (P[:, 2] > e[2] - 0.02)
+        band = inside * smooth01(dx, -0.027, -0.02) * smooth01((0.036 if male else 0.027) - dx, 0.0, 0.006) * (P[:, 2] > e[2] - 0.02)
         brow = np.maximum(brow, band)
         brow_dir = np.where(band > 0, t, brow_dir)
     # Härchen: längliche Striche, innen steiler aufwärts, außen flach
@@ -308,7 +308,8 @@ def bake(kind):
         # Brauenende des Scans liegt weiter außen als unsere Braue: dort glatte Haut im Umgebungston
         LW1 = np.array([0.2126, 0.7152, 0.0722])
         med1 = float(np.median(lumb[face_hit])) if face_hit.any() else float(BASE_TONE @ LW1)
-        tail = smooth01(np.abs(Ps[:, 0]) - (ex + 0.03), 0.0, 0.012) * smooth01(Ps[:, 1] - (ey - 0.004), 0.0, 0.006) \
+        # Scan-Brauenende läuft außen am Augenhöhlenrand bis fast auf Augenhöhe hinab → dort glatte Haut
+        tail = smooth01(np.abs(Ps[:, 0]) - (ex + 0.015), 0.0, 0.012) * smooth01(Ps[:, 1] - (ey - 0.03), 0.0, 0.008) \
             * smooth01(ey + 0.05 - Ps[:, 1], 0.0, 0.01) * smooth01(Ps[:, 2] - (J["head"][2] + 0.004), 0.0, 0.01)
         smooth_skin = BASE_TONE[None, :] * np.clip(0.97 + 0.2 * (lumb - med1) / max(med1, 1e-4), 0.9, 1.05)[:, None]
         c_s = c_s * (1 - tail[:, None]) + smooth_skin * tail[:, None]
@@ -354,6 +355,9 @@ def bake(kind):
         if not male:
             dark = dark * 0.5  # Frauenbrauen feiner
         hair_s = np.clip(np.maximum(dark * brow_zone * 1.2, dark * beard_zone * (0.8 if male else 0.0)), 0, 1)
+        if male:
+            # Außenende: keine Härchen (Scan-Braue liegt tiefer als unsere, gezeichnete Linie wirkt aufgemalt)
+            hair_s = hair_s * (1 - tail)
         if not male:
             # fein gezeichnete Braue: kräftiger in der Maske und leicht dunkler in der Grundfarbe
             hair_s = np.clip(brow_mask[sel] * 1.6, 0, 1)
@@ -375,6 +379,9 @@ def bake(kind):
         tone[sel] = tone[sel] * (1 - w[:, None]) + c_s * w[:, None]
         brow_mask[sel] = brow_mask[sel] * (1 - w) + hair_s * w
         stub[sel] = stub[sel] * (1 - w)
+        # Wo die Scan-Brauen weggenommen wurden, auch ihr Relief glätten (sonst werfen die Härchen weiter Schatten)
+        flat_w = tail if male else np.maximum(tail, bzf)
+        n_s = n_s * (1 - flat_w[:, None]) + np.array([0, 0, 1.0]) * flat_w[:, None]
         scan_n = (sel, n_s)
         print(f"[haut] Scan: {hit.mean():.0%} Treffer, Farbfaktor {k.round(3)}", flush=True)
 

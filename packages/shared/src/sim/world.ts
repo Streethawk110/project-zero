@@ -94,6 +94,8 @@ export class World {
       const e: NpcEnt = { id: this.newId(), kind: 'npc', def: n, m: newMoveState(n.x, gy, n.z, n.rot), statuses: [], area: 'overworld', anim: 'idle', wanderT: 0, wanderTo: null, talkT: 0 };
       this.ents.set(e.id, e);
     }
+    // Bewohner gleich an ihren Tagesplan-Ort (sonst stehen beim Spielstart alle im Pulk am Startpunkt)
+    if (this.opts.area !== 'dungeon') this.snapRoutines();
   }
 
   newId() {
@@ -2959,6 +2961,7 @@ export class World {
     for (const f of s.worldFlags ?? []) this.worldFlags.add(f);
     for (const g of s.gates ?? []) this.gates.add(g);
     this.events.import(s.events);
+    this.snapRoutines();
   }
 }
 

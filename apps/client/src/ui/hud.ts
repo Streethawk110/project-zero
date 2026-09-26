@@ -317,7 +317,10 @@ export class Hud {
       if (!['n', 'p', 'e', 'c'].includes(v.kind)) continue;
       const d = v.pos.distanceTo(cam.position);
       const isEnemy = v.kind === 'e';
-      const show = isEnemy ? (v.hp < 1 && v.anim !== 'die' && v.anim !== 'dead' && d < 40) || (g.aimTarget === v && d < 60) : d < (v.kind === 'n' ? 18 : 40);
+      // Wie in KCD: Leute im Dorf nur aus der Nähe oder im Blick benennen (sonst schwebt über jedem Kopf ein Name)
+      const focused = g.aimTarget === v || g.interactTarget?.eid === v.id;
+      const show = isEnemy ? (v.hp < 1 && v.anim !== 'die' && v.anim !== 'dead' && d < 40) || (g.aimTarget === v && d < 60)
+        : v.kind === 'n' ? d < 7 || (focused && d < 18) : d < 40;
       if (!show) continue;
       const p = v.pos.clone().add(new THREE.Vector3(0, v.height + 0.35 + v.flying, 0)).project(cam);
       if (p.z > 1 || Math.abs(p.x) > 1.1 || Math.abs(p.y) > 1.1) continue;

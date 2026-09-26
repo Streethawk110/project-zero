@@ -52,8 +52,18 @@ const specs: { outfit: string; hair: number; beard: number; anim: string; t: num
   { outfit: 'scholar', hair: 4, beard: 0, anim: 'idle', t: 1, speed: 0, weapon: 'bow_short', skin: 1, body: 0.35, sex: 1 },
 ];
 const only = params.get('only');
-const list = only !== null ? [specs[Number(only)]!] : specs;
+// Phasenblatt: ?gait=walk&speed=1.4&frames=8 – dieselbe Figur an gleichmäßig verteilten Stellen des Schrittzyklus
+const gait = params.get('gait');
+const frames = Number(params.get('frames') ?? 8);
+// Übersicht mehrerer Animationen: ?anims=jump:0.2,dodge:0.15,atk1:0.3 (Name:Zeit)
+const anims = params.get('anims')?.split(',').map((x) => { const [a, t] = x.split(':'); return { a: a!, t: Number(t ?? 0.5) }; });
+const list = anims
+  ? anims.map(({ a, t }) => ({ ...specs[Number(only ?? 0)]!, anim: a, t, speed: 0, weapon: a.startsWith('atk') || a === 'block' ? 'sword_rusty' : undefined, offhand: a === 'block' ? 'shield_wood' : undefined }))
+  : gait
+  ? Array.from({ length: frames }, () => ({ ...specs[Number(only ?? 0)]!, anim: gait, speed: Number(params.get('speed') ?? 1.4), weapon: undefined, offhand: undefined }))
+  : only !== null ? [specs[Number(only)]!] : specs;
 const rigs: HumanoidRig[] = [];
+(window as unknown as { __rigs: HumanoidRig[] }).__rigs = rigs;
 list.forEach((s, i) => {
   const rig = new HumanoidRig({ faceSeed: params.get('seed') ? params.get('seed')! + i : undefined, appearance: { skin: s.skin, hair: params.get('hair') ? Number(params.get('hair')) : s.hair, hairColor: params.get('hc') ? Number(params.get('hc')) : i % 6, beard: params.get('beard') ? Number(params.get('beard')) : s.beard, body: s.body, height: 1, eyes: i % 4, scar: 0, sex: s.sex ?? 0 }, outfit: s.outfit });
   rig.setEquipment(s.weapon ?? '', s.offhand ?? '', s.outfit);
@@ -61,7 +71,13 @@ list.forEach((s, i) => {
   rig.root.rotation.y = Math.PI + Number(params.get('turn') ?? 0.35);
   rig.play(s.anim, 0.8);
   // Pose bis zum gewünschten Zeitpunkt vorspulen
-  for (let k = 0; k < 40; k++) rig.update(s.t / 40 + (k < 20 ? 0.02 : 0), s.speed);
+  if (gait) {
+    const cycT = (rig as unknown as { cycleLen(v: number): number }).cycleLen(s.speed) / s.speed;
+    for (let k = 0; k < 100; k++) rig.update(0.02, s.speed);
+    const steps = Math.round((cycT * i) / frames / 0.005);
+    for (let k = 0; k < steps; k++) rig.update(0.005, s.speed);
+    rig.root.position.set((i - (list.length - 1) / 2) * Number(params.get('gap') ?? 0.8), 0, 0);
+  } else for (let k = 0; k < 40; k++) rig.update(s.t / 40 + (k < 20 ? 0.02 : 0), s.speed);
   if (params.get('talk')) { rig.talking = 5; rig.update(Number(params.get('talk')), 0); }
   if (params.get('lod') === '1') rig.setLod(1);
   if (params.get('grime')) rig.setGrime(Number(params.get('grime')));

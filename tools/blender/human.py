@@ -745,10 +745,14 @@ def grow(scalp, root, direction, length, steps, lift, gravity, rnd, below=None, 
     """Strähne über die Kopfhaut führen; unterhalb des Kopfes frei nach unten fallen lassen.
     face = (x-Mitte, halbe Breite, z-Grenze, y-Oberkante): Strähnen weichen dem Gesicht seitlich aus."""
     pts, norms = [], []
-    p, n = scalp.project(root, lift)
+    # Wurzel dicht an der Kopfhaut, Abstand erst entlang der Strähne aufbauen (sonst stehen die Wurzelenden
+    # äußerer Schichten wie Stacheln in der Luft)
+    lift_at = lambda i: lift * min(1.0, 0.15 + 0.85 * i / max(steps, 1))
+    p, n = scalp.project(root, lift_at(0))
     d = np.array(direction, dtype=float)
     step = length / steps
     free = False
+    face_free = False  # vorn an der Schläfe frei geworden: fällt fast senkrecht, kaum nach außen
     for i in range(steps + 1):
         pts.append(p.copy())
         norms.append(n.copy())
@@ -758,20 +762,24 @@ def grow(scalp, root, direction, length, steps, lift, gravity, rnd, below=None, 
         if not free:
             d = d - n * np.dot(d, n)
         d = d / max(np.linalg.norm(d), 1e-9)
-        g = max(gravity, 0.9) if free else gravity
+        g = (1.6 if face_free else max(gravity, 0.9)) if free else gravity
         d = d + np.array([0, -g, 0]) + np.array([rnd.uniform(-0.08, 0.08), 0, rnd.uniform(-0.08, 0.08)])
         d /= max(np.linalg.norm(d), 1e-9)
         q = p + d * step
         if not free and (below is not None and q[1] < below):
             free = True
+        # vorn unterhalb der Schläfe nicht mehr über die Haut führen: sonst umfließt die Strähne das Gesicht
+        if not free and face is not None and q[1] < face[3] - 0.03 and q[2] > scalp.c[2]:
+            free = True
+            face_free = True
         if free:
             # frei hängend: leicht nach außen vom Kopfzentrum weg
             out = q - scalp.c
             out[1] = 0
             out /= max(np.linalg.norm(out), 1e-9)
-            p = q + out * step * 0.15
+            p = q + out * step * (0.03 if face_free else 0.15)
         else:
-            p, n = scalp.project(q, lift)
+            p, n = scalp.project(q, lift_at(i + 1))
         if face is not None:
             fx, fw, fz, fy = face
             if p[2] > fz and p[1] < fy and abs(p[0] - fx) < fw:
@@ -890,7 +898,9 @@ def hair_style(style, base, v, J, W, rnd_seed=5):
             cards.append((pts, [0.022, 0.024, 0.024, 0.018], ns, (0.8, rnd.random(), 0.25)))
     # Keine Strähne quer durchs Gesicht (Stirn/Augen): solche Karten verwerfen
     def crosses_face(pts):
-        return any(p[2] > cz + 0.045 and eye_y - 0.1 < p[1] < eye_y + 0.048 and abs(p[0] - sc.c[0]) < 0.06 for p in pts)
+        # Stirn/Augen (schmal, weit vorn) und Wangen bis zum Kinn (breiter, auch seitlich vor dem Ohr)
+        return any((p[2] > cz + 0.045 and eye_y - 0.1 < p[1] < eye_y + 0.048 and abs(p[0] - sc.c[0]) < 0.06)
+                   or (p[2] > cz + 0.02 and eye_y - 0.14 < p[1] < eye_y + 0.02 and abs(p[0] - sc.c[0]) < 0.078) for p in pts)
     # Karten mit scharfem Knick (Ausweichen am Gesicht) wirken seitlich betrachtet wie Zickzack-Linien
     def kinked(pts):
         for i in range(1, len(pts) - 1):
@@ -1067,7 +1077,7 @@ def eyelashes(base, v, W):
             d0, d1, a0, a1 = rng[g]
             # Übergang lockeres Büschel → Einzelhaare im Haaratlas – dichte Büschel ergäben einen dicken
             # schwarzen Lidstrich, nur Einzelhaare wirken wimpernlos
-            uvl[li].uv = (0.66 + 0.24 * (a - a0) / max(a1 - a0, 1e-6), (d - d0) / max(d1 - d0, 1e-6))
+            uvl[li].uv = (0.74 + 0.22 * (a - a0) / max(a1 - a0, 1e-6), (d - d0) / max(d1 - d0, 1e-6))
     # Untere Wimpern: echte sind kurz und spärlich – sonst wirkt es wie ein dicker Kajalstrich
     lower = {}
     for g in groups:
@@ -1075,11 +1085,15 @@ def eyelashes(base, v, W):
         ys = [v[used[j]][1] - c[1] for j, (gg, _, _) in info.items() if gg == g]
         lower[g] = float(np.mean(ys)) < 0
     for j, (g, d, _) in info.items():
-        if not lower[g]:
-            continue
         d0, d1, _, _ = rng[g]
         c = B(ecent["l" if "-l-" in g else "r"])
-        s_ = (d0 + (d - d0) * 0.4) / max(d, 1e-6)
+        if lower[g]:
+            # Untere Wimpern weg (in die Augapfelmitte): als Karten wirken sie wie dunkle Blöcke unter dem Auge,
+            # echte sind so kurz und hell, dass man sie auf Spieldistanz nicht sieht
+            me.vertices[j].co = c.copy()
+            continue
+        # Obere Wimpern kürzer (Karten sind breiter als echte Härchen, lang wirken sie wie ein Lidstrich)
+        s_ = (d0 + (d - d0) * 0.6) / max(d, 1e-6)
         me.vertices[j].co = c + (me.vertices[j].co - c) * s_
     attr = me.color_attributes.new("tree", "FLOAT_COLOR", "POINT")
     for k in range(len(me.vertices)):

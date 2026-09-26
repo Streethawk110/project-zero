@@ -199,6 +199,9 @@ export class HumanoidRig {
   blend = 1;
   private blendDur = 0.18;
   phase = 0;
+  /** Schrittzyklus 0–1 (linker Fuß setzt bei 0 auf, rechter bei 0,5) */
+  private cyc = 0;
+  private legLen: [number, number] | null = null;
   speed = 0;
   weapon: THREE.Object3D | null = null;
   offhand: THREE.Object3D | null = null;
@@ -739,30 +742,37 @@ export class HumanoidRig {
   }
 
   /** speed: horizontale Geschwindigkeit (m/s), groundL/R: Geländehöhe unter den Füßen relativ zur Wurzel */
-  update(dt: number, speed: number, groundL = 0, groundR = 0) {
+  update(dt: number, speed: number, groundL = 0, groundR = 0, fwd = 1) {
     this.animT += dt;
     this.blend = Math.min(1, this.blend + dt / this.blendDur);
     this.speed = speed;
     if (this.human) this.updateSwing(dt);
     this.flinch = Math.max(0, this.flinch - dt);
-    // Schrittphase an Strecke koppeln (Schrittlänge je nach Tempo)
-    const stride = speed > 6.5 ? 2.6 : speed > 3.5 ? 1.9 : 1.2;
-    this.phase += (speed * dt) / stride * Math.PI * 2 * 0.5;
+    // Schrittzyklus an die Strecke koppeln: je Zyklus (zwei Schritte) genau so weit, wie die Füße in der
+    // Standphase zurücklegen → kein Rutschen. Rückwärts läuft der Zyklus rückwärts.
+    this.cyc += (fwd < -0.3 ? -1 : 1) * (speed * dt) / this.cycleLen(speed);
+    this.cyc -= Math.floor(this.cyc);
+    this.phase = this.cyc * Math.PI * 2;
     const pose = this.computePose(this.anim, this.animT);
     const tq = new THREE.Quaternion();
     const e = new THREE.Euler();
     const k = easeInOut(this.blend);
     for (const n of JOINTS) {
       const r = pose[n] ?? [0, 0, 0];
-      // Beine: in den Posen bedeutet negatives X „Knie nach vorn“, positives „Knie beugen“
-      const leg = n.startsWith('thigh') || n.startsWith('shin') || n.startsWith('foot');
+      // Beine: in den Posen bedeutet negatives X „Knie nach vorn“, positives „Knie beugen“. Nur die alte
+      // Ersatzfigur hat gespiegelte Beingelenke – bei den MakeHuman-Figuren liefen sonst alle Beinposen
+      // (Sitzen, Springen, Ausweichen, Gehen) spiegelverkehrt: Oberschenkel beim Sitzen nach hinten.
+      const leg = !this.human && (n.startsWith('thigh') || n.startsWith('shin') || n.startsWith('foot'));
       e.set(leg ? -r[0] : r[0], r[1], r[2], 'YXZ');
       tq.setFromEuler(e);
       this.cur[n].slerpQuaternions(this.from[n], tq, k);
       this.j[n].quaternion.copy(this.cur[n]);
     }
     const ro = pose.root ?? [0, 0, 0];
-    this.rootOff.lerp(new THREE.Vector3(ro[0], ro[1], ro[2]), Math.min(1, dt * 14));
+    // Beim Gehen/Laufen folgt das Becken dem Schrittzyklus unmittelbar (sonst hinkt es hinterher und die
+    // Füße schweben beim Aufsetzen); sonst weich überblenden
+    const gaitAnim = this.anim === 'walk' || this.anim === 'run' || this.anim === 'sprint';
+    this.rootOff.lerp(new THREE.Vector3(ro[0], ro[1], ro[2]), gaitAnim && this.blend >= 1 ? 1 : Math.min(1, dt * 14));
     const rr = pose.rootRot ?? [0, 0, 0];
     this.rootRot.x += (rr[0] - this.rootRot.x) * Math.min(1, dt * (this.anim === 'dodge' ? 40 : 10));
     this.rootRot.z += (rr[2] - this.rootRot.z) * Math.min(1, dt * 10);
@@ -772,10 +782,13 @@ export class HumanoidRig {
     const grounded = !['jump', 'fall', 'dodge', 'swim', 'tread', 'downed', 'dead', 'die', 'emote_sit'].includes(this.anim);
     if (grounded && speed < 1.5) {
       const bendL = Math.max(0, groundL - this.hipsDrop), bendR = Math.max(0, groundR - this.hipsDrop);
-      this.j.thighL.rotateX(Math.min(0.9, bendL * 2.2));
-      this.j.shinL.rotateX(-Math.min(1.6, bendL * 4.4));
-      this.j.thighR.rotateX(Math.min(0.9, bendR * 2.2));
-      this.j.shinR.rotateX(-Math.min(1.6, bendR * 4.4));
+      // Gelenkdrehung X: negativ = Oberschenkel nach vorn, positiv am Schienbein = Knie beugen (MakeHuman-Figur;
+      // die alte Ersatzfigur ist gespiegelt)
+      const fl = this.human ? 1 : -1;
+      this.j.thighL.rotateX(-fl * Math.min(0.9, bendL * 2.2));
+      this.j.shinL.rotateX(fl * Math.min(1.6, bendL * 4.4));
+      this.j.thighR.rotateX(-fl * Math.min(0.9, bendR * 2.2));
+      this.j.shinR.rotateX(fl * Math.min(1.6, bendR * 4.4));
     }
     if (this.flinch > 0) this.j.chest.rotateX(-this.flinch * 1.2);
     this.body.position.set(this.rootOff.x, this.rootOff.y + (grounded ? this.hipsDrop : 0), -this.rootOff.z);
@@ -836,10 +849,12 @@ export class HumanoidRig {
       const w = s(t * 0.23) * 0.5 + s(t * 0.61) * 0.2;
       this.j.hips.rotateZ(w * 0.035);
       this.j.spine.rotateZ(-w * 0.025);
-      this.j.thighL.rotateX(Math.max(0, w) * -0.06);
-      this.j.shinL.rotateX(Math.max(0, w) * 0.12);
-      this.j.thighR.rotateX(Math.max(0, -w) * -0.06);
-      this.j.shinR.rotateX(Math.max(0, -w) * 0.12);
+      // Spielbein: Knie leicht nach vorn gebeugt
+      const fl = this.human ? 1 : -1;
+      this.j.thighL.rotateX(Math.max(0, w) * -0.06 * fl);
+      this.j.shinL.rotateX(Math.max(0, w) * 0.12 * fl);
+      this.j.thighR.rotateX(Math.max(0, -w) * -0.06 * fl);
+      this.j.shinR.rotateX(Math.max(0, -w) * 0.12 * fl);
     }
     // Kopf zum Blickziel (sanft, begrenzt), sonst leichtes Umsehen
     let yaw = calm ? s(t * 0.31) * 0.12 + s(t * 0.13) * 0.1 : 0, pitch = 0;
@@ -895,6 +910,114 @@ export class HumanoidRig {
     this.setMorph('gripL', offT === 'shield' || offT === 'focus' || wt === 'bow' ? 1 : 0.45);
   }
 
+  /** Schrittlänge (ein Schritt) je Tempo: Gehen ~0,7 m bei 1,4 m/s, Laufen ~1,75 m bei 5 m/s. */
+  private stepLen(v: number) {
+    const run = smooth(2.3, 3.8, v);
+    const L = this.legs()[0] + this.legs()[1];
+    const k = L / 0.9;
+    return (0.4 + 0.22 * Math.min(v, 2.6)) * k * (1 - run) + (0.9 + 0.17 * v) * k * run;
+  }
+
+  private cycleLen(v: number) {
+    return Math.max(0.5, 2 * this.stepLen(v));
+  }
+
+  /** Ober- und Unterschenkellänge aus den Gelenkversätzen (je Körperbau). */
+  private legs(): [number, number] {
+    if (!this.legLen) {
+      const a = this.j.shinL.position.length(), b = this.j.footL.position.length();
+      this.legLen = [a > 0.2 ? a : 0.45, b > 0.2 ? b : 0.43];
+    }
+    return this.legLen;
+  }
+
+  /**
+   * Gang aus Fußbahnen und Zwei-Gelenk-IK (Seitenebene): Standfuß bleibt am Boden und wandert mit der
+   * Laufgeschwindigkeit nach hinten, Schwungfuß im Bogen nach vorn (beim Rennen mit Fersenkick).
+   * Becken reitet beim Gehen auf dem Standbein (höchster Punkt in der Standmitte), beim Rennen federt es in
+   * der Standphase ein und steigt in der Flugphase. Becken dreht und kippt mit, Brustkorb dreht gegen,
+   * Arme pendeln gegengleich mit Verzögerung, der Kopf bleibt ruhig.
+   */
+  private gait(v: number): Pose {
+    const [L1, L2] = this.legs();
+    const L = L1 + L2, sc = L / 0.9;
+    const run = smooth(2.3, 3.8, v), spr = smooth(6.0, 8.0, v);
+    const move = Math.min(1, v / 0.9); // beim Anlaufen/Anhalten weniger Schwung
+    const duty = 0.61 * (1 - run) + (0.31 - 0.05 * spr) * run;
+    const C = this.cycleLen(v);
+    // halbe Standstrecke des Knöchels: ~10 cm übernimmt das Abrollen über den Fuß (Ferse → Ballen)
+    const a = Math.max(0, (C * duty) / 2 - 0.12 * sc) * move;
+    const lift = ((0.075 + 0.02 * Math.min(1, v / 2)) * (1 - run) + 0.2 * run + 0.08 * spr) * sc * move;
+    const cyc = this.cyc;
+    const P: Pose = {};
+    let rootY = 0;
+    const foot = (u: number) => {
+      // x vorwärts (relativ zur Hüfte), y Anhebung, pitch Fußneigung (+ = Zehen hoch), st = Standanteil
+      if (u < duty) {
+        const t = u / duty;
+        const heel = (1 - smooth(0, 0.18, t)) * (0.22 * (1 - run) + 0.06 * run);
+        const toe = smooth(0.62, 1, t) * (0.35 * (1 - run) + 0.5 * run);
+        // Abdruck: Ferse hebt sich, der Knöchel steigt um Fußlänge × Neigung
+        return { x: a * (1 - 2 * t), y: Math.sin(toe) * 0.19 * sc, pitch: heel - toe, st: Math.sin(Math.PI * t) };
+      }
+      const t = (u - duty) / (1 - duty);
+      const e = t * t * (3 - 2 * t);
+      const arc = Math.sin(Math.PI * Math.pow(t, 0.75));
+      // Rennen: Ferse zuerst hoch zum Gesäß (hinter der Hüfte), dann Knie nach vorn
+      const kick = run * Math.sin(Math.PI * Math.min(1, t * 1.5));
+      return { x: -a + 2 * a * e - kick * 0.12 * sc * move, y: lift * arc + kick * 0.12 * sc * move, pitch: -0.5 * (1 - smooth(0, 0.35, t)) + 0.18 * smooth(0.35, 0.8, t) * (1 - smooth(0.9, 1, t)), st: 0 };
+    };
+    const fl = foot(cyc), fr = foot((cyc + 0.5) % 1);
+    // Becken: Gehen – höchster Punkt in der Standmitte (umgekehrtes Pendel); Rennen – tiefster Punkt dort
+    const b = Math.cos(4 * Math.PI * (cyc - duty / 2));
+    // Beckenhöhe geometrisch: so tief, dass jedes Standbein fast gestreckt (ca. 6° Kniebeuge) den Boden erreicht –
+    // ergibt von selbst das Auf und Ab des umgekehrten Pendels; schon 2 % zu tief knickt das Knie sichtbar ein
+    const Lr = L * 0.994;
+    let need = 0;
+    for (const f of [fl, fr]) if (f.st > 0 || f.y < 0.02 * sc) need = Math.min(need, Math.sqrt(Math.max(0, Lr * Lr - f.x * f.x)) + f.y - Lr);
+    const spring = (-0.02 - 0.03 * (b + 1) / 2) * sc; // Rennen: Einfedern in der Standmitte
+    rootY = Math.min(need, spring * run) - 0.004 * sc;
+    const leg = (f: { x: number; y: number; pitch: number }, side: 'L' | 'R') => {
+      const x = f.x, y = L + rootY - f.y; // Abstand Hüfte → Knöchel nach unten
+      let d = Math.hypot(x, y);
+      d = Math.min(d, L * 0.9995);
+      const phi = Math.atan2(x, y);
+      const al = Math.acos(Math.max(-1, Math.min(1, (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d))));
+      const be = Math.acos(Math.max(-1, Math.min(1, (L2 * L2 + d * d - L1 * L1) / (2 * L2 * d))));
+      const th1 = phi + al, th2 = phi - be;
+      const abd = side === 'L' ? 0.025 : -0.025;
+      P[`thigh${side}`] = [-th1, 0, abd];
+      P[`shin${side}`] = [th1 - th2, 0, 0];
+      P[`foot${side}`] = [th2 + f.pitch, 0, -abd]; // + = Zehen hoch
+    };
+    leg(fl, 'L');
+    leg(fr, 'R');
+    // S > 0: linkes Bein hinten (rechtes vorn) – Becken dreht mit, Brustkorb und Arme gegen
+    const S = a > 1e-4 ? (fr.x - fl.x) / (2 * a) : 0;
+    const lagC = (cyc - 0.05 + 1) % 1;
+    const fl2 = foot(lagC), fr2 = foot((lagC + 0.5) % 1);
+    const Sa = a > 1e-4 ? (fr2.x - fl2.x) / (2 * a) : 0;
+    const roll = fl.st - fr.st; // + = links im Stand
+    const walkW = 1 - run;
+    const lean = (0.035 + 0.02 * Math.min(1, v / 2)) * walkW + (0.13 + 0.14 * spr) * run;
+    const hy = S * (0.07 * walkW + 0.12 * run) * move;
+    P.hips = [0, hy, -0.045 * roll * walkW * move];
+    P.spine = [lean * 0.45, -hy * 0.45, 0.02 * roll * walkW * move];
+    P.chest = [lean * 0.55, -hy * 0.9, 0.015 * roll * walkW * move];
+    // Kopf gleicht Neigung und Drehung aus (Blick bleibt geradeaus) und nickt leicht beim Aufsetzen
+    P.head = [-lean * 0.75 + (b * 0.012) * move, hy * 0.35, -0.02 * roll * walkW * move];
+    const armA = (0.32 * walkW + 0.62 * run + 0.35 * spr) * move;
+    const elbow = -0.22 * walkW - 1.35 * run;
+    // Arme nah am Körper wie in der Ruhepose (Handflächen zum Oberschenkel), beim Rennen etwas weiter
+    P.upperArmL = [-Sa * armA + 0.02, 0.12 * walkW, -0.1 + 0.08 * run];
+    P.upperArmR = [Sa * armA + 0.02, -0.12 * walkW, 0.1 - 0.08 * run];
+    // Ellbogen beugt sich mehr, wenn der Arm vorn ist
+    P.foreArmL = [elbow - Math.max(0, Sa) * (0.35 * walkW + 0.3 * run) * move, 0.25 * walkW, 0];
+    P.foreArmR = [elbow - Math.max(0, -Sa) * (0.35 * walkW + 0.3 * run) * move, -0.25 * walkW, 0];
+    P.root = [0.018 * roll * walkW * sc * move, rootY, 0];
+    return P;
+  }
+
   private computePose(anim: string, t: number): Pose {
     const s = Math.sin, c = Math.cos, ph = this.phase;
     const wt = this.weaponType;
@@ -946,9 +1069,10 @@ export class HumanoidRig {
           thighL: [0.08, 0, 0.06], thighR: [-0.08, 0, -0.06], root: [0, -0.02, 0] };
       }
       case 'sit': return ready({ root: [0, -0.5, 0], thighL: [-1.45, 0, 0.12], shinL: [1.45, 0, 0], thighR: [-1.45, 0, -0.12], shinR: [1.45, 0, 0], upperArmL: [-0.55, 0, 0.2], upperArmR: [-0.6, 0, -0.2], foreArmL: [-1.0, 0, 0], foreArmR: [-0.9 + s(t * 0.7) * 0.15, 0, 0], spine: [0.12, 0, 0], head: [0.05, s(t * 0.4) * 0.2, 0] });
-      case 'walk': return ready(locomotion(0.55, 0.5, 0.03, 0.03));
-      case 'run': return ready(locomotion(0.85, 0.8, 0.12, 0.06));
-      case 'sprint': { const p = locomotion(1.15, 1.1, 0.3, 0.09); return p; }
+      // Gang ergibt sich aus dem tatsächlichen Tempo (Gehen → Laufen → Sprinten fließend)
+      case 'walk': return ready(this.gait(Math.max(this.speed, 0.6)));
+      case 'run': return ready(this.gait(Math.max(this.speed, 2.5)));
+      case 'sprint': return this.gait(Math.max(this.speed, 5));
       case 'swim': return { rootRot: [1.3, 0, 0], root: [0, 0.4, 0], upperArmL: [-2.6 + s(t * 4) * 1.2, 0, 0.3], upperArmR: [-2.6 - s(t * 4) * 1.2, 0, -0.3], thighL: [s(t * 6) * 0.3, 0, 0], thighR: [-s(t * 6) * 0.3, 0, 0] };
       case 'tread': return { root: [0, 0.2 + s(t * 2) * 0.05, 0], upperArmL: [-0.4, 0, 0.9 + s(t * 3) * 0.3], upperArmR: [-0.4, 0, -0.9 - s(t * 3) * 0.3], thighL: [s(t * 3) * 0.4, 0, 0], thighR: [-s(t * 3) * 0.4, 0, 0], shinL: [0.6, 0, 0], shinR: [0.6, 0, 0] };
       case 'jump': return ready({ thighL: [-0.9, 0, 0], shinL: [1.4, 0, 0], thighR: [-0.2, 0, 0], shinR: [0.6, 0, 0], upperArmL: [-0.8, 0, 0.5], upperArmR: [-0.8, 0, -0.5], spine: [0.1, 0, 0] });
@@ -1103,4 +1227,9 @@ export function makeWeapon(id: string): THREE.Object3D {
   if (type === 'shield') { g.rotation.set(0, 0, Math.PI / 2); g.position.set(-0.08, -0.05, -0.05); }
   if (type === 'staff') g.rotation.set(-Math.PI / 2, 0, 0);
   return g;
+}
+
+function smooth(a: number, b: number, x: number) {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
 }

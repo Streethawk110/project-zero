@@ -290,6 +290,26 @@ Profiler nicht mitgezählt – behoben).
   vergeht Spielzeit ~15× langsamer – Atemzug 3,7 s!). ACHTUNG: `pkill -f`/`pgrep -f` mit Text aus dem
   eigenen Befehl trifft die eigene Shell. Web-Artifact VERSION 13 (gleicher Link; unveränderte Texturen aus v12
   übernommen, nur Figuren, Haut und Code hochgeladen).
+- NUTZER (26.9.): „mach alles was nicht perfekt ist, nicht immer Pause“ + „Laufanimation schlecht, volles Rework“.
+  GROSSER FUND: Beinposen der MakeHuman-Figuren waren SPIEGELVERKEHRT (Umkehr `leg ? -r[0]` stammt von der
+  alten Ersatzfigur): Oberschenkel beim Sitzen nach hinten, Sprung/Rolle/Ausfallschritt falsch. Jetzt nur noch
+  für die Ersatzfigur; direkte rotateX (Bodenanpassung, Kontrapost) mit `fl`. Konvention (MakeHuman): Pose X
+  negativ = Oberschenkel vor, Schienbein positiv = Knie beugen, Fuß positiv = Zehen hoch; Rig-vorwärts = −Z.
+  LAUFEN NEU (`rig.gait`): Fußbahnen + Zwei-Gelenk-IK (Beinlängen aus Gelenkversätzen), Standfuß wandert mit
+  Laufgeschwindigkeit (Zyklus `cyc` an Strecke gekoppelt, `cycleLen`, rückwärts via `fwd` aus entities.ts),
+  Fersenaufsatz/Abrollen/Abdruck (10–12 cm Abrollweg), Schwungbogen, Fersenkick beim Rennen, Standanteil
+  0,61 → 0,31/0,26, Beckenhöhe geometrisch aus Standbeinen (umgekehrtes Pendel; schon 2 % zu tief knickt das Knie
+  sichtbar), Rennen mit Einfedern; Becken dreht/kippt, Brust dreht gegen, Arme pendeln verzögert (Ellbogen
+  beugt vorn mehr, beim Rennen angewinkelt), Kopf stabil. Becken folgt beim Gehen direkt (Glättung ließ Füße
+  schweben). Prüfen: `rig-preview.html?gait=walk&speed=1.4&frames=6&turn=1.5708` (Phasenblatt), `?anims=a:t,…`,
+  Messen: `tools/dev/rig-probe.mjs`.
+  Außerdem: Bewohner stehen beim Start/Laden sofort an ihrem Tagesplan-Ort (`snapRoutines` im Konstruktor +
+  importState; vorher Pulk auf dem Platz). Namensschilder von Dorfbewohnern nur < 7 m oder im Blick (hud.ts).
+  Haare: Strähnen wurden auch unterhalb des Haaransatzes auf die Haut projiziert → umflossen das Gesicht als
+  Drahtschlaufen → vorn unter der Schläfe frei fallen (`face_free`: fast senkrecht), breiterer Wangenfilter;
+  Wurzeln dicht an der Kopfhaut, Abstand über die Länge (`lift_at`, keine Stacheln). Untere Wimpern entfernt
+  (Augenmitte), obere auf 60 %, feinere Atlasspalte. Mann: Scan-Brauenende samt RELIEF (Normalen) geglättet bis
+  unter Augenhöhe – der graue Schatten kam aus der Normalen-Textur. Frauen: Braue kürzer außen.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.
