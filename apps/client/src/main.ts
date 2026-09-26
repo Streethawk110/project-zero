@@ -9,6 +9,7 @@ import { BAKED_NAMES, FOLIAGE_NAMES, loadBakedTextures, loadFoliageTextures, set
 import { hasCharacterModel } from './render/skinned.ts';
 import { diag, gpuName } from './diag.ts';
 import { loadHumanTextures } from './render/human.ts';
+import { loadMocap } from './render/mocap.ts';
 import { loadCloudNoise } from './render/clouds.ts';
 import { AudioEngine } from './audio/audio.ts';
 import { Game } from './game/game.ts';
@@ -64,6 +65,7 @@ async function boot() {
   const fol = await loadFoliageTextures(settings.graphics === 'niedrig' ? 512 : 1024);
   diag.textures += ` + Laub ${fol}/${FOLIAGE_NAMES.length}`;
   await loadHumanTextures();
+  await loadMocap();
   for (const k of Object.keys(TEX) as (keyof typeof TEX)[]) { TEX[k](); }
   await progress(0.75, 'Wolken …');
   await loadCloudNoise();

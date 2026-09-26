@@ -152,6 +152,27 @@ npm run models:optimize                              # meshopt-Kompression (~2,7
 eine einfache Ersatzform – es bleibt also immer spielbar. Materialnamen aus Blender (z. B. `wood`, `plaster`,
 `stone_moss`, `crystal`) werden im Client durch prozedurale PBR-Materialien ersetzt.
 
+## Bewegungen (Motion Capture)
+
+Gehen, Laufen, Rennen, Rückwärts- und Seitwärtsgehen, Stehen, Reden, Sitzen, Gesten und die Arbeiten der
+Dorfbewohner (Hämmern, Holzhacken, Rechen, Graben, Fegen, Waschen, Schreiben, Angeln, Schwertübung …) sind
+echte Bewegungsaufnahmen aus der CMU-Datenbank. `tools/anim/mocap.py` lädt die BVH-Dateien, schneidet
+Gangzyklen von Fersenaufsatz zu Fersenaufsatz bzw. sucht saubere Schleifen, überträgt die Bewegung auf das
+19-Gelenk-Rig (Bezug: T-Pose jeder Aufnahme) und schreibt `apps/client/public/assets/anim/clips.json`.
+Im Spiel wählt die Figur die Gangart nach dem Tempo (phasengleich überblendet, kein Fußrutschen), wechselt
+zwischen mehreren Varianten fürs Stehen und Reden und hält bei der Arbeit passendes Werkzeug. Kampfhiebe,
+Bogen, Zauber und Ausweichen sind weiterhin Schlüsselposen.
+
+```bash
+python3 tools/anim/mocap.py build                    # alle Clips (lädt fehlende BVH-Dateien)
+python3 tools/anim/mocap.py build walk idle          # nur einzelne
+python3 tools/anim/mocap.py info 16_15               # Tempo, Fußaufsätze, Zyklen einer Aufnahme
+python3 tools/anim/mocap.py strip 16_15 0 400 20 x.png   # Strichfiguren zum Sichten
+```
+
+Waffen stecken außerhalb des Kampfes in der Scheide bzw. hängen am Gürtel (Axt, Keule) oder auf dem Rücken
+(Schild, Bogen); im Kampf wird gezogen. Hängende Dinge (Scheide, Laterne) pendeln mit der Bewegung.
+
 ## Texturen (Blender)
 
 Alle Oberflächen sind nahtlos kachelbare 2K-PBR-Texturen, gebacken aus prozeduralen Blender-Materialien
@@ -285,6 +306,11 @@ Ehrlich festgehalten, was geprüft ist und was nicht:
   getestet, aber noch nicht ausgiebig von Menschen durchgespielt – Balance und Feinschliff brauchen Spieltests.
 
 ## Fremdmaterial und Namensnennung
+
+- **Bewegungsaufnahmen:** The data used in this project was obtained from mocap.cs.cmu.edu. The database
+  was created with funding from NSF EIA-0196217. (CMU Graphics Lab Motion Capture Database, frei nutzbar
+  auch für kommerzielle Zwecke; BVH-Umwandlung von cgspeed, bezogen über den GitHub-Spiegel
+  una-dinosauria/cmu-mocap. Im Repository liegen nur die daraus berechneten Clips.)
 
 - **Menschliche Figuren:** MakeHuman-Basisfigur, Formziele und Gewichte (CC0,
   makehumancommunity). Sie werden beim Bauen nach `tools/blender/.mh_cache` geladen.

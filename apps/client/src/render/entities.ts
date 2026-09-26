@@ -45,6 +45,8 @@ export class EntityView {
   appearance?: Appearance;
   /** Fackel der Nachtwache (nur nachts sichtbar) */
   torch?: THREE.Object3D;
+  /** Restzeit mit gezogener Waffe (Sekunden) */
+  combatT?: number;
   torchLight?: VLight;
   /** NSC-Kennung (für Questmarkierungen, die dem NSC folgen) */
   npcId?: string;
@@ -152,7 +154,9 @@ export class EntityManager {
           const l = new VLight(0xff9a48, 5, 11);
           l.position.y = 0.6;
           torch.add(l);
-          torch.rotation.x = -0.35;
+          // aufrecht in der Faust (Unterarm hält die Fackel nach vorn, s. HumanoidRig.holdTorch)
+          torch.rotation.x = Math.PI / 2 - 0.25;
+          torch.position.set(-0.01, -0.085, 0.012);
           rig.j.handL.add(torch);
           torch.visible = false;
           v.torch = torch;
@@ -191,8 +195,9 @@ export class EntityManager {
         lantern.add(handle);
         const l = new VLight(0xffc080, 3, 8);
         lantern.add(l);
-        lantern.position.set(-0.27, -0.08, 0.02);
-        rig.j.hips.add(lantern);
+        // hängt am Gürtel und pendelt beim Gehen
+        lantern.position.set(0, -0.1, 0);
+        rig.hang(lantern, 'hips', new THREE.Vector3(-0.2, 0.02, 0.03));
         v.rig = rig;
         v.obj.add(rig.root);
         break;
@@ -318,10 +323,12 @@ export class EntityManager {
       if (!v.local) v.sampleAt(renderTime);
       v.speed = v.lastPos.distanceTo(v.pos) / Math.max(dt, 1e-3);
       if (v.speed > 30) v.speed = 0;
-      // Bewegung relativ zur Blickrichtung (rückwärts gehen → Schrittzyklus rückwärts)
+      // Bewegung relativ zur Blickrichtung: vorwärts = (−sin yaw, −cos yaw), links = (−cos yaw, sin yaw)
+      // (Gierwinkel wie in der Simulation: yaw = atan2(−dx, −dz))
       const mdx = v.pos.x - v.lastPos.x, mdz = v.pos.z - v.lastPos.z;
       const mlen = Math.hypot(mdx, mdz);
-      const fwd = mlen > 1e-5 ? (mdx * Math.sin(v.yaw) + mdz * Math.cos(v.yaw)) / mlen : 1;
+      const fwd = mlen > 1e-5 ? -(mdx * Math.sin(v.yaw) + mdz * Math.cos(v.yaw)) / mlen : 1;
+      const side = mlen > 1e-5 ? (-mdx * Math.cos(v.yaw) + mdz * Math.sin(v.yaw)) / mlen : 0;
       v.lastPos.copy(v.pos);
       v.obj.position.copy(v.pos);
       v.obj.rotation.y = v.yaw;
@@ -330,9 +337,15 @@ export class EntityManager {
       if (v.rig) {
         const a = mapAnim(v.anim);
         v.rig.play(a, ANIM_DUR[a.split(':')[0]!]);
-        const gl = groundAt(v.pos.x + Math.cos(v.yaw) * 0.12, v.pos.z - Math.sin(v.yaw) * 0.12) - v.pos.y;
-        const gr = groundAt(v.pos.x - Math.cos(v.yaw) * 0.12, v.pos.z + Math.sin(v.yaw) * 0.12) - v.pos.y;
-        v.rig.update(dt, hSpeed, clampG(gl), clampG(gr), fwd);
+        // Boden unter dem linken bzw. rechten Fuß (links = (−cos yaw, sin yaw))
+        const gl = groundAt(v.pos.x - Math.cos(v.yaw) * 0.12, v.pos.z + Math.sin(v.yaw) * 0.12) - v.pos.y;
+        const gr = groundAt(v.pos.x + Math.cos(v.yaw) * 0.12, v.pos.z - Math.sin(v.yaw) * 0.12) - v.pos.y;
+        // Waffen: Gegner ziehen, sobald sie jemanden im Visier haben; Wachen und Leute nur im Kampf
+        const fight = /^(atk|heavy|block|bow|cast|skill|w_|a_|hit)/.test(a);
+        if (fight || (v.kind === 'e' && v.target)) v.combatT = 5;
+        else v.combatT = Math.max(0, (v.combatT ?? 0) - dt);
+        v.rig.setDrawn(v.combatT > 0 && v.anim !== 'die' && v.anim !== 'dead');
+        v.rig.update(dt, hSpeed, clampG(gl), clampG(gr), fwd, side);
         v.rig.setLod(v.pos.distanceToSquared(this.camPos) > 16 * 16 ? 1 : 0);
         if (v.rig.exhaled) {
           v.rig.exhaled = false;
@@ -350,8 +363,10 @@ export class EntityManager {
           }
         }
         if (v.torch) {
-          const on = this.night > 0.45;
+          // nachts; im Kampf mit Schild steckt die Fackel weg
+          const on = this.night > 0.45 && !(v.rig.drawn && v.rig.offhandId);
           v.torch.visible = on;
+          v.rig.holdTorch = on;
           if (v.torchLight) v.torchLight.intensity = on ? 4.2 + Math.sin(time * 13 + v.id) * 0.5 + Math.sin(time * 29 + v.id * 3) * 0.35 : 0;
         }
         if (v.shieldBubble) {

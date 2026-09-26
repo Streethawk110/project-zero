@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { loadManifest, preloadModels } from '../render/models.ts';
 import { loadBakedTextures, loadFoliageTextures } from '../render/textures.ts';
 import { loadHumanTextures } from '../render/human.ts';
+import { loadMocap } from '../render/mocap.ts';
 import { HumanoidRig } from '../render/rig.ts';
 
 const params = new URLSearchParams(location.search);
@@ -41,6 +42,7 @@ await loadBakedTextures(512);
 await preloadModels(() => {});
 await loadFoliageTextures(1024);
 await loadHumanTextures();
+await loadMocap();
 
 const specs: { outfit: string; hair: number; beard: number; anim: string; t: number; speed: number; weapon?: string; offhand?: string; skin: number; body: number; sex?: number }[] = [
   { outfit: 'armor_gambeson', hair: 0, beard: 0, anim: 'idle', t: 1, speed: 0, skin: 1, body: 0.5 },
@@ -57,7 +59,7 @@ const gait = params.get('gait');
 const frames = Number(params.get('frames') ?? 8);
 // Übersicht mehrerer Animationen: ?anims=jump:0.2,dodge:0.15,atk1:0.3 (Name:Zeit)
 const anims = params.get('poses')
-  ? (JSON.parse(params.get('poses')!) as object[]).map((p) => ({ a: 'dbg:' + JSON.stringify(p), t: 0.5 }))
+  ? (JSON.parse(params.get('poses')!) as object[]).map((p) => ({ a: 'dbg:' + JSON.stringify(p), t: Number(params.get('pt') ?? 0.5) }))
   : params.get('anims')?.split(',').map((x) => { const [a, t] = x.split(':'); return { a: a!, t: Number(t ?? 0.5) }; });
 const list = anims
   ? anims.map(({ a, t }) => ({ ...specs[Number(only ?? 0)]!, anim: a, t, speed: 0, weapon: params.get('weapon') && !a.startsWith('dbg') ? params.get('weapon')! : a.startsWith('bow') ? 'bow_short' : a.startsWith('cast') ? 'staff_oak' : a.startsWith('atk') || a.startsWith('dbg') || a === 'heavy' || a === 'block' ? (params.get('weapon') ?? 'sword_rusty') : undefined, offhand: a === 'block' || params.get('shield') ? 'shield_wood' : undefined }))
@@ -72,12 +74,19 @@ list.forEach((s, i) => {
   rig.root.position.set((i - (list.length - 1) / 2) * 1.25, 0, 0);
   rig.root.rotation.y = Math.PI + Number(params.get('turn') ?? 0.35);
   rig.play(s.anim, 0.8);
+  // Aufnahmen: fester Zeitpunkt statt Zufallsversatz (?mt=Sekunden, je Figur + mtStep)
+  if (params.get('mt')) (rig as unknown as { mocapT0: number }).mocapT0 = Number(params.get('mt')) + i * Number(params.get('mtStep') ?? 0);
+  // Waffe ziehen (?drawn=1): mit anims=idle:t zeigt t den Verlauf des Ziehens
+  if (params.get('drawn')) rig.setDrawn(true);
   // Pose bis zum gewünschten Zeitpunkt vorspulen
   if (gait) {
-    const cycT = (rig as unknown as { cycleLen(v: number): number }).cycleLen(s.speed) / s.speed;
-    for (let k = 0; k < 100; k++) rig.update(0.02, s.speed);
+    // Richtung relativ zum Blick (?dir=Grad: 0 vorwärts, 90 links, 180 rückwärts)
+    const dir = Number(params.get('dir') ?? 0) * Math.PI / 180;
+    const fw = Math.cos(dir), sd = Math.sin(dir);
+    for (let k = 0; k < 100; k++) rig.update(0.02, s.speed, 0, 0, fw, sd);
+    const cycT = (rig as unknown as { cycleLen(v: number, c: number): number; moveCat: number }).cycleLen(s.speed, (rig as unknown as { moveCat: number }).moveCat) / s.speed;
     const steps = Math.round((cycT * i) / frames / 0.005);
-    for (let k = 0; k < steps; k++) rig.update(0.005, s.speed);
+    for (let k = 0; k < steps; k++) rig.update(0.005, s.speed, 0, 0, fw, sd);
     rig.root.position.set((i - (list.length - 1) / 2) * Number(params.get('gap') ?? 0.8), 0, 0);
   } else if (anims) {
     // t = Anteil der Aktionsdauer (0,8 s)

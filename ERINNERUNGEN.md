@@ -2,6 +2,46 @@
 
 Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
 
+## 2026-09-26 – Cloud-Sitzung: echte Bewegungen, Waffen am Körper, Stimmen
+
+**Nutzer**: „Laufanimationen und andere Animationen kacke, Stimmen schlecht, Schild geht bei Bewegung durch
+den Körper, alle Items kleben an Körperteilen – und andere Sachen auch bedenken.“
+
+**Erledigt (Teil 1: Bewegungen + Gegenstände)**
+- GROSSER FUND: `entities.ts` rechnete `fwd` mit falschem Vorzeichen → bei ALLEN NSCs lief der Schrittzyklus
+  rückwärts (Füße rutschten gegen die Laufrichtung). Auch Bodenproben links/rechts vertauscht. Behoben;
+  Spieler bekommt jetzt ebenfalls fwd/side (Blocken/Zielen → Rückwärts-/Seitwärtsgang).
+- Motion Capture (CMU, frei nutzbar, Danksagung in README): `tools/anim/bvh.py` (BVH, FK, Quaternionen),
+  `tools/anim/mocap.py` (Cache `tools/anim/.cache`, gitignored). Bezug = Bild 0 jeder cgspeed-Datei (T-Pose;
+  in der Nullpose wären Füße 21° gekippt, Kopf 16° gehoben). Rumpf/Kopf/Schlüsselbein/Füße: Weltrotation
+  relativ zu Bild 0; Gliedmaßen zusätzlich kürzeste Drehung Ruherichtung→T-Pose-Richtung. Gangzyklen von
+  linkem Fersenaufsatz zu linkem (neuer Kontakt-Detektor: Höhe + Tempo relativ zum Körper, 0,1 s Luft),
+  Laufrichtung auf vorwärts/seitwärts/rückwärts eingerastet, Naht geschlossen, 30 fps, int16+base64 →
+  `apps/client/public/assets/anim/clips.json` (~600 KB, 42 Clips). Werkzeuge: `info`, `strip` (Strichfiguren).
+- Clips: walk 16_15 (1,18 m/s), walk_fast 16_21, jog 16_36, run 16_55 (4,4), sprint 143_01 (7,4), walk_back
+  143_39, walk_left/right 143_40 (gespiegelt), idle 111_28/113_21 (+ Strecken 143_30 einmalig), talk 18_08/
+  19_08/80_48, Arbeit: hammer 62_07, chop 79_01, rake 79_87, dig 79_04, sweep 79_55, wash 79_44, write 79_31,
+  fish 79_34, sew 79_05, mix 79_13, slice 79_09, serve 80_27, saw 62_03, train 02_07, carry 79_25; sit 114_05,
+  sit_down 113_15, sit_ground 82_05, wave 143_25 (gespiegelt), bow 113_02, curtsey 141_26, cheer 79_69,
+  laugh 79_70, interact 139_06, pickup 111_17. Subjekt 79 spreizt ein Bein → `legs=True` nimmt Becken/Beine
+  aus einer Standaufnahme. Kopf/Hals bei Stehen/Reden gedämpft (`head`), Blick macht das Spiel.
+- Client `render/mocap.ts` (Laden, Abtasten, Ausgleich der Ruherichtungen je Figur `MocapRig`).
+  `rig.ts`: Gangarten nach Tempo (reines Band bis 45 % zur nächsten, dann phasengleich überblendet),
+  Richtung 0/links/rechts/rückwärts mit Hysterese, Restwinkel dreht Becken+Beine (`turnLegs`), Varianten-
+  wechsel (`playVariant`, 6–16 s, weich), Hinsetzen als Einleitung, Drehen auf der Stelle mischt Gehzyklus bei.
+  Prozedural bleiben Hiebe, Bogen, Zauber, Ausweichen, Sprung, Tanz, Zeigen. Vorschau: `?anims=work_hammer:0.9`,
+  `?gait=…&dir=90`, `&mt=0` (fester Zeitversatz), `&drawn=1`, `&pt=2` (Posen-Zeit).
+- Sim: `workAnim(npc, node)` in routines.ts → `work_<art>` je Arbeitsort (Schmiede hämmert, Holzstapel hackt,
+  Felder rechen/graben, Brunnen waschen, Kontor/Vogthaus/Kapelle schreiben, Burghof Schwertübung …).
+- Gegenstände (`render/rigItems.ts`): Schwert/Dolch in dunkler Scheide an der linken Hüfte (Scheide bleibt beim
+  Ziehen), Axt/Keule am Gürtel (Kopf oben), Schild und Bogen auf dem Rücken; `setDrawn` mit Griff zur Hüfte/
+  über die Schulter (0,5 s, Wechsel in der Mitte); Hut-Haltung neu (Klinge schräg vorn oben neben dem Schild,
+  kein Durchdringen, auch beim Sprinten). Gezogen: Spieler bei Kampf/Blocken/Gegner < 16 m (6 s Nachlauf),
+  NSCs/Gegner bei Kampfanimation oder Ziel (5 s). Werkzeuge je Arbeit (Hammer, Axt, Rechen, Schaufel, Besen,
+  Angel, Säge, Messer, Feder+Buch, Schüssel+Löffel, Krug, Tuch, Kiste); Stielwerkzeuge durch beide Hände,
+  Kopf am Boden, Axt von der Brust durch die Hände, Angel nach vorn oben. Pendel (`Dangle`) für Scheide und
+  Isras Laterne; Fackel aufrecht mit vorgestrecktem Unterarm (`holdTorch`).
+
 ## 2026-09-24 – Cloud-Sitzung: Realismus + Leistung („wie KCD2“)
 
 **Wunsch**: Grafik viel realistischer (Ziel Kingdom Come Deliverance 2), weniger

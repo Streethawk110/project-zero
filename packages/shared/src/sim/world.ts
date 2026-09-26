@@ -10,7 +10,7 @@ import { FACTIONS } from '../content/meta.ts';
 import { ALCHEMY_BY_ID, brewMaterials, judgeBrew, type BrewStep } from './alchemy.ts';
 import { DICE_TARGET, bestSelection, opponentTurn, rollDice, scoreDice, type DiceTurnLog } from './dice.ts';
 import { HOUSES, doorLockLevel } from '../world/houses.ts';
-import { findPath, navNode, nearestNode, routineStep, type RoutineStep } from '../world/routines.ts';
+import { findPath, navNode, nearestNode, routineStep, workAnim, type RoutineStep } from '../world/routines.ts';
 import { SKILL_BY_ID } from '../content/skills.ts';
 import { SPAWNS, type SpawnGroup } from '../content/spawns.ts';
 import { clamp, dist2, rng, yawDir, yawTo, angleDiff, type Rng } from '../math.ts';
@@ -2652,7 +2652,7 @@ export class World {
       void here;
       return;
     }
-    n.anim = step.act === 'work' ? 'work' : step.act === 'sit' ? 'sit' : step.act === 'talk' ? 'talk' : 'idle';
+    n.anim = step.act === 'work' ? workAnim(def.id ?? '', target) : step.act === 'sit' ? 'sit' : step.act === 'talk' ? 'talk' : 'idle';
     if (step.act === 'wander' || step.act === 'patrol') n.anim = 'idle';
     // Plaudern: dem nächsten Gesprächspartner zuwenden
     let faced = false;

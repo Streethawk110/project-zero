@@ -15,3 +15,5 @@ playwright-report/
 tools/blender/__pycache__/
 release/
 tools/blender/.mh_cache/
+tools/anim/.cache/
+tools/anim/__pycache__/

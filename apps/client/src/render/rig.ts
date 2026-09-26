@@ -1,8 +1,7 @@
-// Humanoides Rig mit prozeduraler Animation.
-// Teile (Kopf, Torso, Gliedmaßen, Haare …) kommen aus dem Blender-Modell „humanoid“,
-// sonst aus einfachen Ersatzformen. Posen werden mit Überblendung gemischt;
-// die Schrittphase folgt der zurückgelegten Strecke (kein Fußrutschen), und
-// die Füße passen sich dem Gelände an.
+// Humanoides Rig. Gehen, Laufen, Stehen, Reden, Arbeiten usw. kommen aus Bewegungsaufnahmen
+// (mocap.ts, CMU), Kampf und Sonderbewegungen aus prozeduralen Schlüsselposen, darüber liegen
+// Waffenhaltung, Blick, Atmung und Mimik. Posen werden mit Überblendung gemischt; die Schrittphase
+// folgt der zurückgelegten Strecke (kein Fußrutschen), und die Füße passen sich dem Gelände an.
 
 import * as THREE from 'three';
 import { HAIR_COLORS, SKIN_COLORS, EYE_COLORS, ITEMS, type Appearance } from '@pz/shared';
@@ -11,6 +10,8 @@ import { TEX } from './textures.ts';
 import { buildSkinnedParts, hasCharacterModel, headPiece, type SkinPart } from './skinned.ts';
 import { buildHuman, eyeMaterial, hairCapMaterial, hairMaterial, hasHumanModel, humanJoints, humanLandmarks, morphMeshes, skinMaterial, type Sex } from './human.ts';
 import { addWetness } from './wetness.ts';
+import { hasMocap, mocapClip, MocapRig, type MocapClip } from './mocap.ts';
+import { Dangle, GRIP, makeScabbard, makeTool, WORK_TOOLS, type ToolKind } from './rigItems.ts';
 
 export type JointName =
   | 'hips' | 'spine' | 'chest' | 'neck' | 'head'
@@ -204,8 +205,53 @@ export class HumanoidRig {
   /** Zähler der Fußaufsätze (für Schrittgeräusche) */
   footfalls = 0;
   private legLen: [number, number] | null = null;
+  /** Bewegungsaufnahmen: Übertragung auf diese Figur, Zielpose je Gelenk, Hüftversatz */
+  private mrig: MocapRig | null = null;
+  private mq = JOINTS.map(() => new THREE.Quaternion());
+  private mq2 = JOINTS.map(() => new THREE.Quaternion());
+  private mroot = new THREE.Vector3();
+  private mroot2 = new THREE.Vector3();
+  /** aktuelle Pose stammt aus Aufnahmen (prozedurale Bewegungen der Lebendigkeit werden dann zurückgenommen) */
+  private mocapOn = false;
+  /** Zeitversatz, damit nicht alle Figuren synchron stehen/atmen */
+  private mocapT0 = Math.random() * 30;
+  /** Phase des rechten Fußaufsatzes im Gangzyklus */
+  private stepR = 0.5;
+  /** Aufnahme-Varianten (Stehen, Reden, Arbeit …): aktuelle, vorige (Überblendung), Zeit bis zum Wechsel */
+  private varAnim = '';
+  private varName = '';
+  private varT = 0;
+  private varFrom = '';
+  private varFromT = 0;
+  private varFade = 1;
+  private varSwitch = 8;
+  /** einmalige Einleitung vor der Schleife (Hinsetzen) */
+  private varIntro = '';
+  private varIntroT = 0;
+  /** Gangrichtung relativ zum Blick: 0 vorwärts, 1 links, 2 rechts, 3 rückwärts (eigene Aufnahmen) */
+  private moveCat = 0;
+  /** Beine drehen zur Bewegungsrichtung (schräg), Oberkörper bleibt beim Blick */
+  private legYaw = 0;
   speed = 0;
   weapon: THREE.Object3D | null = null;
+  /** Lage der Waffe in der Hand bzw. des Schilds am Arm (aus makeWeapon + Griff) */
+  private weaponHand = { p: new THREE.Vector3(), q: new THREE.Quaternion() };
+  private offhandHand = { p: new THREE.Vector3(), q: new THREE.Quaternion() };
+  /** Aufhängungen: linke Hüfte (Scheide/Gürtel, pendelt), Rücken (Schild, Bogen) */
+  private mountHip = new THREE.Group();
+  private mountBack = new THREE.Group();
+  private scabbard: THREE.Object3D | null = null;
+  private dangles: Dangle[] = [];
+  /** Waffe gezogen (Kampf); sonst verstaut. drawK: 0 verstaut … 1 in der Hand (Armhaltung blendet mit) */
+  drawn = false;
+  private drawK = 0;
+  private drawT = -1;
+  private weaponOut = false;
+  /** Werkzeug der aktuellen Tätigkeit */
+  private toolKey = '';
+  private tools: THREE.Object3D[] = [];
+  private pole: { obj: THREE.Object3D; kind: ToolKind; dir: THREE.Vector3 } | null = null;
+  private crate: THREE.Object3D | null = null;
   offhand: THREE.Object3D | null = null;
   weaponId = '';
   offhandId = '';
@@ -313,6 +359,14 @@ export class HumanoidRig {
     this.root.scale.setScalar((opts.scale ?? 1) * a.height);
     if (this.useSkin) this.bindSkin(outfit);
     this.setAppearance(a);
+    if (hasMocap()) this.mrig = new MocapRig(this.j, JOINTS, (n) => { const p = this.j[n as JointName].parent; return p && p !== this.body ? p.name : null; });
+    // Aufhängungen: linke Hüfte am Gürtel (Scheide, Axt; pendelt beim Gehen), Rücken (Schild, Bogen)
+    const hw = this.human ? this.humanBw(0.85 + a.body * 0.3) : 0.85 + a.body * 0.3;
+    this.mountHip.position.set(0.175 * hw, this.human ? 0.03 : 0.05, 0.03);
+    this.j.hips.add(this.mountHip);
+    this.mountBack.position.set(0, this.human ? 0.16 : 0.2, this.human ? -0.13 : -0.12);
+    this.j.chest.add(this.mountBack);
+    this.dangles.push(new Dangle(this.mountHip, 30, 4.5, 0.45, 0.05));
     for (const n of JOINTS) {
       this.cur[n] = this.j[n].quaternion.clone();
       this.from[n] = this.j[n].quaternion.clone();
@@ -682,14 +736,23 @@ export class HumanoidRig {
     if (weaponId !== this.weaponId) {
       this.weaponId = weaponId;
       this.weapon?.removeFromParent();
+      this.scabbard?.removeFromParent();
+      this.scabbard = null;
       this.weapon = weaponId ? makeWeapon(weaponId) : null;
       if (this.weapon) {
-        // Griff in der geschlossenen Faust (nicht am Handgelenk)
-        // Bogen wird links gehalten (rechts zieht die Sehne)
-        const bow = ITEMS[weaponId]?.weapon?.type === 'bow';
-        if (this.human) this.weapon.position.add(new THREE.Vector3(bow ? -0.01 : 0.01, -0.085, 0.012));
-        (bow ? this.j.handL : this.j.handR).add(this.weapon);
+        // Griff in der geschlossenen Faust (nicht am Handgelenk); Bogen links (rechts zieht die Sehne)
+        const type = this.weaponType;
+        if (this.human) this.weapon.position.add(new THREE.Vector3(type === 'bow' ? -0.01 : 0.01, -0.085, 0.012));
+        this.weaponHand = { p: this.weapon.position.clone(), q: this.weapon.quaternion.clone() };
+        // Schwert/Dolch: Scheide an der linken Hüfte (bleibt dort, auch wenn die Klinge gezogen ist)
+        if (type === 'sword' || type === 'dagger') {
+          this.scabbard = makeScabbard(this.weapon.children[0] ?? this.weapon, type);
+          this.scabbard.quaternion.copy(this.holsterPose(type).q);
+          this.scabbard.position.copy(this.holsterPose(type).p);
+          this.mountHip.add(this.scabbard);
+        }
       }
+      this.placeWeapons();
     }
     if (offhandId !== this.offhandId) {
       this.offhandId = offhandId;
@@ -700,9 +763,10 @@ export class HumanoidRig {
         if (kind === 'quiver') { this.offhand.position.set(0.1, 0.15, -0.14); this.offhand.rotation.z = 0.3; this.j.chest.add(this.offhand); }
         else {
           if (this.human) this.offhand.position.add(new THREE.Vector3(-0.01, -0.085, 0.012));
-          this.j.handL.add(this.offhand);
+          this.offhandHand = { p: this.offhand.position.clone(), q: this.offhand.quaternion.clone() };
         }
       }
+      this.placeWeapons();
     }
     if (armorId !== this.armorId && armorId) {
       this.armorId = armorId;
@@ -727,6 +791,187 @@ export class HumanoidRig {
     }
   }
 
+  /** Fackel in der linken Hand: Unterarm nach vorn, Fackel aufrecht */
+  holdTorch = false;
+
+  /** Gegenstand pendelnd an ein Gelenk hängen (z. B. Laterne am Gürtel); Rückgabe: Aufhängung. */
+  hang(obj: THREE.Object3D, joint: JointName, pos: THREE.Vector3, swing = 0.6) {
+    const g = new THREE.Group();
+    g.position.copy(pos);
+    g.add(obj);
+    this.j[joint].add(g);
+    this.dangles.push(new Dangle(g, 26, 3.5, swing, 0.08));
+    return g;
+  }
+
+  /** Waffe ziehen (Kampf) oder wegstecken – mit kurzer Griffbewegung zur Hüfte bzw. über die Schulter. */
+  setDrawn(on: boolean) {
+    if (on === this.drawn) return;
+    this.drawn = on;
+    const t = this.weaponType, offT = ITEMS[this.offhandId]?.offhand?.type;
+    const moves = (this.weapon && t !== 'staff') || offT === 'shield';
+    if (moves) this.drawT = 0;
+    else { this.weaponOut = on; this.placeWeapons(); }
+  }
+
+  /** Lage einer verstauten Waffe in ihrer Aufhängung (Hüfte: Schwert/Dolch/Axt/Keule, Rücken: Bogen/Schild). */
+  private holsterPose(type: string): { p: THREE.Vector3; q: THREE.Quaternion } {
+    const basis = (y: THREE.Vector3, zHint: THREE.Vector3) => {
+      const Y = y.clone().normalize();
+      const Z = zHint.clone().sub(Y.clone().multiplyScalar(zHint.dot(Y))).normalize();
+      const X = new THREE.Vector3().crossVectors(Y, Z);
+      return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, Z));
+    };
+    switch (type) {
+      case 'sword': case 'dagger': {
+        // Klinge schräg nach hinten unten, flach am Bein; Mundstück der Scheide am Gürtel
+        const d = type === 'sword' ? new THREE.Vector3(0.12, -0.9, -0.38) : new THREE.Vector3(0.05, -0.95, -0.25);
+        const Y = d.clone().normalize().negate();
+        return { q: basis(Y, new THREE.Vector3(1, 0, 0)), p: Y.clone().multiplyScalar(type === 'sword' ? 0.145 : 0.1) };
+      }
+      case 'axe': case 'mace': {
+        // am Gürtel eingehängt: Kopf oben, Stiel am Oberschenkel entlang nach unten
+        const Y = new THREE.Vector3(0.06, -0.95, -0.22).normalize();
+        return { q: basis(Y, new THREE.Vector3(1, 0, 0)), p: Y.clone().multiplyScalar(0.5) };
+      }
+      case 'bow': {
+        // quer über den Rücken, Sehne am Körper
+        const Y = new THREE.Vector3(-0.55, 0.83, 0).normalize();
+        return { q: basis(Y, new THREE.Vector3(0, 0, 1)), p: new THREE.Vector3(0, -0.12, -0.07) };
+      }
+      case 'shield': {
+        // flach auf dem Rücken, Buckel nach außen, oben leicht abstehend
+        const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 1, 0), new THREE.Vector3(-1, 0, 0)));
+        q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -0.12));
+        return { q, p: new THREE.Vector3(-0.08, -0.12, -0.07) };
+      }
+    }
+    return { p: new THREE.Vector3(), q: new THREE.Quaternion() };
+  }
+
+  /** Waffe und Schild an ihren Platz: in der Hand (gezogen) oder verstaut. Stab bleibt als Wanderstab in der Hand. */
+  private placeWeapons() {
+    const out = this.weaponOut;
+    const t = this.weaponType;
+    if (this.weapon) {
+      const inHand = out || t === 'staff' || t === 'none';
+      const parent = inHand ? (t === 'bow' ? this.j.handL : this.j.handR) : t === 'bow' ? this.mountBack : this.mountHip;
+      const tr = inHand ? this.weaponHand : this.holsterPose(t);
+      parent.add(this.weapon);
+      this.weapon.position.copy(tr.p);
+      this.weapon.quaternion.copy(tr.q);
+    }
+    const offT = ITEMS[this.offhandId]?.offhand?.type;
+    if (this.offhand && offT !== 'quiver') {
+      const inHand = out || offT !== 'shield';
+      const tr = inHand ? this.offhandHand : this.holsterPose('shield');
+      (inHand ? this.j.handL : this.mountBack).add(this.offhand);
+      this.offhand.position.copy(tr.p);
+      this.offhand.quaternion.copy(tr.q);
+    }
+  }
+
+  /** Werkzeug zur Tätigkeit (work_<art>): in die Hand, beidhändiger Stiel oder Kiste; Waffe wird verstaut. */
+  private setTool(style: string) {
+    this.toolKey = style;
+    for (const t of this.tools) t.removeFromParent();
+    this.tools = [];
+    this.pole = null;
+    this.crate = null;
+    const def = WORK_TOOLS[style];
+    if (!def) return;
+    const inHand = (kind: ToolKind, hand: THREE.Object3D, left: boolean) => {
+      const t = makeTool(kind);
+      const g = new THREE.Group();
+      g.add(t);
+      g.rotation.x = -Math.PI / 2 + 0.2;
+      g.position.set(left ? -GRIP.x : GRIP.x, GRIP.y, GRIP.z);
+      hand.add(g);
+      this.tools.push(g);
+    };
+    if (def.r) inHand(def.r, this.j.handR, false);
+    if (def.l) inHand(def.l, this.j.handL, true);
+    if (def.pole) {
+      const t = makeTool(def.pole);
+      this.root.add(t);
+      this.tools.push(t);
+      this.pole = { obj: t, kind: def.pole, dir: new THREE.Vector3(0, -1, 0.3).normalize() };
+    }
+    if (def.both) {
+      const t = makeTool(def.both);
+      this.root.add(t);
+      this.tools.push(t);
+      this.crate = t;
+    }
+  }
+
+  /** Nach der Pose: Ziehen/Wegstecken, Werkzeuge an beiden Händen ausrichten, hängende Dinge pendeln. */
+  private updateItems(dt: number) {
+    const T = 0.5;
+    if (this.drawT >= 0) {
+      const before = this.drawT;
+      this.drawT += dt;
+      if ((before < T * 0.5 && this.drawT >= T * 0.5) || this.drawT >= T) {
+        if (this.weaponOut !== this.drawn) { this.weaponOut = this.drawn; this.placeWeapons(); }
+      }
+      if (this.drawT >= T) this.drawT = -1;
+    }
+    this.drawK += ((this.weaponOut ? 1 : 0) - this.drawK) * Math.min(1, dt * 9);
+    if (this.pole || this.crate) this.updateTwoHanded();
+    for (const d of this.dangles) d.update(dt);
+  }
+
+  /** Stielwerkzeug durch beide Griffpunkte legen (Kopf am Boden), Angel von hinten nach vorn, Kiste zwischen die Hände. */
+  private updateTwoHanded() {
+    this.root.updateMatrixWorld(true);
+    const a = this.j.handR.localToWorld(GRIP.clone());
+    const b = this.j.handL.localToWorld(new THREE.Vector3(-GRIP.x, GRIP.y, GRIP.z));
+    const rq = this.root.getWorldQuaternion(new THREE.Quaternion());
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(rq);
+    const inv = rq.clone().invert();
+    const place = (obj: THREE.Object3D, pos: THREE.Vector3, Y: THREE.Vector3) => {
+      const Z = fwd.clone().sub(Y.clone().multiplyScalar(fwd.dot(Y)));
+      if (Z.lengthSq() < 1e-4) Z.set(0, 1, 0).cross(Y);
+      Z.normalize();
+      const X = new THREE.Vector3().crossVectors(Y, Z);
+      const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, Z));
+      obj.position.copy(this.root.worldToLocal(pos.clone()));
+      obj.quaternion.copy(inv).multiply(q);
+      obj.scale.setScalar(1 / this.root.scale.x);
+    };
+    if (this.crate) {
+      const m = a.clone().add(b).multiplyScalar(0.5).addScaledVector(fwd, 0.14);
+      place(this.crate, m, new THREE.Vector3(0, 1, 0));
+    }
+    const P = this.pole;
+    if (!P) return;
+    if (P.kind === 'rod') {
+      // Angel: vom hinteren zum vorderen Griff, nach vorn oben über das Wasser hinaus
+      const front = a.clone().sub(b).dot(fwd) > 0 ? a : b, rear = front === a ? b : a;
+      const d = front.clone().sub(rear);
+      const want = (d.length() > 0.08 ? d.normalize() : P.dir.clone()).addScaledVector(fwd, 1.2).add(new THREE.Vector3(0, 0.45, 0)).normalize();
+      P.dir.lerp(want, 0.5).normalize();
+      place(P.obj, rear.clone().addScaledVector(P.dir, -0.3), P.dir.clone());
+      return;
+    }
+    if (P.kind === 'axe') {
+      // Axt: Stiel von der Brust durch beide Hände nach außen, Kopf am fernen Ende
+      const chest = this.j.chest.localToWorld(new THREE.Vector3(0, 0.15, 0));
+      const mid = a.clone().add(b).multiplyScalar(0.5);
+      const d = mid.clone().sub(chest);
+      if (d.length() > 0.05) P.dir.lerp(d.normalize(), 0.7).normalize();
+      place(P.obj, mid.clone().addScaledVector(P.dir, -0.1), P.dir.clone());
+      return;
+    }
+    const upper = a.y > b.y ? a : b, lower = upper === a ? b : a;
+    const d = lower.clone().sub(upper);
+    if (d.length() > 0.1 && d.y < -0.02) P.dir.lerp(d.normalize(), 0.6).normalize();
+    // Kopf auf den Boden: Abstand entlang des Stiels so, dass das Arbeitsende den Boden berührt
+    const ground = this.root.getWorldPosition(new THREE.Vector3()).y + (P.kind === 'shovel' ? -0.06 : 0.02);
+    const k = THREE.MathUtils.clamp((ground - lower.y) / Math.min(-0.05, P.dir.y), 0.25, 1.1);
+    place(P.obj, lower.clone().addScaledVector(P.dir, k), P.dir.clone().negate());
+  }
+
   get weaponType() {
     return ITEMS[this.weaponId]?.weapon?.type ?? 'none';
   }
@@ -734,6 +979,13 @@ export class HumanoidRig {
   play(anim: string, dur?: number) {
     if (anim === this.anim) return;
     const oneShot = anim.startsWith('atk') || anim === 'heavy' || anim === 'bow' || anim === 'cast' || anim.startsWith('skill') || anim === 'hit';
+    // Kampfbewegung: Waffe sofort in der Hand (der Hieb beginnt gleich)
+    if (oneShot && anim !== 'hit' || anim === 'block' || anim.startsWith('w_') || anim.startsWith('a_')) {
+      this.drawn = true;
+      this.drawT = -1;
+      if (!this.weaponOut) { this.weaponOut = true; this.placeWeapons(); }
+      this.drawK = 1;
+    }
     for (const n of JOINTS) this.from[n].copy(this.j[n].quaternion);
     this.prevAnim = this.anim;
     this.anim = anim;
@@ -747,48 +999,91 @@ export class HumanoidRig {
     this.flinch = 0.25;
   }
 
-  /** speed: horizontale Geschwindigkeit (m/s), groundL/R: Geländehöhe unter den Füßen relativ zur Wurzel */
-  update(dt: number, speed: number, groundL = 0, groundR = 0, fwd = 1) {
+  /**
+   * speed: horizontale Geschwindigkeit (m/s), groundL/R: Geländehöhe unter den Füßen relativ zur Wurzel,
+   * fwd/side: Bewegungsrichtung relativ zum Blick (vorwärts 1, rückwärts −1; side > 0 = nach links).
+   */
+  update(dt: number, speed: number, groundL = 0, groundR = 0, fwd = 1, side = 0) {
     this.animT += dt;
     this.blend = Math.min(1, this.blend + dt / this.blendDur);
     this.speed = speed;
     if (this.human) this.updateSwing(dt);
     this.flinch = Math.max(0, this.flinch - dt);
+    const gaitAnim = this.anim === 'walk' || this.anim === 'run' || this.anim === 'sprint';
+    // Richtung: vorwärts, seitwärts (links/rechts) und rückwärts mit eigenen Aufnahmen; die Restabweichung
+    // (schräg) übernehmen die Beine, der Oberkörper bleibt beim Blick
+    const moving = speed > 0.3 && gaitAnim;
+    const ang = moving ? Math.atan2(side, fwd) : 0;
+    const cat = moving ? this.pickMoveCat(ang, speed) : 0;
+    if (cat !== this.moveCat) {
+      // Wechsel der Gangrichtung: von der aktuellen Pose weich überblenden
+      this.moveCat = cat;
+      for (const n of JOINTS) this.from[n].copy(this.j[n].quaternion);
+      this.blend = 0;
+      this.blendDur = 0.25;
+    }
+    const catAng = [0, Math.PI / 2, -Math.PI / 2, Math.PI][cat]!;
+    let ly = moving ? Math.atan2(Math.sin(ang - catAng), Math.cos(ang - catAng)) : 0;
+    ly = Math.max(-1.1, Math.min(1.1, ly));
+    this.legYaw += (ly - this.legYaw) * Math.min(1, dt * 8);
     // Schrittzyklus an die Strecke koppeln: je Zyklus (zwei Schritte) genau so weit, wie die Füße in der
-    // Standphase zurücklegen → kein Rutschen. Rückwärts läuft der Zyklus rückwärts.
+    // Standphase zurücklegen → kein Rutschen. Ohne eigenen Rückwärtsgang läuft der Zyklus rückwärts.
     // Drehen auf der Stelle: Schrittzyklus läuft mit der Drehung (≈ 0,25 m Fußweg je Radiant)
     const turning = speed < 0.4 && Math.abs(this.turnRate) > 1.0 && (this.anim === 'idle' || this.anim === 'recover');
     this.turnStep += ((turning ? 1 : 0) - this.turnStep) * Math.min(1, dt * (turning ? 10 : 5));
     const before = this.cyc;
     if (this.turnStep > 0.05) this.cyc += Math.abs(this.turnRate) * 0.25 * dt / this.cycleLen(0.8);
-    this.cyc += (fwd < -0.3 ? -1 : 1) * (speed * dt) / this.cycleLen(speed);
-    // Fußaufsatz (linker Fuß bei 0, rechter bei 0,5) → Schrittgeräusch genau im Takt
-    if (Math.floor(before * 2) !== Math.floor(this.cyc * 2)) this.footfalls++;
-    this.cyc -= Math.floor(this.cyc);
+    const reverse = this.moveCat === 3 && !this.gaitSet(3).length;
+    this.cyc += (reverse ? -1 : 1) * (speed * dt) / this.cycleLen(speed, this.moveCat);
+    // Fußaufsatz (links bei 0, rechts bei stepR) → Schrittgeräusch genau im Takt
+    const wrapped = Math.floor(this.cyc) !== Math.floor(before);
+    const b0 = before - Math.floor(before), c0 = this.cyc - Math.floor(this.cyc);
+    if (wrapped || (b0 < this.stepR) !== (c0 < this.stepR)) this.footfalls++;
+    this.cyc = c0;
     this.phase = this.cyc * Math.PI * 2;
+    // Werkzeug der Tätigkeit; bei der Arbeit (außer Schwertübung) ist die Waffe verstaut
+    const style = this.anim.startsWith('work_') ? this.anim.slice(5) : '';
+    if (style !== this.toolKey) this.setTool(style);
+    if (style && style !== 'train') this.setDrawn(false);
+    if (style === 'train') this.setDrawn(true);
+    const mocap = this.mrig ? this.mocapPose(this.anim, this.animT, dt) : false;
+    this.mocapOn = mocap;
     const pose = this.computePose(this.anim, this.animT);
     const tq = new THREE.Quaternion();
+    const tq2 = new THREE.Quaternion();
     const e = new THREE.Euler();
     const k = easeInOut(this.blend);
-    for (const n of JOINTS) {
-      const r = pose[n] ?? [0, 0, 0];
-      // Beine: in den Posen bedeutet negatives X „Knie nach vorn“, positives „Knie beugen“. Nur die alte
-      // Ersatzfigur hat gespiegelte Beingelenke – bei den MakeHuman-Figuren liefen sonst alle Beinposen
-      // (Sitzen, Springen, Ausweichen, Gehen) spiegelverkehrt: Oberschenkel beim Sitzen nach hinten.
-      const leg = !this.human && (n.startsWith('thigh') || n.startsWith('shin') || n.startsWith('foot'));
-      e.set(leg ? -r[0] : r[0], r[1], r[2], 'YXZ');
-      tq.setFromEuler(e);
+    // Waffenhaltung über der Aufnahme: blendet mit dem Ziehen ein (Stab immer, er dient als Wanderstab)
+    const wR = this.weaponType === 'staff' ? 1 : this.drawK, wL = this.holdTorch ? 1 : this.drawK;
+    for (let i = 0; i < JOINTS.length; i++) {
+      const n = JOINTS[i]!;
+      const r = pose[n];
+      if (mocap) {
+        tq.copy(this.mq[i]!);
+        if (r) {
+          e.set(r[0], r[1], r[2], 'YXZ');
+          tq.slerp(tq2.setFromEuler(e), n.endsWith('R') ? wR : n.endsWith('L') ? wL : 1);
+        }
+      } else {
+        const rr = r ?? [0, 0, 0];
+        // Beine: in den Posen bedeutet negatives X „Knie nach vorn“, positives „Knie beugen“. Nur die alte
+        // Ersatzfigur hat gespiegelte Beingelenke – bei den MakeHuman-Figuren liefen sonst alle Beinposen
+        // (Sitzen, Springen, Ausweichen, Gehen) spiegelverkehrt: Oberschenkel beim Sitzen nach hinten.
+        const leg = !this.human && (n.startsWith('thigh') || n.startsWith('shin') || n.startsWith('foot'));
+        e.set(leg ? -rr[0] : rr[0], rr[1], rr[2], 'YXZ');
+        tq.setFromEuler(e);
+      }
       this.cur[n].slerpQuaternions(this.from[n], tq, k);
       this.j[n].quaternion.copy(this.cur[n]);
     }
-    const ro = pose.root ?? [0, 0, 0];
-    // Beim Gehen/Laufen folgt das Becken dem Schrittzyklus unmittelbar (sonst hinkt es hinterher und die
-    // Füße schweben beim Aufsetzen); sonst weich überblenden
-    const gaitAnim = this.anim === 'walk' || this.anim === 'run' || this.anim === 'sprint';
-    this.rootOff.lerp(new THREE.Vector3(ro[0], ro[1], ro[2]), gaitAnim && this.blend >= 1 ? 1 : Math.min(1, dt * 14));
-    const rr = pose.rootRot ?? [0, 0, 0];
-    this.rootRot.x += (rr[0] - this.rootRot.x) * Math.min(1, dt * (this.anim === 'dodge' ? 40 : 10));
-    this.rootRot.z += (rr[2] - this.rootRot.z) * Math.min(1, dt * 10);
+    // Hüftversatz: Aufnahmen liefern ihn im Rig-Raum (z vorn), prozedurale Posen mit umgekehrtem z
+    const ro = mocap ? [this.mroot.x, this.mroot.y, -this.mroot.z] : pose.root ?? [0, 0, 0];
+    // Gehen/Laufen und Aufnahmen: Becken folgt unmittelbar (sonst hinkt es hinterher und die Füße schweben
+    // beim Aufsetzen); sonst weich überblenden
+    this.rootOff.lerp(new THREE.Vector3(ro[0], ro[1], ro[2]), (gaitAnim || mocap) && this.blend >= 1 ? 1 : Math.min(1, dt * 14));
+    const rr = mocap ? [0, 0, 0] : pose.rootRot ?? [0, 0, 0];
+    this.rootRot.x += (rr[0]! - this.rootRot.x) * Math.min(1, dt * (this.anim === 'dodge' ? 40 : 10));
+    this.rootRot.z += (rr[2]! - this.rootRot.z) * Math.min(1, dt * 10);
     // Bodenanpassung: Hüfte auf den tieferen Fuß absenken, Knie beugen
     const lo = Math.min(groundL, groundR, 0);
     this.hipsDrop += (Math.max(-0.35, lo) - this.hipsDrop) * Math.min(1, dt * 12);
@@ -804,9 +1099,215 @@ export class HumanoidRig {
       this.j.shinR.rotateX(fl * Math.min(1.6, bendR * 4.4));
     }
     if (this.flinch > 0) this.j.chest.rotateX(-this.flinch * 1.2);
+    if (this.drawT >= 0) this.drawReach();
     this.body.position.set(this.rootOff.x, this.rootOff.y + (grounded ? this.hipsDrop : 0), -this.rootOff.z);
     this.body.rotation.set(this.rootRot.x, 0, this.rootRot.z);
     this.life(dt, speed, grounded);
+    this.updateItems(dt);
+  }
+
+  /** Griff zur Waffe: rechte Hand zur linken Hüfte (Schwert, Axt), linke über die Schulter (Schild, Bogen). */
+  private drawReach() {
+    const w = Math.sin(Math.PI * Math.min(1, this.drawT / 0.5));
+    const t = this.weaponType, offT = ITEMS[this.offhandId]?.offhand?.type;
+    const e = new THREE.Euler(), q = new THREE.Quaternion();
+    const to = (n: JointName, r: [number, number, number], k = w) => {
+      e.set(r[0], r[1], r[2], 'YXZ');
+      this.j[n].quaternion.slerp(q.setFromEuler(e), k);
+    };
+    if (t === 'sword' || t === 'dagger' || t === 'axe' || t === 'mace') {
+      to('upperArmR', [-0.35, 0.8, 0.2]);
+      to('foreArmR', [-1.25, 0, 0]);
+      to('handR', [0.25, 0, 0]);
+      to('chest', [0.06, 0.22, 0], w * 0.6);
+    }
+    if (offT === 'shield' || t === 'bow') {
+      // linke Hand greift über die Schulter zum Riemen auf dem Rücken
+      to('upperArmL', [-1.9, -0.35, -0.15]);
+      to('foreArmL', [-2.1, 0, 0]);
+    }
+  }
+
+  // ---------------------------------------------------------------- Bewegungsaufnahmen
+
+  /** Gangarten nach Tempo (aufsteigend) je Richtung: 0 vorwärts, 1 links, 2 rechts, 3 rückwärts. */
+  private gaitSet(cat = 0): MocapClip[] {
+    const names = [['walk', 'walk_fast', 'jog', 'run', 'sprint'], ['walk_left'], ['walk_right'], ['walk_back']][cat] ?? [];
+    return names.map((n) => mocapClip(n)).filter((c): c is MocapClip => !!c);
+  }
+
+  /** Gangrichtung zum Bewegungswinkel (mit Hysterese); schnell seitwärts/rückwärts gibt es nicht als Aufnahme. */
+  private pickMoveCat(ang: number, v: number): number {
+    const a = Math.abs(ang) * 180 / Math.PI;
+    const h = (c: number) => (c === this.moveCat ? 12 : 0);
+    if (v > 3.5) return a > 115 + h(3) && this.gaitSet(3).length ? 3 : 0;
+    if (a >= 125 - h(3) && this.gaitSet(3).length) return 3;
+    if (a > 55 - h(ang > 0 ? 1 : 2)) {
+      const c = ang > 0 ? 1 : 2;
+      if (this.gaitSet(c).length) return c;
+    }
+    return 0;
+  }
+
+  /** Maßstab dieser Figur gegenüber der Aufnahme (Beinlänge × Körpergröße). */
+  private get mscale() {
+    return (this.mrig?.legScale ?? 1) * this.root.scale.x;
+  }
+
+  /**
+   * Welche Gangarten bei Tempo v: reine Gangart innerhalb ihres Bandes (Abspieltempo passt sich an),
+   * dazwischen phasengleiche Überblendung zweier Gangarten.
+   */
+  private gaitMix(v: number, cat: number): [MocapClip, MocapClip | null, number] | null {
+    const list = this.gaitSet(cat);
+    if (!list.length) return null;
+    const sc = this.mscale;
+    for (let i = 0; i < list.length - 1; i++) {
+      const a = list[i]!, b = list[i + 1]!;
+      // reine Gangart bis knapp zur Mitte (Abspieltempo passt sich an), dann Überblendung
+      const sa = a.speed * sc, sb = b.speed * sc;
+      const lo = sa + (sb - sa) * 0.45, hi = sa + (sb - sa) * 0.75;
+      if (v < lo) return [a, null, 0];
+      if (v < hi) return [a, b, smooth(lo, hi, v)];
+    }
+    return [list[list.length - 1]!, null, 0];
+  }
+
+  /** Strecke je Doppelschritt bei Tempo v (m) – aus den Aufnahmen, sonst aus dem prozeduralen Gang. */
+  private cycleLen(v: number, cat = 0): number {
+    const m = this.mrig ? this.gaitMix(Math.max(v, 0.3), cat) ?? this.gaitMix(Math.max(v, 0.3), 0) : null;
+    if (m) {
+      const [a, b, w] = m;
+      return Math.max(0.4, (a.dist + ((b?.dist ?? a.dist) - a.dist) * w) * this.mscale);
+    }
+    return this.procCycleLen(v);
+  }
+
+  /** Ganzkörperpose aus Aufnahmen in this.mq/this.mroot; false = prozedural. */
+  private mocapPose(anim: string, t: number, dt: number): boolean {
+    const rig = this.mrig!;
+    switch (anim) {
+      case 'walk': case 'run': case 'sprint': {
+        const m = this.gaitMix(Math.max(this.speed, 0.3), this.moveCat) ?? this.gaitMix(Math.max(this.speed, 0.3), 0);
+        if (!m) return false;
+        const [a, b, w] = m;
+        this.stepR = a.steps[1] ?? 0.5;
+        rig.sample(a, this.cyc * a.dur, this.mq, this.mroot);
+        if (b && w > 0) {
+          rig.sample(b, this.cyc * b.dur, this.mq2, this.mroot2);
+          for (let i = 0; i < JOINTS.length; i++) this.mq[i]!.slerp(this.mq2[i]!, w);
+          this.mroot.lerp(this.mroot2, w);
+        }
+        this.turnLegs(this.legYaw);
+        return true;
+      }
+      default: {
+        // Stehen, Reden, Arbeiten, Sitzen, Gesten: Aufnahmen (mehrere Varianten wechseln sich ab)
+        const opts = this.clipsFor(anim);
+        if (!opts.length) return false;
+        if (!this.playVariant(opts, anim, dt)) return false;
+        // Drehen auf der Stelle: kleine Schritte aus dem Gehzyklus beimischen
+        if (this.turnStep > 0.02 && anim !== 'sit') {
+          const g = mocapClip('walk');
+          if (g) {
+            rig.sample(g, this.cyc * g.dur, this.mq2, this.mroot2);
+            const w = Math.min(1, this.turnStep) * 0.42;
+            for (let i = 0; i < JOINTS.length; i++) this.mq[i]!.slerp(this.mq2[i]!, w);
+            this.mroot.lerp(this.mroot2, w);
+          }
+        }
+        void t;
+        return true;
+      }
+    }
+  }
+
+  /** Aufnahmen je Animation: mehrere = Varianten im Wechsel, einmalige Clips (Strecken, Verbeugen) laufen einmal. */
+  private clipsFor(anim: string): string[] {
+    switch (anim) {
+      case 'idle': case 'recover': case 'idle_boss': return ['idle', 'idle2', 'idle3'];
+      case 'talk': case 'work_trade': return ['talk', 'talk2', 'talk3'];
+      case 'sit': return ['sit'];
+      case 'emote_wave': return ['wave'];
+      case 'emote_bow': return [this.sex === 'female' && mocapClip('curtsey') ? 'curtsey' : 'bow'];
+      case 'emote_cheer': case 'work_play': return ['cheer', 'laugh'];
+      case 'emote_sit': return ['sit_ground'];
+      case 'interact': case 'revive': return ['interact'];
+      case 'work': return ['work_sweep'];
+      default: return anim.startsWith('work_') ? [anim] : [];
+    }
+  }
+
+  /** Variante abspielen/wechseln (weich überblendet); Ergebnis in this.mq/this.mroot. */
+  private playVariant(opts: string[], anim: string, dt: number): boolean {
+    const rig = this.mrig!;
+    const avail = opts.filter((n) => mocapClip(n));
+    if (!avail.length) return false;
+    if (this.varAnim !== anim) {
+      // neue Animation: Stehen beginnt ruhig, sonst zufällige Variante; Sitzen beginnt mit dem Hinsetzen
+      this.varAnim = anim;
+      this.varName = anim === 'idle' || anim === 'recover' ? avail[0]! : avail[Math.floor(Math.random() * avail.length)]!;
+      this.varT = mocapClip(this.varName)!.loop ? this.mocapT0 % mocapClip(this.varName)!.dur : 0;
+      this.varFade = 1;
+      this.varSwitch = 6 + Math.random() * 10;
+      this.varIntro = anim === 'sit' && this.prevAnim !== 'sit' && mocapClip('sit_down') ? 'sit_down' : '';
+      this.varIntroT = 0;
+    }
+    this.varT += dt;
+    this.varSwitch -= dt;
+    const cur = mocapClip(this.varName) ?? mocapClip(avail[0]!)!;
+    // einmalige Clips: kurz vor dem Ende zurück zu einer Schleife; Schleifen: nach einer Weile wechseln
+    const ending = !cur.loop && this.varT > cur.dur - 0.6;
+    if ((ending && avail.length > 1) || (this.varSwitch <= 0 && avail.length > 1)) {
+      const loops = avail.filter((n) => n !== this.varName && (mocapClip(n)!.loop || Math.random() < 0.35));
+      const next = loops.length ? loops[Math.floor(Math.random() * loops.length)]! : avail.find((n) => mocapClip(n)!.loop) ?? avail[0]!;
+      this.varFrom = this.varName;
+      this.varFromT = this.varT;
+      this.varName = next;
+      this.varT = mocapClip(next)!.loop ? Math.random() * mocapClip(next)!.dur : 0;
+      this.varFade = 0;
+      this.varSwitch = 6 + Math.random() * 10;
+    }
+    rig.sample(mocapClip(this.varName)!, this.varT, this.mq, this.mroot);
+    if (this.varFade < 1) {
+      this.varFade = Math.min(1, this.varFade + dt / 0.9);
+      this.varFromT += dt;
+      const c = mocapClip(this.varFrom);
+      if (c) {
+        rig.sample(c, this.varFromT, this.mq2, this.mroot2);
+        this.mixInto(1 - smooth(0, 1, this.varFade));
+      }
+    }
+    // Einleitung (Hinsetzen): läuft einmal, blendet in die Schleife über
+    if (this.varIntro) {
+      const c = mocapClip(this.varIntro)!;
+      this.varIntroT += dt;
+      const w = 1 - smooth(c.dur - 0.35, c.dur, this.varIntroT);
+      if (w <= 0) this.varIntro = '';
+      else {
+        rig.sample(c, this.varIntroT, this.mq2, this.mroot2);
+        this.mixInto(w);
+      }
+    }
+    return true;
+  }
+
+  /** this.mq/this.mroot zum Anteil w Richtung this.mq2/this.mroot2 mischen. */
+  private mixInto(w: number) {
+    for (let i = 0; i < JOINTS.length; i++) this.mq[i]!.slerp(this.mq2[i]!, w);
+    this.mroot.lerp(this.mroot2, w);
+  }
+
+  /** Becken und Beine zur Bewegungsrichtung drehen (y > 0 = nach links), Oberkörper dreht zurück. */
+  private turnLegs(y: number) {
+    if (Math.abs(y) < 1e-3) return;
+    const q = new THREE.Quaternion().setFromAxisAngle(UP, y);
+    const h = new THREE.Quaternion().setFromAxisAngle(UP, -y * 0.5);
+    const iH = JOINTS.indexOf('hips'), iS = JOINTS.indexOf('spine'), iC = JOINTS.indexOf('chest');
+    this.mq[iH]!.premultiply(q);
+    this.mq[iS]!.premultiply(h);
+    this.mq[iC]!.premultiply(h);
+    this.mroot.applyQuaternion(q);
   }
 
   /** Gesichtsform aus der Saat: jede Figur bekommt eine eigene Mischung der Formvarianten. */
@@ -857,8 +1358,8 @@ export class HumanoidRig {
     this.j.chest.rotateX(-br * 0.012);
     this.j.shoulderL.rotateZ(br * 0.01);
     this.j.shoulderR.rotateZ(-br * 0.01);
-    if (calm) {
-      // Gewicht verlagert sich langsam von einem Bein aufs andere
+    if (calm && !this.mocapOn) {
+      // Gewicht verlagert sich langsam von einem Bein aufs andere (Aufnahmen bringen das selbst mit)
       const w = s(t * 0.23) * 0.5 + s(t * 0.61) * 0.2;
       this.j.hips.rotateZ(w * 0.035);
       this.j.spine.rotateZ(-w * 0.025);
@@ -870,7 +1371,7 @@ export class HumanoidRig {
       this.j.shinR.rotateX(Math.max(0, -w) * 0.12 * fl);
     }
     // Kopf zum Blickziel (sanft, begrenzt), sonst leichtes Umsehen
-    let yaw = calm ? s(t * 0.31) * 0.12 + s(t * 0.13) * 0.1 : 0, pitch = 0;
+    let yaw = calm && !this.mocapOn ? s(t * 0.31) * 0.12 + s(t * 0.13) * 0.1 : 0, pitch = 0;
     if (this.lookAt) {
       const hp = this.j.head.getWorldPosition(new THREE.Vector3());
       const d = this.lookAt.clone().sub(hp);
@@ -919,8 +1420,11 @@ export class HumanoidRig {
     // Griff: Faust um Waffe/Schild/Bogen, sonst locker halb gebeugte Finger
     const wt = this.weaponType;
     const offT = ITEMS[this.offhandId]?.offhand?.type;
-    this.setMorph('gripR', wt === 'bow' ? 0.5 : wt !== 'none' ? 1 : 0.45);
-    this.setMorph('gripL', offT === 'shield' || offT === 'focus' || wt === 'bow' ? 1 : 0.45);
+    const toolR = this.tools.some((x) => x.parent === this.j.handR), toolL = this.tools.some((x) => x.parent === this.j.handL);
+    const two = !!(this.pole || this.crate);
+    const outR = this.drawK > 0.5 && wt !== 'none' && wt !== 'bow';
+    this.setMorph('gripR', toolR || two || outR || wt === 'staff' ? 1 : wt === 'bow' && this.drawK > 0.5 ? 0.5 : 0.45);
+    this.setMorph('gripL', toolL || two || offT === 'focus' || (this.drawK > 0.5 && (offT === 'shield' || wt === 'bow')) ? 1 : 0.45);
   }
 
   /** Schrittlänge (ein Schritt) je Tempo: Gehen ~0,7 m bei 1,4 m/s, Laufen ~1,75 m bei 5 m/s. */
@@ -931,7 +1435,7 @@ export class HumanoidRig {
     return (0.4 + 0.22 * Math.min(v, 2.6)) * k * (1 - run) + (0.9 + 0.17 * v) * k * run;
   }
 
-  private cycleLen(v: number) {
+  private procCycleLen(v: number) {
     return Math.max(0.5, 2 * this.stepLen(v));
   }
 
@@ -958,7 +1462,7 @@ export class HumanoidRig {
     const move = Math.min(1, v / 0.9); // beim Anlaufen/Anhalten weniger Schwung
     // Standanteil: Gehen ~60 %, Rennen ~30 % (Bodenkontakt ~0,2 s), Sprint ~18 % (~0,1 s)
     const duty = 0.61 * (1 - run) + (0.31 - 0.13 * spr) * run;
-    const C = this.cycleLen(v);
+    const C = this.procCycleLen(v);
     // halbe Standstrecke des Knöchels: ~10 cm übernimmt das Abrollen über den Fuß (Ferse → Ballen)
     const a = inPlace ? 0.04 * sc : Math.max(0, (C * duty) / 2 - 0.12 * sc) * move;
     const lift = ((0.075 + 0.02 * Math.min(1, v / 2)) * (1 - run) + 0.2 * run + 0.08 * spr) * sc * move * (inPlace ? 0.5 : 1);
@@ -1094,11 +1598,14 @@ export class HumanoidRig {
     const wt = this.weaponType;
     const armed = wt !== 'none';
     const ready = (p: Pose): Pose => {
-      // Waffenhaltung im Ruhezustand
-      if (wt === 'bow') { p.upperArmL = [-0.3, 0, 0.15]; p.foreArmL = [-0.3, 0, 0]; }
+      // Waffenhaltung (nur mit gezogener Waffe; der Stab ist immer in der Hand)
+      const out = this.drawK > 0.01 || !this.mocapOn && this.weaponOut;
+      if (wt === 'bow' && out) { p.upperArmL = [-0.3, 0, 0.15]; p.foreArmL = [-0.3, 0, 0]; }
       else if (wt === 'staff') { p.upperArmR = [-0.25, 0, -0.15]; p.foreArmR = [-0.6, 0, 0]; p.handR = [2.3, 0, 0]; }
-      else if (armed) { p.upperArmR = [-0.15, 0, -0.12]; p.foreArmR = [-0.7, 0, 0]; p.handR = [0.3, 0, 0]; }
-      if (this.offhandId && ITEMS[this.offhandId]?.offhand?.type === 'shield') { p.upperArmL = [-0.2, 0, 0.2]; p.foreArmL = [-1.2, 0.2, 0]; }
+      // Hut: Klinge schräg nach vorn oben, rechts neben dem Schild (kreuzt ihn nicht)
+      else if (armed && out) { p.upperArmR = [-0.25, -0.15, -0.25]; p.foreArmR = [-1.1, 0, 0]; p.handR = [-0.2, 0, 0]; }
+      if (out && this.offhandId && ITEMS[this.offhandId]?.offhand?.type === 'shield') { p.upperArmL = [-0.2, 0, 0.2]; p.foreArmL = [-1.2, 0.2, 0]; }
+      else if (this.holdTorch) { p.upperArmL = [-0.3, 0.05, 0.08]; p.foreArmL = [-1.35, 0.1, 0]; p.handL = [0.15, 0, 0]; }
       return p;
     };
     const locomotion = (amp: number, arm: number, lean: number, bob: number): Pose => ({
@@ -1121,8 +1628,12 @@ export class HumanoidRig {
     const prog = Math.min(1, t / Math.max(0.1, this.actionDur));
     // Entwicklerhilfe (Vorschau): feste Pose als JSON, z. B. dbg:{"upperArmR":[-1.4,0.5,0]}
     if (anim.startsWith('dbg:')) { try { return JSON.parse(anim.slice(4)) as Pose; } catch { return {}; } }
+    // Aufnahme treibt den ganzen Körper (Reden, Arbeiten, Sitzen, Gesten); Gehen und Stehen s. u. (Waffenhaltung)
+    if (this.mocapOn && !['walk', 'run', 'sprint', 'idle', 'recover', 'idle_boss'].includes(anim)) return {};
     switch (anim) {
       case 'idle': case 'recover': case 'idle_boss': {
+        // Aufnahme: nur Waffenhaltung überlagern
+        if (this.mocapOn) return ready({});
         // Auf der Stelle drehen: kleine Trippelschritte statt über den Boden gleitender Füße
         if (this.turnStep > 0.05) {
           const g = this.gait(0.8, true);
@@ -1150,9 +1661,9 @@ export class HumanoidRig {
       }
       case 'sit': return ready({ root: [0, -0.5, 0], thighL: [-1.45, 0, 0.12], shinL: [1.45, 0, 0], thighR: [-1.45, 0, -0.12], shinR: [1.45, 0, 0], upperArmL: [-0.55, 0, 0.2], upperArmR: [-0.6, 0, -0.2], foreArmL: [-1.0, 0, 0], foreArmR: [-0.9 + s(t * 0.7) * 0.15, 0, 0], spine: [0.12, 0, 0], head: [0.05, s(t * 0.4) * 0.2, 0] });
       // Gang ergibt sich aus dem tatsächlichen Tempo (Gehen → Laufen → Sprinten fließend)
-      case 'walk': return ready(this.gait(Math.max(this.speed, 0.6)));
-      case 'run': return ready(this.gait(Math.max(this.speed, 2.5)));
-      case 'sprint': return this.gait(Math.max(this.speed, 5));
+      case 'walk': return ready(this.mocapOn ? {} : this.gait(Math.max(this.speed, 0.6)));
+      case 'run': return ready(this.mocapOn ? {} : this.gait(Math.max(this.speed, 2.5)));
+      case 'sprint': return this.mocapOn ? ready({}) : this.gait(Math.max(this.speed, 5));
       case 'swim': return { rootRot: [1.3, 0, 0], root: [0, 0.4, 0], upperArmL: [-2.6 + s(t * 4) * 1.2, 0, 0.3], upperArmR: [-2.6 - s(t * 4) * 1.2, 0, -0.3], thighL: [s(t * 6) * 0.3, 0, 0], thighR: [-s(t * 6) * 0.3, 0, 0] };
       case 'tread': return { root: [0, 0.2 + s(t * 2) * 0.05, 0], upperArmL: [-0.4, 0, 0.9 + s(t * 3) * 0.3], upperArmR: [-0.4, 0, -0.9 - s(t * 3) * 0.3], thighL: [s(t * 3) * 0.4, 0, 0], thighR: [-s(t * 3) * 0.4, 0, 0], shinL: [0.6, 0, 0], shinR: [0.6, 0, 0] };
       case 'jump': return ready({ thighL: [-0.9, 0, 0], shinL: [1.4, 0, 0], thighR: [-0.2, 0, 0], shinR: [0.6, 0, 0], upperArmL: [-0.8, 0, 0.5], upperArmR: [-0.8, 0, -0.5], spine: [0.1, 0, 0] });
@@ -1220,6 +1731,8 @@ export class HumanoidRig {
     }
   }
 }
+
+const UP = new THREE.Vector3(0, 1, 0);
 
 function easeInOut(t: number) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;

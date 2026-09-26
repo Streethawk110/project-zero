@@ -747,9 +747,9 @@ export class Game {
     return 6;
   }
 
-  private nearbyEnemies(p: THREE.Vector3) {
+  private nearbyEnemies(p: THREE.Vector3, r = 30) {
     let n = 0;
-    for (const v of this.ents.views.values()) if (v.kind === 'e' && v.anim !== 'die' && v.anim !== 'dead' && v.target === this.conn.eid && v.pos.distanceTo(p) < 30) n++;
+    for (const v of this.ents.views.values()) if (v.kind === 'e' && v.anim !== 'die' && v.anim !== 'dead' && v.target === this.conn.eid && v.pos.distanceTo(p) < r) n++;
     return n;
   }
 
@@ -813,6 +813,8 @@ export class Game {
     }
   }
   private npcFootfalls = new Map<number, number>();
+  /** Restzeit mit gezogener Waffe (Sekunden) */
+  private drawnT = 0;
 
   private updateOwnView(p: THREE.Vector3, dt: number) {
     if (!this.playerRig) {
@@ -846,10 +848,18 @@ export class Game {
       this.audio.vocal('effort', vp.female, vp.tone ?? 0);
     }
     rig.play(anim, anim.startsWith('atk') ? 0.55 : anim === 'heavy' ? 1.0 : anim === 'bow' || anim === 'cast' ? 0.8 : undefined);
+    // Waffe ziehen im Kampf (Angriff, Blocken, Gegner in der Nähe); danach nach ein paar Sekunden wegstecken
+    if (me?.combat || anim === 'block' || this.nearbyEnemies(p, 16) > 0) this.drawnT = 6;
+    else this.drawnT = Math.max(0, this.drawnT - dt);
+    rig.setDrawn(this.drawnT > 0 && !anim.startsWith('emote') && anim !== 'interact' && anim !== 'swim' && anim !== 'tread');
     const y = this.pred.yaw;
     const gl = this.groundAt(p.x - Math.cos(y) * 0.12, p.z + Math.sin(y) * 0.12) - p.y;
     const gr = this.groundAt(p.x + Math.cos(y) * 0.12, p.z - Math.sin(y) * 0.12) - p.y;
-    rig.update(this.paused ? 0 : dt, sp, Math.max(-0.5, Math.min(0.5, gl)), Math.max(-0.5, Math.min(0.5, gr)));
+    // Bewegungsrichtung relativ zum Blick (vorwärts = (−sin yaw, −cos yaw), links = (−cos yaw, sin yaw)):
+    // rückwärts und seitwärts (Blocken, Zielen) mit eigenem Gang
+    const fwd = sp > 0.05 ? -(this.pred.vx * Math.sin(y) + this.pred.vz * Math.cos(y)) / sp : 1;
+    const side = sp > 0.05 ? (-this.pred.vx * Math.cos(y) + this.pred.vz * Math.sin(y)) / sp : 0;
+    rig.update(this.paused ? 0 : dt, sp, Math.max(-0.5, Math.min(0.5, gl)), Math.max(-0.5, Math.min(0.5, gr)), fwd, side);
     rig.root.visible = this.cam.dist > 1.2 || true;
   }
 

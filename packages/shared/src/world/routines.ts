@@ -180,6 +180,26 @@ export function findPath(from: string, to: string): string[] {
   return path;
 }
 
+/**
+ * Tätigkeit am Arbeitsort (Animation „work_<art>“): Schmied hämmert, am Holzstapel wird gehackt, auf den
+ * Feldern gerecht und gegraben, am Brunnen gewaschen, im Kontor geschrieben, im Burghof mit dem Schwert geübt.
+ */
+const WORK_AT: Record<string, string> = {
+  smithy: 'hammer', workbench: 'saw', woodpile: 'chop', cart: 'carry', x_nw: 'chop', x_n: 'carry',
+  field_a: 'rake', field_b: 'dig', field_c: 'rake', field_path: 'rake',
+  well: 'wash', c_well: 'wash', inn_counter: 'mix', vogthaus: 'write', kontor: 'write', chapel: 'write',
+  market_pell: 'trade', market_n: 'trade', market_w: 'trade', market_e: 'sew', h6_out: 'sew',
+  inn_seat_a: 'serve', inn_seat_b: 'serve', inn_seat_c: 'serve', h0_in: 'sweep',
+  x_south: 'fish', x_se: 'fish', gate_s: 'fish', x_north: 'idle', gate_n: 'idle',
+  c_train: 'train', c_stable: 'dig', c_stall: 'slice', c_palas: 'sweep', c_yard: 'sweep', c_keep: 'sweep',
+};
+const WORK_BY: Record<string, string> = { folk_mats: 'play', folk_bodo: 'idle', hedda: 'mix' };
+
+export function workAnim(npc: string, node: string | null | undefined): string {
+  const w = WORK_BY[npc] ?? (node ? WORK_AT[node] : undefined) ?? 'sweep';
+  return w === 'idle' ? 'idle' : `work_${w}`;
+}
+
 /** Aktueller Schritt eines Tagesplans für die Stunde h. */
 export function routineStep(steps: RoutineStep[], h: number): RoutineStep | null {
   for (const s of steps) {
