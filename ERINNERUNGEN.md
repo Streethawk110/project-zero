@@ -359,7 +359,8 @@ Profiler nicht mitgezählt – behoben).
   (leicht unregelmäßig, gemergt), 2 Tragbalken, Geländer mit 2 Holmen + Pfosten entlang der Steigung, Pfeiler + Joch.
   WASSER: Spiegelung verfolgt den Strahl über Höhenkarte + Waldanteil (Splat G × 14 m Kronen) → Ufer/Bäume statt
   nur Himmel (vorher milchig „wie Eis“); Fluss: Strömungsschlieren/Blasen entlang `vFlow`, weniger Himmelsglanz
-  (Fresnel ×0,5), deckender zur Mitte. `new Water(heightTex, splatTex)`.
+  (Fresnel ×0,5), deckender zur Mitte. `new Water(heightTex, splatTex)`. Web-Artifact VERSION 16 (gleicher Link;
+  Veröffentlichung verlangte vorher eine Dateiliste `action: list, scope: files`, da frühere Dateien ungelesen).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.
