@@ -1,0 +1,42 @@
+{
+  "name": "project-zero",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Project Zero – 3D-Story-RPG für Browser, PWA und Desktop mit Einzelspieler und Online-Mehrspieler",
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "apps/client",
+    "apps/server"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @pz/client",
+    "dev:server": "npm run dev -w @pz/server",
+    "build": "npm run build -w @pz/client && npm run build -w @pz/server",
+    "typecheck": "tsc -p packages/shared && tsc -p apps/client --noEmit && tsc -p apps/server --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "start": "npm run start -w @pz/server",
+    "models:build": "python3 tools/blender/build_all.py && node tools/models/optimize.mjs",
+    "models:optimize": "node tools/models/optimize.mjs",
+    "icons": "node tools/dev/icons.mjs",
+    "desktop": "npm --prefix apps/desktop start",
+    "desktop:dist": "npm --prefix apps/desktop run dist",
+    "release": "bash deploy/scripts/package.sh"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.5.0",
+    "@gltf-transform/extensions": "^4.5.0",
+    "@gltf-transform/functions": "^4.5.0",
+    "@playwright/test": "1.56.0",
+    "esbuild": "^0.25.12",
+    "meshoptimizer": "^1.2.0",
+    "playwright": "1.56.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}

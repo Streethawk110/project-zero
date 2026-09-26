@@ -1,0 +1,380 @@
+import * as THREE from 'three';
+import { addWetness } from './wetness.ts';
+import { castleLocal, clamp, getHeightfield, roadFactor, smoothstep, VILLAGE, WORLD_HALF, riverDistance, RIVER_WIDTH, shoreLine, type Heightfield } from '@pz/shared';
+import { TEX, bitmapPixels, type PBRSet } from './textures.ts';
+import { settings } from '../settings.ts';
+
+export const LAYERS = ['grass', 'dirt', 'rock', 'sand', 'forest', 'glass', 'snow', 'cobble'] as const;
+
+/** Mischgewichte der Bodentexturen an einer Stelle. */
+export function splatAt(hf: Heightfield, x: number, z: number, rockSnow = true): number[] {
+  const h = hf.height(x, z);
+  const slope = hf.slope(x, z);
+  const w = [1, 0, 0, 0, 0, 0, 0, 0];
+  const set = (i: number, v: number) => {
+    if (v <= 0) return;
+    for (let k = 0; k < 8; k++) if (k !== i) w[k]! *= 1 - v;
+    w[i] = Math.max(w[i]!, v);
+  };
+  const forest = smoothstep(210, 110, Math.hypot(x + 190, z + 60)) + smoothstep(-150, -250, z) * 0.6 * smoothstep(60, 40, h);
+  set(4, clamp(forest, 0, 0.95));
+  const scar = 1 - smoothstep(45, 100, Math.hypot(x - 200, z + 60));
+  set(5, scar);
+  const shore = shoreLine(x);
+  const sand = smoothstep(2.8, 1.2, h) * smoothstep(shore - 70, shore - 30, z);
+  set(3, sand);
+  const riverBank = 1 - smoothstep(RIVER_WIDTH * 0.5, RIVER_WIDTH * 0.5 + 5, riverDistance(x, z));
+  set(1, riverBank * 0.7);
+  const road = roadFactor(x, z);
+  const inVillage = Math.hypot(x - VILLAGE.x, z - VILLAGE.z) < VILLAGE.r - 4;
+  if (inVillage) {
+    set(1, 0.35);
+    set(7, road);
+  } else set(1, road * 0.95);
+  // Burg Haldenstein: festgetretener Hof, gepflasterter Weg vom Tor zum Bergfried, Trampelpfade vor der Mauer
+  const cl = castleLocal(x, z);
+  const inYard = Math.max(Math.abs(cl.x), Math.abs(cl.z));
+  if (inYard < 26) {
+    set(1, (1 - smoothstep(16, 19.5, inYard)) * 0.85 + (1 - smoothstep(19.5, 26, inYard)) * 0.25);
+    set(7, (1 - smoothstep(1.4, 2.2, Math.abs(cl.x))) * (1 - smoothstep(-1, 1, cl.z)) * smoothstep(-25, -23, cl.z));
+  }
+  // Fels und Schnee setzt im Freien der Pixel-Shader (feiner als das 2-m-Raster); hier nur für Masken
+  if (rockSnow) {
+    set(2, smoothstep(0.22, 0.42, slope));
+    set(6, snowAt(h, slope));
+  }
+  if (x > 1000) { w.fill(0); w[2] = 1; }
+  const sum = w.reduce((a, b) => a + b, 0) || 1;
+  return w.map((v) => v / sum);
+}
+
+/** Schneeanteil (gleiche Formel wie im Geländeshader, ohne Rauschen) */
+export function snowAt(h: number, slope: number) {
+  return smoothstep(SNOW_LO, SNOW_HI, h) * (1 - smoothstep(0.32, 0.55, slope));
+}
+const SNOW_LO = 96, SNOW_HI = 118;
+
+/**
+ * Zwei Textur-Arrays für alle Bodenschichten:
+ *   A: RGB = Farbe, A = Rauheit
+ *   N: RG = Normale (xy), B = Höhe, A = Umgebungsverdeckung
+ * Gebackene Blender-Texturen, wenn alle vorhanden sind; sonst prozedural.
+ */
+function arrayTextures(sets: PBRSet[]) {
+  const useRaw = sets.every((s) => s.bitmaps && s.bitmaps.size === sets[0]!.bitmaps?.size);
+  const size = useRaw ? sets[0]!.bitmaps!.size : (sets[0]!.map.image as { width: number }).width;
+  const px = size * size;
+  const A = new Uint8Array(px * 4 * sets.length);
+  const N = new Uint8Array(px * 4 * sets.length);
+  sets.forEach((s, i) => {
+    const o = i * px * 4;
+    if (useRaw) {
+      // Schicht für Schicht lesen, damit nie alle Pixel gleichzeitig im Speicher liegen
+      const b = s.bitmaps!;
+      const col = bitmapPixels(b.color);
+      for (let p = 0; p < px; p++) { const q = p * 4; A[o + q] = col[q]!; A[o + q + 1] = col[q + 1]!; A[o + q + 2] = col[q + 2]!; }
+      const arm = bitmapPixels(b.arm);
+      for (let p = 0; p < px; p++) { const q = p * 4; A[o + q + 3] = arm[q + 1]!; N[o + q + 2] = arm[q + 2]!; N[o + q + 3] = arm[q]!; }
+      const nrm = bitmapPixels(b.normal);
+      for (let p = 0; p < px; p++) { const q = p * 4; N[o + q] = nrm[q]!; N[o + q + 1] = nrm[q + 1]!; }
+    } else {
+      const c = (s.map.image as { data: Uint8Array }).data, n = (s.normalMap.image as { data: Uint8Array }).data, rg = (s.roughnessMap.image as { data: Uint8Array }).data;
+      for (let p = 0; p < px; p++) {
+        const q = p * 4;
+        A[o + q] = c[q]!; A[o + q + 1] = c[q + 1]!; A[o + q + 2] = c[q + 2]!; A[o + q + 3] = rg[q]!;
+        N[o + q] = n[q]!; N[o + q + 1] = n[q + 1]!; N[o + q + 2] = 128; N[o + q + 3] = 255;
+      }
+    }
+  });
+  const mk = (data: Uint8Array<ArrayBuffer>, srgb: boolean) => {
+    const t = new THREE.DataArrayTexture(data, size, size, sets.length);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.magFilter = THREE.LinearFilter;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.generateMipmaps = true;
+    t.anisotropy = settings.graphics === 'ultra' || settings.graphics === 'hoch' ? 16 : 8;
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    t.needsUpdate = true;
+    // Nach dem Hochladen auf die Grafikkarte die (großen) Pixeldaten im Browser freigeben
+    t.onUpdate = () => { (t.image as { data: Uint8Array | null }).data = null; };
+    return t;
+  };
+  return { albedo: mk(A, true), normals: mk(N, false), baked: useRaw };
+}
+
+export class Terrain {
+  group = new THREE.Group();
+  material: THREE.MeshStandardMaterial;
+  heightTex: THREE.DataTexture;
+  splatTex: THREE.DataTexture;
+
+  constructor() {
+    const hf = getHeightfield();
+    const sets = [TEX.grass(), TEX.dirt(), TEX.rock(), TEX.sand(), TEX.forest(), TEX.glass(), TEX.snow(), TEX.cobble()];
+    const { albedo, normals, baked } = arrayTextures(sets);
+    this.material = makeTerrainMaterial(albedo, normals, baked);
+
+    // Höhen- und Splat-Texturen (für Wasser, Gras und Minikarte)
+    const hs = hf.size;
+    this.heightTex = new THREE.DataTexture(new Float32Array(hf.data), hs, hs, THREE.RedFormat, THREE.FloatType);
+    this.heightTex.magFilter = THREE.LinearFilter;
+    this.heightTex.minFilter = THREE.LinearFilter;
+    this.heightTex.needsUpdate = true;
+
+    const step = settings.graphics === 'niedrig' ? 2 : 1; // Rasterschritt in Zellen
+    const n = hs;
+    const splatRes = Math.ceil(n / 2);
+    const splatData = new Uint8Array(splatRes * splatRes * 4);
+    const CH = 64;
+    const splatCache = new Map<number, number[]>();
+    const getSplat = (i: number, j: number) => {
+      const k = j * n + i;
+      let s = splatCache.get(k);
+      if (!s) {
+        s = splatAt(hf, -WORLD_HALF + i * hf.step, -WORLD_HALF + j * hf.step, false);
+        splatCache.set(k, s);
+      }
+      return s;
+    };
+    for (let cj = 0; cj < n - 1; cj += CH) {
+      for (let ci = 0; ci < n - 1; ci += CH) {
+        const i1 = Math.min(ci + CH, n - 1), j1 = Math.min(cj + CH, n - 1);
+        const cols = Math.floor((i1 - ci) / step) + 1, rows = Math.floor((j1 - cj) / step) + 1;
+        const pos = new Float32Array(cols * rows * 3);
+        const nor = new Float32Array(cols * rows * 3);
+        const s0 = new Float32Array(cols * rows * 4);
+        const s1 = new Float32Array(cols * rows * 4);
+        let minY = Infinity, maxY = -Infinity;
+        for (let r = 0; r < rows; r++)
+          for (let c = 0; c < cols; c++) {
+            const i = Math.min(ci + c * step, n - 1), j = Math.min(cj + r * step, n - 1);
+            const x = -WORLD_HALF + i * hf.step, z = -WORLD_HALF + j * hf.step;
+            const y = hf.data[j * n + i]!;
+            const v = r * cols + c;
+            pos[v * 3] = x; pos[v * 3 + 1] = y; pos[v * 3 + 2] = z;
+            minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+            const nn = hf.normal(x, z);
+            nor[v * 3] = nn.x; nor[v * 3 + 1] = nn.y; nor[v * 3 + 2] = nn.z;
+            const sp = getSplat(i, j);
+            for (let k = 0; k < 4; k++) { s0[v * 4 + k] = sp[k]!; s1[v * 4 + k] = sp[k + 4]!; }
+          }
+        const idx: number[] = [];
+        for (let r = 0; r < rows - 1; r++)
+          for (let c = 0; c < cols - 1; c++) {
+            const a = r * cols + c, b = a + 1, d = a + cols, e = d + 1;
+            idx.push(a, d, b, b, d, e);
+          }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+        g.setAttribute('splat0', new THREE.BufferAttribute(s0, 4));
+        g.setAttribute('splat1', new THREE.BufferAttribute(s1, 4));
+        g.setIndex(idx);
+        g.computeBoundingSphere();
+        g.computeBoundingBox();
+        const m = new THREE.Mesh(g, this.material);
+        m.receiveShadow = true;
+        m.castShadow = false;
+        m.matrixAutoUpdate = false;
+        this.group.add(m);
+      }
+    }
+    // Grasmaske (Kanal R) und Waldboden (G) für Vegetationsshader und Karte
+    for (let j = 0; j < splatRes; j++)
+      for (let i = 0; i < splatRes; i++) {
+        const ii = Math.min(i * 2, n - 1), jj = Math.min(j * 2, n - 1);
+        const sp = getSplat(ii, jj);
+        // Fels/Schnee wie im Shader (ohne Rauschen) – verdrängen Gras und Waldboden
+        const x = -WORLD_HALF + ii * hf.step, z = -WORLD_HALF + jj * hf.step;
+        const slope = hf.slope(x, z), h = hf.data[jj * n + ii]!;
+        const rs = Math.min(1, Math.max(smoothstep(0.22, 0.42, slope), snowAt(h, slope)));
+        const o = (j * splatRes + i) * 4;
+        splatData[o] = sp[0]! * (1 - rs) * 255;
+        splatData[o + 1] = sp[4]! * (1 - rs) * 255;
+        // Sand, Glas, Erdwege und Pflaster unterdrücken Gras (kein Gras mitten auf dem Weg)
+        splatData[o + 2] = Math.min(1, sp[3]! + sp[5]! + Math.max(0, sp[1]! - 0.3) * 1.3 + sp[7]! * 1.2) * 255;
+        splatData[o + 3] = rs * 255;
+      }
+    // Graswuchs-Sperre (Kanal B) um eine Zelle ausweiten: sonst ragen Halme über die lineare Filterung
+    // ein bis zwei Meter auf Pflaster und Wege
+    {
+      const src = new Uint8Array(splatRes * splatRes);
+      for (let k = 0; k < src.length; k++) src[k] = splatData[k * 4 + 2]!;
+      for (let j = 0; j < splatRes; j++)
+        for (let i = 0; i < splatRes; i++) {
+          let m = 0;
+          for (let dj = -1; dj <= 1; dj++)
+            for (let di = -1; di <= 1; di++) {
+              const ii = i + di, jj = j + dj;
+              if (ii >= 0 && jj >= 0 && ii < splatRes && jj < splatRes) m = Math.max(m, src[jj * splatRes + ii]!);
+            }
+          const o = (j * splatRes + i) * 4 + 2;
+          splatData[o] = Math.max(src[j * splatRes + i]!, m * 0.75);
+        }
+    }
+    this.splatTex = new THREE.DataTexture(splatData, splatRes, splatRes, THREE.RGBAFormat);
+    this.splatTex.magFilter = THREE.LinearFilter;
+    this.splatTex.needsUpdate = true;
+  }
+}
+
+function makeTerrainMaterial(albedo: THREE.DataArrayTexture, normals: THREE.DataArrayTexture, baked: boolean) {
+  const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
+  // Maßstab: gebackene Kacheln entsprechen ~2,5 m, die prozeduralen ~4,5 m
+  const scale = baked ? 0.4 : 0.22;
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms['tAlbedo'] = { value: albedo };
+    shader.uniforms['tNormal'] = { value: normals };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>
+        attribute vec4 splat0; attribute vec4 splat1;
+        varying vec4 vS0; varying vec4 vS1; varying vec3 vWPos; varying vec3 vWNorm;`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        vS0 = splat0; vS1 = splat1;
+        vWPos = (modelMatrix * vec4(position, 1.0)).xyz;
+        vWNorm = normalize(mat3(modelMatrix) * normal);`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+        precision highp sampler2DArray;
+        uniform sampler2DArray tAlbedo; uniform sampler2DArray tNormal;
+        varying vec4 vS0; varying vec4 vS1; varying vec3 vWPos; varying vec3 vWNorm;
+        const float TS = ${scale.toFixed(3)};
+        float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+        float vnoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(hash12(i), hash12(i + vec2(1, 0)), f.x), mix(hash12(i + vec2(0, 1)), hash12(i + vec2(1, 1)), f.x), f.y); }
+        // Kachelbruch: zwei gegeneinander verdrehte/versetzte Abtastungen, per Rauschen überblendet
+        vec2 rot(vec2 uv, float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c) * uv; }
+        void sampleLayer(float l, vec2 uv, float breakT, out vec4 a, out vec4 n) {
+          vec2 uv2 = rot(uv, 1.3) * 0.87 + vec2(0.37, 0.61);
+          vec4 a1 = texture(tAlbedo, vec3(uv, l)), a2 = texture(tAlbedo, vec3(uv2, l));
+          vec4 n1 = texture(tNormal, vec3(uv, l)), n2 = texture(tNormal, vec3(uv2, l));
+          // Normalen der zweiten Abtastung zurückdrehen
+          vec2 n2xy = rot(n2.xy * 2.0 - 1.0, -1.3) * 0.5 + 0.5;
+          n2 = vec4(n2xy, n2.b, n2.a);
+          a = mix(a1, a2, breakT);
+          n = mix(n1, n2, breakT);
+        }
+        vec4 triA(float layer, vec3 p, vec3 nrm, float sc) {
+          vec3 b = pow(abs(nrm), vec3(4.0)); b /= (b.x + b.y + b.z);
+          return texture(tAlbedo, vec3(p.zy * sc, layer)) * b.x + texture(tAlbedo, vec3(p.xz * sc, layer)) * b.y + texture(tAlbedo, vec3(p.xy * sc, layer)) * b.z;
+        }
+        vec4 triN(float layer, vec3 p, vec3 nrm, float sc) {
+          vec3 b = pow(abs(nrm), vec3(4.0)); b /= (b.x + b.y + b.z);
+          return texture(tNormal, vec3(p.zy * sc, layer)) * b.x + texture(tNormal, vec3(p.xz * sc, layer)) * b.y + texture(tNormal, vec3(p.xy * sc, layer)) * b.z;
+        }
+      `)
+      .replace('#include <map_fragment>', `
+        vec2 tuv = vWPos.xz * TS;
+        float camDist = length(vWPos - cameraPosition);
+        float far = smoothstep(25.0, 160.0, camDist);
+        float breakT = smoothstep(0.35, 0.65, vnoise(vWPos.xz * 0.045));
+        float w[8]; w[0]=vS0.x; w[1]=vS0.y; w[2]=vS0.z; w[3]=vS0.w; w[4]=vS1.x; w[5]=vS1.y; w[6]=vS1.z; w[7]=vS1.w;
+        // Fels an steilen Flanken und Schnee auf Gipfeln pro Pixel (Rauschen bricht die Grenzen auf)
+        float mountainMask = 0.0;
+        if (vWPos.x < 1000.0) {
+          float slopeF = 1.0 - normalize(vWNorm).y;
+          float nz = vnoise(vWPos.xz * 0.09) * 0.55 + vnoise(vWPos.xz * 0.37) * 0.3 + vnoise(vWPos.xz * 1.3) * 0.15;
+          float rockF = smoothstep(0.2, 0.34, slopeF + (nz - 0.5) * 0.14);
+          rockF = max(rockF, smoothstep(${(SNOW_LO - 40).toFixed(1)}, ${(SNOW_LO - 5).toFixed(1)}, vWPos.y + (nz - 0.5) * 20.0) * 0.85);
+          float snowF = smoothstep(${SNOW_LO.toFixed(1)}, ${SNOW_HI.toFixed(1)}, vWPos.y + (nz - 0.5) * 22.0)
+                      * (1.0 - smoothstep(0.34, 0.6, slopeF + (nz - 0.5) * 0.25));
+          for (int i = 0; i < 8; i++) w[i] *= 1.0 - rockF;
+          w[2] = max(w[2], rockF);
+          for (int i = 0; i < 8; i++) w[i] *= 1.0 - snowF;
+          w[6] = max(w[6], snowF);
+          mountainMask = rockF;
+        }
+        vec4 la[8]; vec4 ln[8];
+        float hmax = -10.0;
+        for (int i = 0; i < 8; i++) {
+          la[i] = vec4(0.0); ln[i] = vec4(0.5, 0.5, 0.0, 1.0);
+          if (w[i] < 0.015) continue;
+          float l = float(i);
+          if (i == 2) {
+            la[i] = triA(2.0, vWPos, vWNorm, TS * 0.55); ln[i] = triN(2.0, vWPos, vWNorm, TS * 0.55);
+            // Felswände: zweite, sehr grobe Abtastung (Felsbänke im Maßstab von Metern) – in der Ferne dominiert sie
+            float mf = smoothstep(12.0, 90.0, camDist);
+            vec4 ma = triA(2.0, vWPos, vWNorm, TS * 0.07);
+            vec4 mn = triN(2.0, vWPos, vWNorm, TS * 0.07);
+            la[i].rgb = mix(la[i].rgb * mix(vec3(1.0), ma.rgb * 2.2, 0.5), ma.rgb, mf * 0.7);
+            ln[i] = mix(ln[i], mn, 0.35 + mf * 0.45);
+          }
+          else {
+            vec2 uv = tuv * (i == 7 ? 1.25 : 1.0);
+            sampleLayer(l, uv, breakT, la[i], ln[i]);
+            // In der Ferne zusätzlich gröbere Abtastung gegen Kachelmuster
+            if (far > 0.0) {
+              vec4 fa = texture(tAlbedo, vec3(uv * 0.21, l));
+              la[i].rgb = mix(la[i].rgb, (la[i].rgb + fa.rgb) * 0.5, far);
+            }
+          }
+          hmax = max(hmax, ln[i].b + w[i]);
+        }
+        // Höhenbasierte Überblendung: die „höhere“ Schicht setzt sich an Übergängen durch
+        vec4 acc = vec4(0.0); vec4 nacc = vec4(0.0); float wsum = 0.0;
+        for (int i = 0; i < 8; i++) {
+          if (w[i] < 0.015) continue;
+          float hw = max(ln[i].b + w[i] - hmax + 0.22, 0.0);
+          acc += la[i] * hw; nacc += ln[i] * hw; wsum += hw;
+        }
+        acc /= max(wsum, 1e-4); nacc /= max(wsum, 1e-4);
+        // Großflächige Farbvariation gegen Wiederholung
+        float macro = vnoise(vWPos.xz * 0.012) * 0.6 + vnoise(vWPos.xz * 0.05) * 0.4;
+        acc.rgb *= mix(0.84, 1.1, macro);
+        // Gesteinsschichten und Verwitterung an den Bergflanken (großräumig, gegen Kachelwirkung)
+        if (mountainMask > 0.0) {
+          float strata = sin(vWPos.y * 0.55 + vnoise(vWPos.xz * 0.02) * 6.0) * 0.5 + 0.5;
+          float stain = vnoise(vWPos.xz * 0.006 + vWPos.y * 0.01);
+          vec3 tint = mix(vec3(0.92, 0.9, 0.86), vec3(1.08, 1.0, 0.9), stain) * mix(0.86, 1.06, strata);
+          acc.rgb = mix(acc.rgb, acc.rgb * tint, mountainMask * (1.0 - w[6]));
+          // Dunkle Rinnen/Klüfte (großräumiges Grat-Rauschen) und Flechten auf flacheren Stellen
+          float gully = 1.0 - abs(vnoise(vec2(vWPos.x * 0.03 + vWPos.y * 0.02, vWPos.z * 0.11)) * 2.0 - 1.0);
+          acc.rgb *= mix(1.0, 0.72, smoothstep(0.75, 0.97, gully) * mountainMask * (1.0 - w[6]));
+          float lichen = smoothstep(0.55, 0.8, vnoise(vWPos.xz * 0.21 + vWPos.y * 0.13)) * (1.0 - smoothstep(0.3, 0.55, 1.0 - normalize(vWNorm).y));
+          acc.rgb = mix(acc.rgb, acc.rgb * vec3(0.95, 1.02, 0.78), lichen * mountainMask * (1.0 - w[6]) * 0.6);
+        }
+        diffuseColor.rgb *= acc.rgb;
+        float terrainRough = acc.a;
+        float terrainAO = mix(1.0, nacc.a, 0.85);
+        vec2 tnXY = nacc.xy * 2.0 - 1.0;
+      `)
+      .replace('#include <roughnessmap_fragment>', `float roughnessFactor = clamp(terrainRough, 0.25, 1.0);`)
+      .replace('#include <normal_fragment_maps>', `
+        // Tangentenraum der Weltebene (u = x, v = z), an die Geländenormale angepasst
+        vec3 Ng = normalize(vWNorm);
+        vec3 T = normalize(vec3(1.0, 0.0, 0.0) - Ng * Ng.x);
+        vec3 B = cross(T, Ng);
+        float nStrength = mix(1.0, 0.45, far);
+        vec3 wN = normalize(T * tnXY.x * nStrength + B * tnXY.y * nStrength + Ng * sqrt(max(0.0, 1.0 - dot(tnXY, tnXY))));
+        normal = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
+        // Pfützen: bei Nässe füllen sich zuerst die tiefen Stellen der Bodentextur auf flachem Erdboden,
+        // Wegen und Pflaster (kaum auf Fels, Sand und Schnee). Bei Regen Tropfenringe.
+        if (uWet > 0.002) {
+          float pn = vnoise(vWPos.xz * 0.31) * 0.6 + vnoise(vWPos.xz * 1.7) * 0.4;
+          float susc = clamp(w[1] + w[7] + w[4] * 0.12 + w[0] * 0.08, 0.0, 1.0);
+          float hgt = nacc.b * 0.45 + pn * 0.55;
+          float level = uWet * 0.42 * susc;
+          float pud = (1.0 - smoothstep(level - 0.07, level, hgt)) * smoothstep(0.94, 0.985, Ng.y) * wetMask(vWPos) * (1.0 - far * 0.5);
+          // Rand der Pfütze: vollgesogen und dunkel
+          float rim = (1.0 - smoothstep(level - 0.02, level + 0.08, hgt)) * susc;
+          diffuseColor.rgb *= mix(1.0, 0.72, rim * uWet);
+          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.5, pud);
+          roughnessFactor = mix(roughnessFactor, 0.03, pud);
+          vec3 pN = Ng;
+          if (uRain > 0.05 && pud > 0.1 && camDist < 30.0) {
+            vec2 rp = rainRipples(vWPos.xz * 2.4, uWetTime) * uRain * 0.35;
+            pN = normalize(Ng + vec3(rp.x, 0.0, rp.y));
+          }
+          normal = normalize(mix(normal, (viewMatrix * vec4(pN, 0.0)).xyz, pud));
+        }
+        /*WET*/
+      `)
+      .replace('#include <aomap_fragment>', `
+        reflectedLight.indirectDiffuse *= terrainAO;
+        reflectedLight.directDiffuse *= mix(1.0, terrainAO, 0.35);
+      `);
+    addWetness(shader, { worldPos: 'vWPos', anchor: '/*WET*/', strength: 0.8 });
+  };
+  mat.customProgramCacheKey = () => `pz-terrain-v6-${baked}`;
+  return mat;
+}

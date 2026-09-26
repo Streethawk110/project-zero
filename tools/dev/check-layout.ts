@@ -1,0 +1,14 @@
+import { getWorldLayout } from '../../packages/shared/src/world/layout.ts';
+import { INTERACTABLES } from '../../packages/shared/src/content/interactables.ts';
+import { REST_POINTS, ZONES, SPAWN_POINT } from '../../packages/shared/src/world/region.ts';
+const t0 = performance.now();
+const L = getWorldLayout();
+console.log('layout ms', Math.round(performance.now() - t0), 'objects', L.objects.length, 'colliders', L.collision.all.length);
+const counts: Record<string, number> = {};
+for (const o of L.objects) counts[o.t] = (counts[o.t] ?? 0) + 1;
+console.log(counts);
+const h = (x: number, z: number) => L.hf.height(x, z).toFixed(1);
+for (const i of INTERACTABLES) if (i.x < 1000) console.log(i.id.padEnd(18), h(i.x, i.z), i.y ?? '');
+for (const r of REST_POINTS) console.log('rest', r.id, h(r.x, r.z));
+for (const z of ZONES) console.log('zone', z.id, h(z.x, z.z));
+console.log('spawn', h(SPAWN_POINT.x, SPAWN_POINT.z));

@@ -1,0 +1,605 @@
+{
+ "alchemy_table": {
+  "file": "alchemy_table.glb",
+  "emit": {
+   "fire": [
+    {
+     "p": [
+      1.45,
+      0.106,
+      -0.0
+     ],
+     "s": 0.286,
+     "k": "embers"
+    }
+   ]
+  }
+ },
+ "altar": {
+  "file": "altar.glb",
+  "emit": {
+   "fire": [
+    {
+     "p": [
+      -1.0,
+      1.32,
+      -0.3
+     ],
+     "s": 0.036,
+     "k": "flame"
+    },
+    {
+     "p": [
+      -0.8,
+      1.4,
+      -0.1
+     ],
+     "s": 0.036,
+     "k": "flame"
+    },
+    {
+     "p": [
+      0.85,
+      1.32,
+      -0.3
+     ],
+     "s": 0.036,
+     "k": "flame"
+    },
+    {
+     "p": [
+      1.05,
+      1.4,
+      -0.1
+     ],
+     "s": 0.036,
+     "k": "flame"
+    }
+   ]
+  }
+ },
+ "anvil": {
+  "file": "anvil.glb"
+ },
+ "barrel": {
+  "file": "barrel.glb"
+ },
+ "bell_pillar": {
+  "file": "bell_pillar.glb"
+ },
+ "bench": {
+  "file": "bench.glb"
+ },
+ "boss_pillar": {
+  "file": "boss_pillar.glb"
+ },
+ "bush": {
+  "file": "bush.glb",
+  "lod1": "bush_lod1.glb"
+ },
+ "cart": {
+  "file": "cart.glb"
+ },
+ "castle": {
+  "file": "castle.glb",
+  "emit": {
+   "smoke": [
+    [
+     -13.95,
+     12.475,
+     2.84
+    ]
+   ],
+   "banner": [
+    {
+     "p": [
+      -4.3,
+      6.4,
+      -19.65
+     ],
+     "w": 1.1,
+     "h": 2.6,
+     "d": [
+      1.0,
+      0.0
+     ]
+    },
+    {
+     "p": [
+      4.3,
+      6.4,
+      -19.65
+     ],
+     "w": 1.1,
+     "h": 2.6,
+     "d": [
+      1.0,
+      0.0
+     ]
+    }
+   ],
+   "flag": [
+    {
+     "p": [
+      -17.08,
+      17.9,
+      17.1
+     ],
+     "d": [
+      1.0,
+      -0.0
+     ],
+     "w": 1.6,
+     "h": 0.7
+    },
+    {
+     "p": [
+      -17.08,
+      17.9,
+      -17.1
+     ],
+     "d": [
+      1.0,
+      -0.0
+     ],
+     "w": 1.6,
+     "h": 0.7
+    },
+    {
+     "p": [
+      17.12,
+      17.9,
+      17.1
+     ],
+     "d": [
+      1.0,
+      -0.0
+     ],
+     "w": 1.6,
+     "h": 0.7
+    },
+    {
+     "p": [
+      17.12,
+      17.9,
+      -17.1
+     ],
+     "d": [
+      1.0,
+      -0.0
+     ],
+     "w": 1.6,
+     "h": 0.7
+    }
+   ]
+  },
+  "lod1": "castle_lod1.glb"
+ },
+ "chapel": {
+  "file": "chapel.glb",
+  "lod1": "chapel_lod1.glb"
+ },
+ "character": {
+  "file": "character.glb"
+ },
+ "chest": {
+  "file": "chest.glb"
+ },
+ "cliff_rock": {
+  "file": "cliff_rock.glb",
+  "lod1": "cliff_rock_lod1.glb"
+ },
+ "colossus": {
+  "file": "colossus.glb"
+ },
+ "crate": {
+  "file": "crate.glb"
+ },
+ "crystal_large": {
+  "file": "crystal_large.glb"
+ },
+ "crystal_node": {
+  "file": "crystal_node.glb"
+ },
+ "crystal_small": {
+  "file": "crystal_small.glb"
+ },
+ "dock": {
+  "file": "dock.glb"
+ },
+ "door_leaf": {
+  "file": "door_leaf.glb"
+ },
+ "expedition_wagon": {
+  "file": "expedition_wagon.glb"
+ },
+ "fence": {
+  "file": "fence.glb"
+ },
+ "fish_hut": {
+  "file": "fish_hut.glb"
+ },
+ "glassrunner": {
+  "file": "glassrunner.glb"
+ },
+ "haystack": {
+  "file": "haystack.glb"
+ },
+ "herb_node": {
+  "file": "herb_node.glb"
+ },
+ "house_a": {
+  "file": "house_a.glb",
+  "emit": {
+   "smoke": [
+    [
+     2.24,
+     8.575,
+     1.08
+    ]
+   ],
+   "fire": [
+    {
+     "p": [
+      2.24,
+      1.55,
+      2.26
+     ],
+     "s": 0.8,
+     "k": "embers"
+    }
+   ]
+  },
+  "lod1": "house_a_lod1.glb"
+ },
+ "house_b": {
+  "file": "house_b.glb",
+  "emit": {
+   "smoke": [
+    [
+     2.94,
+     10.575,
+     1.35
+    ]
+   ],
+   "fire": [
+    {
+     "p": [
+      2.8,
+      1.55,
+      2.76
+     ],
+     "s": 0.8,
+     "k": "embers"
+    }
+   ]
+  },
+  "lod1": "house_b_lod1.glb"
+ },
+ "human_female": {
+  "file": "human_female.glb",
+  "lod1": "human_female_lod1.glb"
+ },
+ "human_male": {
+  "file": "human_male.glb",
+  "lod1": "human_male_lod1.glb"
+ },
+ "humanoid": {
+  "file": "humanoid.glb"
+ },
+ "inn": {
+  "file": "inn.glb",
+  "emit": {
+   "smoke": [
+    [
+     3.5,
+     11.475,
+     1.71
+    ]
+   ],
+   "fire": [
+    {
+     "p": [
+      3.36,
+      1.755,
+      3.68
+     ],
+     "s": 1.2,
+     "k": "embers"
+    },
+    {
+     "p": [
+      -3.56,
+      1.56,
+      -1.5
+     ],
+     "s": 0.045,
+     "k": "flame"
+    },
+    {
+     "p": [
+      -3.56,
+      1.56,
+      1.1
+     ],
+     "s": 0.045,
+     "k": "flame"
+    },
+    {
+     "p": [
+      0.6,
+      1.56,
+      1.5
+     ],
+     "s": 0.045,
+     "k": "flame"
+    },
+    {
+     "p": [
+      -1.1,
+      2.5,
+      -4.75
+     ],
+     "s": 0.22,
+     "k": "lantern"
+    },
+    {
+     "p": [
+      1.1,
+      2.5,
+      -4.75
+     ],
+     "s": 0.22,
+     "k": "lantern"
+    }
+   ]
+  },
+  "lod1": "inn_lod1.glb"
+ },
+ "kontor": {
+  "file": "kontor.glb",
+  "emit": {
+   "smoke": [
+    [
+     2.52,
+     9.575,
+     1.26
+    ]
+   ]
+  },
+  "lod1": "kontor_lod1.glb"
+ },
+ "lamp": {
+  "file": "lamp.glb",
+  "emit": {
+   "fire": [
+    {
+     "p": [
+      0.0,
+      2.72,
+      -0.5
+     ],
+     "s": 0.18,
+     "k": "lantern"
+    }
+   ]
+  }
+ },
+ "lever": {
+  "file": "lever.glb"
+ },
+ "lore": {
+  "file": "lore.glb"
+ },
+ "mine_cart": {
+  "file": "mine_cart.glb"
+ },
+ "mine_entrance": {
+  "file": "mine_entrance.glb",
+  "emit": {
+   "fire": [
+    {
+     "p": [
+      2.5,
+      3.0,
+      -0.35
+     ],
+     "s": 0.25,
+     "k": "lantern"
+    }
+   ]
+  }
+ },
+ "mine_house": {
+  "file": "mine_house.glb"
+ },
+ "moth": {
+  "file": "moth.glb"
+ },
+ "ore_node": {
+  "file": "ore_node.glb"
+ },
+ "palisade": {
+  "file": "palisade.glb",
+  "lod1": "palisade_lod1.glb"
+ },
+ "pressure_plate": {
+  "file": "pressure_plate.glb"
+ },
+ "raven_stone": {
+  "file": "raven_stone.glb"
+ },
+ "rest_shrine": {
+  "file": "rest_shrine.glb",
+  "emit": {
+   "fire": [
+    {
+     "p": [
+      0.0,
+      1.4,
+      -0.0
+     ],
+     "s": 0.626,
+     "k": "ember"
+    }
+   ]
+  }
+ },
+ "rock_large": {
+  "file": "rock_large.glb",
+  "lod1": "rock_large_lod1.glb"
+ },
+ "rock_small": {
+  "file": "rock_small.glb",
+  "lod1": "rock_small_lod1.glb"
+ },
+ "ruin_arch": {
+  "file": "ruin_arch.glb"
+ },
+ "ruin_pillar": {
+  "file": "ruin_pillar.glb"
+ },
+ "ruin_wall": {
+  "file": "ruin_wall.glb"
+ },
+ "salt_node": {
+  "file": "salt_node.glb"
+ },
+ "shipwreck": {
+  "file": "shipwreck.glb"
+ },
+ "smithy": {
+  "file": "smithy.glb",
+  "emit": {
+   "smoke": [
+    [
+     -1.5,
+     5.53,
+     -2.2
+    ]
+   ],
+   "fire": [
+    {
+     "p": [
+      -1.5,
+      1.07,
+      -2.2
+     ],
+     "s": 0.9,
+     "k": "coals"
+    }
+   ]
+  },
+  "lod1": "smithy_lod1.glb"
+ },
+ "stall": {
+  "file": "stall.glb"
+ },
+ "statue_oda": {
+  "file": "statue_oda.glb"
+ },
+ "stele": {
+  "file": "stele.glb"
+ },
+ "tide_stone": {
+  "file": "tide_stone.glb"
+ },
+ "tower": {
+  "file": "tower.glb",
+  "emit": {
+   "smoke": [
+    [
+     0.0,
+     6.99,
+     -0.0
+    ]
+   ],
+   "fire": [
+    {
+     "p": [
+      0.0,
+      6.94,
+      -0.0
+     ],
+     "s": 0.394,
+     "k": "fire"
+    }
+   ]
+  },
+  "lod1": "tower_lod1.glb"
+ },
+ "tree_dead": {
+  "file": "tree_dead.glb",
+  "lod1": "tree_dead_lod1.glb"
+ },
+ "tree_oak": {
+  "file": "tree_oak.glb",
+  "lod1": "tree_oak_lod1.glb"
+ },
+ "tree_pine": {
+  "file": "tree_pine.glb",
+  "lod1": "tree_pine_lod1.glb"
+ },
+ "twin_door": {
+  "file": "twin_door.glb"
+ },
+ "vogthaus": {
+  "file": "vogthaus.glb",
+  "emit": {
+   "smoke": [
+    [
+     3.22,
+     11.775,
+     1.53
+    ]
+   ],
+   "banner": [
+    {
+     "p": [
+      -2.2,
+      4.35,
+      -5.25
+     ],
+     "w": 0.8,
+     "h": 1.6,
+     "d": [
+      1.0,
+      0.0
+     ]
+    },
+    {
+     "p": [
+      2.2,
+      4.35,
+      -5.25
+     ],
+     "w": 0.8,
+     "h": 1.6,
+     "d": [
+      1.0,
+      0.0
+     ]
+    }
+   ]
+  },
+  "lod1": "vogthaus_lod1.glb"
+ },
+ "watchpost": {
+  "file": "watchpost.glb"
+ },
+ "weapons": {
+  "file": "weapons.glb"
+ },
+ "well": {
+  "file": "well.glb"
+ },
+ "wood_node": {
+  "file": "wood_node.glb"
+ },
+ "woodpile": {
+  "file": "woodpile.glb"
+ },
+ "workbench": {
+  "file": "workbench.glb"
+ }
+}
