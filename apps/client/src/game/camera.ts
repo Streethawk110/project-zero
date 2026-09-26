@@ -14,6 +14,13 @@ export class ThirdPersonCamera {
   private curDist = 4.6;
   shoulder = 0.55;
   fovBoost = 0;
+  /** Bewegung der Spielfigur für die Kamera-Dynamik: Schrittphase (rad), Tempo (m/s), am Boden */
+  motion = { phase: 0, speed: 0, grounded: true };
+  private t = 0;
+  private roll = 0;
+  private prevYawV = 0;
+  private landDip = 0;
+  private wasGrounded = true;
   // Sichtbare (geglättete) Werte: yaw/pitch sind das Ziel der Maus und steuern das Spiel direkt,
   // die Kamera folgt mit einer sehr kurzen, gleichmäßigen Glättung → ruhiges, hochwertiges Gefühl
   private vYaw = 0.6;
@@ -82,12 +89,29 @@ export class ThirdPersonCamera {
     const desired = target.clone().addScaledVector(back, this.curDist);
     this.pos.copy(desired);
     this.look.copy(target).addScaledVector(back, -10);
+    this.t += dt;
+    const calm = settings.reducedEffects ? 0 : 1;
     if (this.shake > 0) {
+      // Erschütterung als weiches Rauschen (mehrere Frequenzen) statt zufälligem Zittern je Bild
       this.shake = Math.max(0, this.shake - dt * 2.5);
-      const s = this.shake * this.shake * 0.25;
-      this.pos.x += (Math.random() - 0.5) * s;
-      this.pos.y += (Math.random() - 0.5) * s;
+      const s = this.shake * this.shake * 0.22;
+      const t = this.t;
+      this.pos.x += (Math.sin(t * 37.1) * 0.6 + Math.sin(t * 61.7 + 1.3) * 0.4) * s;
+      this.pos.y += (Math.sin(t * 43.3 + 0.7) * 0.6 + Math.sin(t * 71.9 + 2.1) * 0.4) * s;
     }
+    // Kamera-Dynamik wie bei einer mitgeführten Filmkamera: beim Gehen/Laufen leichtes Wippen im Schritttakt,
+    // Landen nach Sprung/Fall federt nach, in Kurven neigt sich das Bild minimal
+    const m = this.motion;
+    const run = Math.min(1, m.speed / 5);
+    if (m.grounded && !this.wasGrounded) this.landDip = 0.09;
+    this.wasGrounded = m.grounded;
+    this.landDip = Math.max(0, this.landDip - dt * 0.35);
+    const bob = m.grounded ? Math.sin(m.phase * 2) * (0.012 + 0.03 * run) * Math.min(1, m.speed / 1.2) : 0;
+    const sway = Math.sin(m.phase) * 0.01 * Math.min(1, m.speed / 1.2);
+    this.pos.y += (bob - Math.sin(Math.min(1, this.landDip / 0.09) * Math.PI) * this.landDip) * calm;
+    this.pos.addScaledVector(right, sway * calm);
+    // leichtes Atmen der „Handkamera“ im Stand
+    this.pos.y += Math.sin(this.t * 1.3) * 0.004 * calm;
     // Gesprächseinstellung: weich zur Nahaufnahme des Gegenübers überblenden
     const want = this.focus ? 1 : 0;
     this.focusK += (want - this.focusK) * (1 - Math.exp(-dt * 3.2));
@@ -99,6 +123,13 @@ export class ThirdPersonCamera {
     }
     this.camera.position.copy(this.pos);
     this.camera.lookAt(this.look);
+    // Neigung in Kurven (aus der Drehgeschwindigkeit) und winzige Schrittneigung
+    let dy = this.vYaw - this.prevYawV;
+    this.prevYawV = this.vYaw;
+    dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+    const rollT = THREE.MathUtils.clamp((dy / Math.max(dt, 1e-3)) * 0.012 * Math.min(1, m.speed / 2), -0.035, 0.035) + Math.sin(m.phase) * 0.004 * run;
+    this.roll += (rollT - this.roll) * Math.min(1, dt * 5);
+    if (this.focusK < 0.5) this.camera.rotateZ(this.roll * calm * (1 - this.focusK * 2));
     const fov = settings.fov + (settings.reducedEffects ? 0 : this.fovBoost);
     if (Math.abs(this.camera.fov - fov) > 0.05) {
       this.camera.fov += (fov - this.camera.fov) * Math.min(1, dt * 6);

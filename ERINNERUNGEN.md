@@ -343,6 +343,13 @@ Profiler nicht mitgezählt – behoben).
   scheuchen nur zur Seite, max. 4 m vom Futterplatz), Schmetterlinge auf Wiesen (nicht Dorfkern/Burghof),
   fallendes Laub unter Eichen/Büschen (taumelt im Wind, liegt 8 s), Schwebestaub/Pollen im Licht (Overlay, weich).
   Fund: erst 0,3er Taubengröße = 10 cm → unsichtbar; Flügel angelegt per `aFlap.y = −1`.
+  KINO-KAMERA (UE-Inspiration): `LensPass` in renderer.ts nach der Belichtung: Bewegungsunschärfe aus Tiefe +
+  vorheriger ViewProj-Matrix (180°-Verschluss, normiert auf dt; Nahbereich < 4–9 m bleibt scharf, keine Farbe
+  naher Objekte in den Hintergrund; `cut()` bei Kamerasprung > 6 m) + Sonnen-Blendeneffekte (Lichthof, anamorpher
+  Streifen, 5 Blendenflecke, Blendenring; Sichtbarkeit aus 5×5 Tiefenproben am Sonnenort). Einstellungen
+  „Bewegungsunschärfe“ (`motionBlur` 0,7) und „Blendenflecke“ (`lensFlare`), aus bei „niedrig“/reduzierten Effekten.
+  Kamera (`camera.ts`): Erschütterung als weiches Rauschen statt Zufallszittern, Schrittwippen (`motion.phase`),
+  Landen federt nach, Neigung in Kurven, leichtes Atmen der Handkamera. Geprüft per Standbild (Blur mit ×40).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

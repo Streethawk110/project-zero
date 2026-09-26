@@ -428,6 +428,7 @@ export class Game {
     this.fx.ambient(dt, this.camera.position, 'haldenbruck', false, false, 'clear', 0);
     this.fx.update(dt);
     this.renderer.setAtmosphere(this.env.atmosphere(), dt);
+    this.updateLens(dt);
     this.renderer.render(this.scene, this.camera, dt);
   }
 
@@ -596,6 +597,12 @@ export class Game {
     const room = this.inDungeon ? null : this.interiorAt(ppos.x, ppos.z);
     const ceil = this.inDungeon ? this.dungeonCeil(ppos.x, ppos.z) : room ? room.ceil : null;
     this.cam.fovBoost = this.me && this.playerRig?.anim === 'sprint' ? 6 : 0;
+    if (this.playerRig) {
+      const r = this.playerRig;
+      this.cam.motion.phase = r.phase;
+      this.cam.motion.speed = ['walk', 'run', 'sprint'].includes(r.anim) ? r.speed : 0;
+      this.cam.motion.grounded = r.anim !== 'jump' && r.anim !== 'fall' && r.anim !== 'swim' && r.anim !== 'tread';
+    }
     if (this.photo) this.photoFrame(dt);
     else {
       this.updateGaze(ppos);
@@ -643,6 +650,7 @@ export class Game {
     this.audio.updateAmbience(dt, { zone: zoneAt(ppos.x, ppos.z)?.id ?? null, night: this.isNight, weather: this.weather, wInt: this.snap?.wInt ?? 0, inDungeon: this.inDungeon, combat: this.me?.combat ?? false, boss: !!this.snap?.boss, danger: this.nearbyEnemies(ppos) });
     this.footsteps(dt, ppos);
 
+    this.updateLens(dt);
     this.renderer.render(this.scene, this.camera, dt);
     if (this.shotPending) this.takeScreenshot();
     this.ui.frame(dt, this);
@@ -744,6 +752,22 @@ export class Game {
     for (const v of this.ents.views.values()) if (v.kind === 'e' && v.anim !== 'die' && v.anim !== 'dead' && v.target === this.conn.eid && v.pos.distanceTo(p) < 30) n++;
     return n;
   }
+
+  /** Bewegungsunschärfe und Sonnen-Blendeneffekte (Unreal-artige Kamera). */
+  private updateLens(dt: number) {
+    const lens = this.renderer.lens;
+    if (!lens) return;
+    this.camera.updateMatrixWorld();
+    lens.blur = settings.motionBlur;
+    // bei Sprüngen der Kamera (Teleport, Schnitt zum Dialog) nicht über den Schnitt verwischen
+    if (this.lastCamPos && this.lastCamPos.distanceTo(this.camera.position) > 6) lens.cut();
+    (this.lastCamPos ??= new THREE.Vector3()).copy(this.camera.position);
+    const day = 1 - this.env.nightFactor;
+    const sunOK = settings.lensFlare && !this.inDungeon && this.env.indoor < 0.5 && day > 0.2;
+    const sunCol = this.env.sun.color.clone().multiplyScalar(this.env.sun.intensity * 0.35 * day);
+    lens.setFrame(dt, sunOK ? this.env.sunDir : null, sunCol);
+  }
+  private lastCamPos: THREE.Vector3 | null = null;
 
   /** Wind, Rauch, Stoffe und Tiere der Umgebung (lebendige Welt). */
   private updateLife(dt: number, weather: string, wInt: number, inDungeon: boolean) {

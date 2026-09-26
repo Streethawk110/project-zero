@@ -114,6 +114,138 @@ class OverlayPass extends Pass {
   }
 }
 
+/**
+ * Kamera-Effekte wie in der Unreal Engine:
+ *  - Bewegungsunschärfe aus der Kamerabewegung: jeder Bildpunkt wird aus der Tiefe in die Welt
+ *    zurückgerechnet, mit der Kamera des letzten Bildes projiziert und entlang der Bewegung verwischt
+ *    (Belichtungszeit ≈ halbes Bild bei 60 fps; nahe Objekte wie die eigene Figur ausgenommen).
+ *  - Blendenflecke und Lichthof der Sonne, wenn sie sichtbar ist (Verdeckung aus der Tiefe am Sonnenort).
+ */
+class LensPass extends Pass {
+  mat: THREE.ShaderMaterial;
+  private quad: FullScreenQuad;
+  private prevVP = new THREE.Matrix4();
+  private hasPrev = false;
+  blur = 1;
+  constructor(depth: THREE.Texture, private camera: THREE.PerspectiveCamera, samples: number) {
+    super();
+    this.mat = new THREE.ShaderMaterial({
+      defines: { SAMPLES: samples },
+      uniforms: {
+        tDiffuse: { value: null }, tDepth: { value: depth },
+        uInvVP: { value: new THREE.Matrix4() }, uPrevVP: { value: new THREE.Matrix4() },
+        uBlur: { value: 0 }, uNearFar: { value: new THREE.Vector2(0.1, 3000) },
+        uSunUV: { value: new THREE.Vector2(0.5, 0.5) }, uSunOn: { value: 0 }, uSunCol: { value: new THREE.Color() }, uAspect: { value: 1 },
+      },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      fragmentShader: /* glsl */ `
+        uniform sampler2D tDiffuse; uniform sampler2D tDepth;
+        uniform mat4 uInvVP; uniform mat4 uPrevVP; uniform float uBlur; uniform vec2 uNearFar;
+        uniform vec2 uSunUV; uniform float uSunOn; uniform vec3 uSunCol; uniform float uAspect;
+        varying vec2 vUv;
+        float linDepth(float d) { float n = uNearFar.x, f = uNearFar.y; return (n * f) / (f - d * (f - n)); }
+        float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+        void main() {
+          vec4 col = texture2D(tDiffuse, vUv);
+          if (uBlur > 0.001) {
+            float d = texture2D(tDepth, vUv).x;
+            vec4 ndc = vec4(vUv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0);
+            vec4 wp = uInvVP * ndc; wp /= wp.w;
+            vec4 pp = uPrevVP * wp; pp /= pp.w;
+            vec2 vel = (vUv - (pp.xy * 0.5 + 0.5)) * uBlur;
+            // eigene Figur und Nahbereich scharf lassen (bewegen sich mit der Kamera)
+            vel *= smoothstep(4.0, 9.0, linDepth(d));
+            float len = length(vel);
+            vel *= min(1.0, 0.045 / max(len, 1e-5));
+            if (len > 0.0008) {
+              vec3 acc = col.rgb; float w = 1.0;
+              float j = hash(vUv * 931.7) - 0.5;
+              for (int i = 1; i <= SAMPLES; i++) {
+                float t = (float(i) + j) / float(SAMPLES) - 0.5;
+                vec2 uv = vUv + vel * t;
+                // keine Farbe von nahen Objekten (Figur) in den Hintergrund ziehen
+                float sd = linDepth(texture2D(tDepth, uv).x);
+                float ok = step(4.0, sd);
+                acc += texture2D(tDiffuse, uv).rgb * ok; w += ok;
+              }
+              col.rgb = acc / w;
+            }
+          }
+          if (uSunOn > 0.001) {
+            // Sichtbarkeit der Sonne: Anteil freien Himmels um den Sonnenort
+            float vis = 0.0;
+            for (int x = -2; x <= 2; x++) for (int y = -2; y <= 2; y++) {
+              vec2 o = vec2(float(x), float(y)) * vec2(0.006 / uAspect, 0.006);
+              vis += step(0.9999, texture2D(tDepth, uSunUV + o).x);
+            }
+            vis = vis / 25.0 * uSunOn;
+            if (vis > 0.0) {
+              vec2 toSun = uSunUV - vUv;
+              vec2 ta = toSun * vec2(uAspect, 1.0);
+              float dist = length(ta);
+              // Lichthof und leichter waagerechter Streifen (anamorph)
+              float halo = exp(-dist * 7.0) * 0.35 + exp(-dist * 22.0) * 0.6;
+              float streak = exp(-abs(ta.y) * 90.0) * exp(-abs(ta.x) * 2.2) * 0.25;
+              // Blendenflecke entlang der Achse Sonne → Bildmitte
+              vec2 axis = vec2(0.5) - uSunUV;
+              vec3 ghosts = vec3(0.0);
+              for (int i = 0; i < 5; i++) {
+                float fi = float(i);
+                float k = 0.35 + fi * 0.38;
+                vec2 gp = uSunUV + axis * k * 2.0;
+                float r = 0.02 + fi * 0.018;
+                float g = smoothstep(r, r * 0.55, length((vUv - gp) * vec2(uAspect, 1.0)));
+                vec3 tint = mix(vec3(0.5, 0.75, 1.0), vec3(1.0, 0.7, 0.4), fract(fi * 0.37));
+                ghosts += g * tint * (0.05 - fi * 0.006);
+              }
+              // Ring um die Bildmitte (Blendenring)
+              float ring = smoothstep(0.02, 0.0, abs(length((vUv - 0.5 - axis * 0.9) * vec2(uAspect, 1.0)) - 0.28)) * 0.025;
+              col.rgb += uSunCol * vis * (halo + streak) * 0.25 + uSunCol * vis * (ghosts + ring * vec3(0.8, 0.9, 1.0));
+            }
+          }
+          gl_FragColor = col;
+        }`,
+      depthTest: false, depthWrite: false,
+    });
+    this.quad = new FullScreenQuad(this.mat);
+  }
+  /** vor dem Rendern: Sonnenlage und Belichtung für Blendeneffekte, dt für die Belichtungszeit */
+  setFrame(dt: number, sunDir: THREE.Vector3 | null, sunCol: THREE.Color) {
+    const cam = this.camera;
+    const u = this.mat.uniforms;
+    const vp = new THREE.Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+    (u['uInvVP']!.value as THREE.Matrix4).copy(vp).invert();
+    (u['uPrevVP']!.value as THREE.Matrix4).copy(this.hasPrev ? this.prevVP : vp);
+    // Belichtungszeit: 180°-Verschluss bei 60 fps (1/120 s) – bei weniger Bildern entsprechend kürzer
+    u['uBlur']!.value = this.hasPrev ? this.blur * Math.min(1, (1 / 120) / Math.max(dt, 1 / 240)) : 0;
+    this.prevVP.copy(vp);
+    this.hasPrev = true;
+    (u['uNearFar']!.value as THREE.Vector2).set(cam.near, cam.far);
+    u['uAspect']!.value = cam.aspect;
+    if (sunDir) {
+      const p = cam.position.clone().addScaledVector(sunDir, 1000).project(cam);
+      const inFront = sunDir.dot(cam.getWorldDirection(new THREE.Vector3())) > 0;
+      const onScreen = inFront && Math.abs(p.x) < 1.15 && Math.abs(p.y) < 1.15;
+      (u['uSunUV']!.value as THREE.Vector2).set(p.x * 0.5 + 0.5, p.y * 0.5 + 0.5);
+      u['uSunOn']!.value = onScreen ? Math.min(1, sunDir.y * 6) * (1 - smoothEdge(Math.max(Math.abs(p.x), Math.abs(p.y)))) : 0;
+      (u['uSunCol']!.value as THREE.Color).copy(sunCol);
+    } else u['uSunOn']!.value = 0;
+  }
+  /** Sprung (Teleport, Schnitt): kein Verwischen über den Schnitt */
+  cut() { this.hasPrev = false; }
+  override render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget) {
+    this.mat.uniforms['tDiffuse']!.value = readBuffer.texture;
+    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+    this.quad.render(renderer);
+  }
+  override dispose() { this.mat.dispose(); this.quad.dispose(); }
+}
+
+function smoothEdge(x: number) {
+  const t = Math.max(0, Math.min(1, (x - 0.85) / 0.3));
+  return t * t * (3 - 2 * t);
+}
+
 /** Rendert die Szene in ein eigenes HDR-Ziel mit Tiefentextur (für AO und Atmosphäre). */
 class ScenePass extends Pass {
   rt: THREE.WebGLRenderTarget;
@@ -512,6 +644,7 @@ export class Renderer {
   composer: EffectComposer | null = null;
   private bloom: UnrealBloomPass | null = null;
   private dof: DofPass | null = null;
+  lens: LensPass | null = null;
   /** Filmische Einstellung: Fokusabstand (null = aus) und Kinobalken, weich überblendet */
   private cine = { focus: null as number | null, k: 0, bars: 0, barsWant: 0 };
   grade: ShaderPass | null = null;
@@ -592,6 +725,10 @@ export class Renderer {
     c.addPass(new OverlayPass(camera, depthTex));
     this.exposure = new ExposurePass();
     c.addPass(this.exposure);
+    if (settings.graphics !== 'niedrig' && !settings.reducedEffects) {
+      this.lens = new LensPass(depthTex, camera as THREE.PerspectiveCamera, settings.graphics === 'ultra' ? 10 : 6);
+      c.addPass(this.lens);
+    }
     if (settings.graphics !== 'niedrig') {
       this.dof = new DofPass(depthTex, camera as THREE.PerspectiveCamera);
       c.addPass(this.dof);

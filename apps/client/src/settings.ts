@@ -111,6 +111,10 @@ export interface Settings {
   antialias: 'aus' | 'smaa' | 'msaa';
   ao: boolean;
   godRays: boolean;
+  /** Bewegungsunschärfe der Kamera (0 = aus, 1 = filmisch) */
+  motionBlur: number;
+  /** Blendenflecke/Lichthof der Sonne */
+  lensFlare: boolean;
   /** Dichte von Gras und Pflanzen (0,5–2) */
   vegetation: number;
   fov: number;
@@ -182,6 +186,8 @@ function defaults(): Settings {
     subtitles: true,
     voiceOutput: true,
     reducedEffects: false,
+    motionBlur: 0.7,
+    lensFlare: true,
     showDamageNumbers: true,
     keys: structuredClone(DEFAULT_KEYS),
     serverUrl: '',
@@ -222,7 +228,7 @@ export function saveSettings() {
 /** Schlüssel aller Einstellungen, die einen Neuaufbau der Grafik erfordern. */
 export function graphicsKey() {
   const s = settings;
-  return JSON.stringify([s.graphics, s.resolution, s.renderScale, s.shadows, s.shadowQuality, s.bloom, s.grass, s.clouds, s.antialias, s.ao, s.godRays, s.fov]);
+  return JSON.stringify([s.graphics, s.resolution, s.renderScale, s.shadows, s.shadowQuality, s.bloom, s.grass, s.clouds, s.antialias, s.ao, s.godRays, s.fov, s.reducedEffects]);
 }
 
 export function onSettingsChange(fn: (s: Settings) => void) {

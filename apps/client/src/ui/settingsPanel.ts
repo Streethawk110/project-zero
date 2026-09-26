@@ -49,6 +49,8 @@ export function settingsPanel(onClose: () => void, capture: (fn: (code: string) 
         ...row('Wolken', select<Quality>(q.filter(([v]) => v !== 'mittel'), () => settings.clouds, (v) => (settings.clouds = v)), 'Volumetrische Wolken mit Schatten auf der Landschaft.'),
         ...row('Umgebungsverdeckung (AO)', toggle(() => settings.ao, (v) => (settings.ao = v)), 'Weiche Kontaktschatten in Ecken, unter Dächern und Bäumen.'),
         ...row('Lichtstrahlen', toggle(() => settings.godRays, (v) => (settings.godRays = v)), 'Sonnenstrahlen durch Bäume und Wolken.'),
+        ...row('Bewegungsunschärfe', toggle(() => settings.motionBlur > 0, (v) => (settings.motionBlur = v ? 0.7 : 0)), 'Filmische Unschärfe bei schnellen Kameradrehungen (ab Grafik „mittel“).'),
+        ...row('Blendenflecke', toggle(() => settings.lensFlare, (v) => (settings.lensFlare = v)), 'Lichthof und Linsenreflexe, wenn man in die Sonne schaut.'),
         ...row('Leuchten (Bloom)', toggle(() => settings.bloom, (v) => (settings.bloom = v))),
         ...row('Texturqualität', select<number>([[512, 'Mittel (512)'], [1024, 'Hoch (1024)'], [2048, 'Ultra (2048)']], () => settings.textureQuality, (v) => { settings.textureQuality = v; if (restartHint) restartHint.classList.remove('hidden'); })),
         ...row('Gras', toggle(() => settings.grass, (v) => (settings.grass = v))),
