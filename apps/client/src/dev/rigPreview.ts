@@ -56,9 +56,11 @@ const only = params.get('only');
 const gait = params.get('gait');
 const frames = Number(params.get('frames') ?? 8);
 // Übersicht mehrerer Animationen: ?anims=jump:0.2,dodge:0.15,atk1:0.3 (Name:Zeit)
-const anims = params.get('anims')?.split(',').map((x) => { const [a, t] = x.split(':'); return { a: a!, t: Number(t ?? 0.5) }; });
+const anims = params.get('poses')
+  ? (JSON.parse(params.get('poses')!) as object[]).map((p) => ({ a: 'dbg:' + JSON.stringify(p), t: 0.5 }))
+  : params.get('anims')?.split(',').map((x) => { const [a, t] = x.split(':'); return { a: a!, t: Number(t ?? 0.5) }; });
 const list = anims
-  ? anims.map(({ a, t }) => ({ ...specs[Number(only ?? 0)]!, anim: a, t, speed: 0, weapon: a.startsWith('atk') || a === 'block' ? 'sword_rusty' : undefined, offhand: a === 'block' ? 'shield_wood' : undefined }))
+  ? anims.map(({ a, t }) => ({ ...specs[Number(only ?? 0)]!, anim: a, t, speed: 0, weapon: a.startsWith('atk') || a.startsWith('dbg') || a === 'heavy' || a === 'block' ? (params.get('weapon') ?? 'sword_rusty') : undefined, offhand: a === 'block' ? 'shield_wood' : undefined }))
   : gait
   ? Array.from({ length: frames }, () => ({ ...specs[Number(only ?? 0)]!, anim: gait, speed: Number(params.get('speed') ?? 1.4), weapon: undefined, offhand: undefined }))
   : only !== null ? [specs[Number(only)]!] : specs;
@@ -77,6 +79,9 @@ list.forEach((s, i) => {
     const steps = Math.round((cycT * i) / frames / 0.005);
     for (let k = 0; k < steps; k++) rig.update(0.005, s.speed);
     rig.root.position.set((i - (list.length - 1) / 2) * Number(params.get('gap') ?? 0.8), 0, 0);
+  } else if (anims) {
+    // t = Anteil der Aktionsdauer (0,8 s)
+    for (let k = 0; k < 40; k++) rig.update(Math.max(1e-4, s.t * 0.8) / 40, s.speed);
   } else for (let k = 0; k < 40; k++) rig.update(s.t / 40 + (k < 20 ? 0.02 : 0), s.speed);
   if (params.get('talk')) { rig.talking = 5; rig.update(Number(params.get('talk')), 0); }
   if (params.get('lod') === '1') rig.setLod(1);

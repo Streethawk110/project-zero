@@ -315,6 +315,13 @@ Profiler nicht mitgezählt – behoben).
   der Stelle: Trippelschritte (`turnRate` aus updateSwing, `turnStep`, `gait(v, inPlace)`), per rig-probe geprüft.
   Schrittgeräusche im Takt der Fußaufsätze (`rig.footfalls`, statt fester Periode), NSC-Schritte räumlich bis 14 m
   (`audio.footstep(…, spatial)`). Im Spiel geprüft (keine Fehler, Bewohner verteilt).
+  SCHWERTHIEBE NEU (`rig.swordStrike` + `sampleKeys`, Schlüsselposen weich überblendet): atk1 Diagonalhieb (über
+  rechter Schulter aufziehen → diagonal durch → Durchschwung → Hut), atk2 Rückhand, atk3/heavy Oberhau „vom Tag“,
+  Hüfte/Brust drehen mit, Ausfallschritt (root Z+ = vor), linker Arm gegen bzw. Schild vorn. Achsen empirisch
+  per Testposen ermittelt (`rig-preview.html?poses=[{…}]`, Pose `dbg:{json}`): Oberarm X− vor/hoch, Y+ quer
+  nach links, Z− abspreizen (rechts); Hand X+ = Klinge kippt nach vorn/oben aus Sicht des Unterarms (Ausholen
+  hinter dem Kopf braucht Hand +1,1…1,2 bei wenig gebeugtem Ellbogen, sonst hängt die Klinge den Rücken hinab);
+  Brust Y+ = links drehen. Vorschau `?anims=atk1:0.38,…` (t = Anteil von 0,8 s).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

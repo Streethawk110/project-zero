@@ -1034,6 +1034,61 @@ export class HumanoidRig {
     return P;
   }
 
+  /**
+   * Schwerthiebe aus Schlüsselposen (weich überblendet): Hut → Ausholen → Hieb → Durchschwung → Hut.
+   * Achsen (rechter Arm): Oberarm X− = heben/vor, Y+ = quer nach links, Z− = abspreizen; Hand X+ = Spitze
+   * nach vorn/unten; Brust/Hüfte Y+ = nach links drehen; Oberschenkel X− = vor; root Z+ = Ausfall nach vorn.
+   */
+  private swordStrike(anim: string, prog: number): Pose {
+    const shield = !!this.offhandId && ITEMS[this.offhandId]?.offhand?.type === 'shield';
+    type K = [number, Pose];
+    const guard: Pose = {
+      upperArmR: [-0.75, -0.15, -0.25], foreArmR: [-1.05, 0, 0], handR: [0.15, 0, 0], chest: [0.06, 0, 0],
+      thighL: [-0.12, 0, 0.04], shinL: [0.15, 0, 0], thighR: [0.12, 0, -0.04], shinR: [0.1, 0, 0], root: [0, -0.03, 0],
+    };
+    let keys: K[];
+    if (anim === 'atk3' || anim === 'heavy') {
+      // Oberhau: Klinge über den Kopf in den Nacken, Oberkörper streckt sich, dann hinab mit tiefem Ausfall
+      const h = anim === 'heavy' ? 1.25 : 1;
+      keys = [
+        [0, guard],
+        [anim === 'heavy' ? 0.45 : 0.38, { upperArmR: [-2.85, -0.15, -0.25], foreArmR: [-0.7, 0, 0], handR: [1.2, 0, 0], chest: [-0.22, -0.12, 0], spine: [-0.08, 0, 0], head: [0.12, 0, 0],
+          upperArmL: [-0.95, 0.25, 0.12], foreArmL: [-1.2, 0, 0], thighL: [-0.1, 0, 0.05], shinL: [0.1, 0, 0], thighR: [0.2, 0, -0.05], shinR: [0.2, 0, 0], root: [0, 0.01, -0.04] }],
+        [anim === 'heavy' ? 0.6 : 0.54, { upperArmR: [-1.1, 0.2, -0.1], foreArmR: [-0.15, 0, 0], handR: [0.3, 0, 0], chest: [0.42 * h, 0.1, 0], spine: [0.22 * h, 0, 0], head: [-0.3, 0, 0],
+          upperArmL: [-0.7, 0.25, 0.12], foreArmL: [-0.7, 0, 0], thighL: [-0.62 * h, 0, 0.06], shinL: [0.75 * h, 0, 0], thighR: [0.32 * h, 0, -0.05], shinR: [0.35, 0, 0], footR: [-0.25, 0, 0], root: [0, -0.1 * h, 0.2 * h] }],
+        [0.74, { upperArmR: [-0.75, 0.25, -0.1], foreArmR: [-0.35, 0, 0], handR: [0.5, 0, 0], chest: [0.35 * h, 0.1, 0], spine: [0.18 * h, 0, 0],
+          upperArmL: [-0.45, 0.2, 0.15], foreArmL: [-0.8, 0, 0], thighL: [-0.5 * h, 0, 0.06], shinL: [0.6 * h, 0, 0], thighR: [0.28 * h, 0, -0.05], shinR: [0.3, 0, 0], root: [0, -0.08 * h, 0.16 * h] }],
+        [1, guard],
+      ];
+    } else {
+      // Diagonalhieb (atk1: rechts oben → links unten) bzw. Rückhand (atk2: links unten → rechts oben)
+      const back = anim === 'atk2';
+      const cocked: Pose = back
+        ? { upperArmR: [-1.05, 1.0, -0.05], foreArmR: [-1.35, 0, 0], handR: [0.75, 0.3, 0], chest: [0.12, 0.55, 0], spine: [0.05, 0.25, 0], hips: [0, 0.15, 0], head: [0, -0.5, 0] }
+        : { upperArmR: [-2.3, -0.8, -0.45], foreArmR: [-0.9, 0, 0], handR: [1.1, 0, 0], chest: [-0.06, -0.5, 0], spine: [0, -0.25, 0], hips: [0, -0.15, 0], head: [0, 0.55, 0] };
+      const hit: Pose = back
+        ? { upperArmR: [-1.9, -0.85, -0.45], foreArmR: [-0.3, 0, 0], handR: [-0.2, -0.2, 0], chest: [0.02, -0.5, 0], spine: [0, -0.25, 0], hips: [0, -0.18, 0], head: [0, 0.45, 0] }
+        : { upperArmR: [-1.15, 0.95, -0.15], foreArmR: [-0.2, 0, 0], handR: [0.95, 0.15, 0], chest: [0.22, 0.55, 0], spine: [0.1, 0.25, 0], hips: [0, 0.2, 0], head: [0, -0.5, 0] };
+      const follow: Pose = back
+        ? { upperArmR: [-2.2, -1.2, -0.6], foreArmR: [-0.6, 0, 0], handR: [-0.5, -0.2, 0], chest: [-0.02, -0.65, 0], spine: [0, -0.3, 0], hips: [0, -0.2, 0] }
+        : { upperArmR: [-0.75, 1.35, -0.05], foreArmR: [-0.45, 0, 0], handR: [1.2, 0.3, 0], chest: [0.26, 0.7, 0], spine: [0.12, 0.3, 0], hips: [0, 0.22, 0] };
+      const legsWind: Pose = { thighL: [-0.05, 0, 0.05], shinL: [0.12, 0, 0], thighR: [0.2, 0, -0.05], shinR: [0.25, 0, 0], root: [0, -0.02, -0.05] };
+      const legsHit: Pose = { thighL: [-0.5, 0, 0.06], shinL: [0.62, 0, 0], thighR: [0.3, 0, -0.05], shinR: [0.3, 0, 0], footR: [-0.2, 0, 0], root: [0, -0.08, 0.17] };
+      const offWind: Pose = { upperArmL: back ? [-0.3, 0, 0.35] : [-0.75, 0.45, 0.1], foreArmL: [-0.9, 0, 0] };
+      const offHit: Pose = { upperArmL: back ? [-0.8, 0.5, 0.1] : [-0.2, -0.2, 0.45], foreArmL: [-0.5, 0, 0] };
+      keys = [
+        [0, guard],
+        [0.38, { ...legsWind, ...offWind, ...cocked }],
+        [0.55, { ...legsHit, ...offHit, ...hit }],
+        [0.72, { ...legsHit, ...offHit, ...follow, root: [0, -0.06, 0.14] }],
+        [1, guard],
+      ];
+    }
+    const p = sampleKeys(keys, prog);
+    if (shield) { p.upperArmL = [-0.95, -0.35, 0.2]; p.foreArmL = [-1.25, 0.2, 0]; }
+    return p;
+  }
+
   private computePose(anim: string, t: number): Pose {
     const s = Math.sin, c = Math.cos, ph = this.phase;
     const wt = this.weaponType;
@@ -1064,6 +1119,8 @@ export class HumanoidRig {
       root: [0, Math.abs(c(ph)) * bob - bob * 0.5, 0],
     });
     const prog = Math.min(1, t / Math.max(0.1, this.actionDur));
+    // Entwicklerhilfe (Vorschau): feste Pose als JSON, z. B. dbg:{"upperArmR":[-1.4,0.5,0]}
+    if (anim.startsWith('dbg:')) { try { return JSON.parse(anim.slice(4)) as Pose; } catch { return {}; } }
     switch (anim) {
       case 'idle': case 'recover': case 'idle_boss': {
         // Auf der Stelle drehen: kleine Trippelschritte statt über den Boden gleitender Füße
@@ -1105,19 +1162,8 @@ export class HumanoidRig {
         return { rootRot: [k * Math.PI * 2, 0, 0], root: [0, -0.35 * s(k * Math.PI), 0], spine: [0.9, 0, 0], chest: [0.5, 0, 0], head: [0.5, 0, 0], thighL: [-1.6, 0, 0], shinL: [2.2, 0, 0], thighR: [-1.6, 0, 0], shinR: [2.2, 0, 0], upperArmL: [-1.2, 0, 0.3], upperArmR: [-1.2, 0, -0.3], foreArmL: [-1.2, 0, 0], foreArmR: [-1.2, 0, 0] };
       }
       case 'block': return { chest: [0.1, -0.3, 0], upperArmL: [-1.0, -0.45, 0.1], foreArmL: [-0.75, -0.55, 0], upperArmR: [-0.4, 0, -0.3], foreArmR: [-1.1, 0, 0], thighL: [-0.3, 0, 0.1], shinL: [0.4, 0, 0], thighR: [0.2, 0, -0.1], shinR: [0.3, 0, 0], root: [0, -0.08, 0] };
-      case 'atk1': case 'atk2': case 'atk3': case 'heavy': case 'skill': case 'skill:bash': {
-        // Ausholen → Schlag → Zurückziehen
-        const wind = 0.4, strike = 0.55;
-        const k1 = Math.min(1, prog / wind), k2 = Math.min(1, Math.max(0, (prog - wind) / (strike - wind))), k3 = Math.max(0, (prog - strike) / (1 - strike));
-        const dir = anim === 'atk2' ? -1 : 1;
-        const over = anim === 'atk3' || anim === 'heavy';
-        if (over) {
-          const raise = -2.8 * k1 * (1 - k2) + (-0.3) * k2 * (1 - k3);
-          return { spine: [0.3 * k2, 0, 0], chest: [-0.35 * k1 + 0.6 * k2 - 0.25 * k3, 0, 0], upperArmR: [raise, 0, -0.3], foreArmR: [-0.5 * (1 - k2), 0, 0], upperArmL: [raise * 0.8, 0, 0.3], foreArmL: [-0.5, 0, 0], thighL: [-0.5 * k2, 0, 0], shinL: [0.4 * k2, 0, 0], thighR: [0.3 * k2, 0, 0], root: [0, -0.15 * k2 * (1 - k3), -0.25 * k2] };
-        }
-        const tw = dir * (0.9 * k1 - 1.8 * k2 + 0.9 * k3);
-        return { chest: [0.1, tw * 0.6, 0], spine: [0.05, tw * 0.3, 0], upperArmR: [-1.4, dir * (0.9 * k1 - 1.9 * k2 + 1.0 * k3), -0.9 + 0.4 * k2], foreArmR: [-0.5 + 0.4 * k2, 0, 0], handR: [0.2, 0, 0], upperArmL: [-0.2, 0, 0.3], foreArmL: [-0.6, 0, 0], thighL: [-0.35 * k2, 0, 0], shinL: [0.3 * k2, 0, 0], thighR: [0.25 * k2, 0, 0], root: [0, -0.06 * k2, -0.2 * k2] };
-      }
+      case 'atk1': case 'atk2': case 'atk3': case 'heavy': case 'skill': case 'skill:bash':
+        return this.swordStrike(anim, prog);
       case 'bow': case 'skill:bow': {
         const draw = Math.min(1, prog / 0.55), rel = prog > 0.55 ? 1 : 0;
         return { chest: [0, -0.9, 0], head: [0, 0.8, 0], upperArmL: [-1.55, 0.9, 0.1], foreArmL: [0, 0, 0], upperArmR: [-1.5, 0.9 - draw * 0.2, -0.3 + rel * 0.3], foreArmR: [-2.1 * draw * (1 - rel), 0, 0], thighL: [-0.2, 0, 0.1], thighR: [0.2, 0, -0.1] };
@@ -1255,4 +1301,20 @@ export function makeWeapon(id: string): THREE.Object3D {
 function smooth(a: number, b: number, x: number) {
   const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
+}
+
+/** Posen zwischen Schlüsselbildern weich überblenden (fehlende Gelenke = 0). */
+function sampleKeys(keys: [number, Pose][], t: number): Pose {
+  let i = 0;
+  while (i < keys.length - 2 && t > keys[i + 1]![0]) i++;
+  const [t0, a] = keys[i]!, [t1, b] = keys[i + 1]!;
+  const u = Math.max(0, Math.min(1, (t - t0) / Math.max(1e-4, t1 - t0)));
+  const k = u * u * (3 - 2 * u);
+  const out: Pose = {};
+  const names = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof Pose>;
+  for (const n of names) {
+    const va = (a[n] ?? [0, 0, 0]) as [number, number, number], vb = (b[n] ?? [0, 0, 0]) as [number, number, number];
+    (out as Record<string, [number, number, number]>)[n] = [va[0] + (vb[0] - va[0]) * k, va[1] + (vb[1] - va[1]) * k, va[2] + (vb[2] - va[2]) * k];
+  }
+  return out;
 }
