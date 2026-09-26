@@ -345,6 +345,7 @@ export class EntityManager {
         if (fight || (v.kind === 'e' && v.target)) v.combatT = 5;
         else v.combatT = Math.max(0, (v.combatT ?? 0) - dt);
         v.rig.setDrawn(v.combatT > 0 && v.anim !== 'die' && v.anim !== 'dead');
+        v.rig.groundFn = v.flying ? null : groundAt;
         v.rig.update(dt, hSpeed, clampG(gl), clampG(gr), fwd, side);
         v.rig.setLod(v.pos.distanceToSquared(this.camPos) > 16 * 16 ? 1 : 0);
         if (v.rig.exhaled) {

@@ -36,6 +36,11 @@ const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 20), new THREE.MeshSta
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
+// Hang zum Prüfen der Fußanpassung (?slope=0.3: Boden steigt nach Welt-+X, bzw. ?slopez= nach +Z)
+const slopeX = Number(new URLSearchParams(location.search).get('slope') ?? 0);
+const slopeZ = Number(new URLSearchParams(location.search).get('slopez') ?? 0);
+const groundY = (x: number, z: number) => x * slopeX + z * slopeZ;
+if (slopeX || slopeZ) { ground.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), Math.atan(slopeX)); ground.rotateOnWorldAxis(new THREE.Vector3(1, 0, 0), -Math.atan(slopeZ)); }
 
 await loadManifest();
 await loadBakedTextures(512);
@@ -71,9 +76,13 @@ const rigs: HumanoidRig[] = [];
 list.forEach((s, i) => {
   const rig = new HumanoidRig({ faceSeed: params.get('seed') ? params.get('seed')! + i : undefined, appearance: { skin: s.skin, hair: params.get('hair') ? Number(params.get('hair')) : s.hair, hairColor: params.get('hc') ? Number(params.get('hc')) : i % 6, beard: params.get('beard') ? Number(params.get('beard')) : s.beard, body: s.body, height: 1, eyes: i % 4, scar: 0, sex: s.sex ?? 0 }, outfit: s.outfit });
   rig.setEquipment(s.weapon ?? '', s.offhand ?? '', s.outfit);
+  // Laufstil erzwingen (?walk=walk_f)
+  if (params.get('walk')) (rig as unknown as { walkName: string }).walkName = params.get('walk')!;
   rig.root.position.set((i - (list.length - 1) / 2) * 1.25, 0, 0);
+  rig.root.position.y = groundY(rig.root.position.x, 0);
   rig.root.rotation.y = Math.PI + Number(params.get('turn') ?? 0.35);
   rig.play(s.anim, 0.8);
+  if (slopeX || slopeZ) rig.groundFn = groundY;
   // Aufnahmen: fester Zeitpunkt statt Zufallsversatz (?mt=Sekunden, je Figur + mtStep)
   if (params.get('mt')) (rig as unknown as { mocapT0: number }).mocapT0 = Number(params.get('mt')) + i * Number(params.get('mtStep') ?? 0);
   // Waffe ziehen (?drawn=1): mit anims=idle:t zeigt t den Verlauf des Ziehens
@@ -88,6 +97,7 @@ list.forEach((s, i) => {
     const steps = Math.round((cycT * i) / frames / 0.005);
     for (let k = 0; k < steps; k++) rig.update(0.005, s.speed, 0, 0, fw, sd);
     rig.root.position.set((i - (list.length - 1) / 2) * Number(params.get('gap') ?? 0.8), 0, 0);
+    rig.root.position.y = groundY(rig.root.position.x, 0);
   } else if (anims) {
     // t = Anteil der Aktionsdauer (0,8 s)
     for (let k = 0; k < 40; k++) rig.update(Math.max(1e-4, s.t * 0.8) / 40, s.speed);
@@ -114,6 +124,12 @@ function size() {
     cam.fov = 9;
     cam.position.set(hp.x + 0.35, hp.y + 0.08, hp.z + 2.0);
     cam.lookAt(hp.x, hp.y + 0.06, hp.z);
+  } else if (params.get('feet') && rigs[0]) {
+    // Füße (Hangtest): tiefe Kamera auf die erste Figur
+    const r = rigs[0].root.position;
+    cam.fov = 16;
+    cam.position.set(r.x, r.y + 0.35, r.z + 3);
+    cam.lookAt(r.x, r.y + 0.2, r.z);
   } else if (chest) { cam.fov = 22; cam.position.set(0.6, 1.45, 2.6); cam.lookAt(0, 1.3, 0); }
   else if (close) { cam.fov = 18; cam.position.set(0.5, 1.72, 2.2); cam.lookAt(0, 1.62, 0); }
   else { cam.fov = 30; cam.position.set(0, 1.3, 9.5 * Math.max(1, 1.6 / cam.aspect) * (list.length > 1 ? 1 : 0.45)); cam.lookAt(0, 0.95, 0); }

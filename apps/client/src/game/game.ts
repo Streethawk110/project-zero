@@ -861,6 +861,7 @@ export class Game {
     // rückwärts und seitwärts (Blocken, Zielen) mit eigenem Gang
     const fwd = sp > 0.05 ? -(this.pred.vx * Math.sin(y) + this.pred.vz * Math.cos(y)) / sp : 1;
     const side = sp > 0.05 ? (-this.pred.vx * Math.cos(y) + this.pred.vz * Math.sin(y)) / sp : 0;
+    rig.groundFn = this.pred.swim ? null : this.groundAt;
     rig.update(this.paused ? 0 : dt, sp, Math.max(-0.5, Math.min(0.5, gl)), Math.max(-0.5, Math.min(0.5, gr)), fwd, side);
     rig.root.visible = this.cam.dist > 1.2 || true;
   }

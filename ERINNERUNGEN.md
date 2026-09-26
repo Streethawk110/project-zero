@@ -2,6 +2,20 @@
 
 Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
 
+## 2026-09-26 – Cloud-Sitzung: „Mach besser“ (Laufstile, Füße am Hang)
+
+- Laufstile: jede Figur geht auf ihre Art (`walkName` aus `faceSeed`): Männer walk/walk_b (104_19)/walk_c (81_04)/
+  walk_d (35_01), Frauen walk_f (144_33, Frau). Verworfen: 105_29 (Blick in den Himmel), 105_22 (wilde Arme),
+  137_33/142_07 (Alte, zu langsam), 137_24 (Kurve). Vorschau `?walk=walk_f`.
+- FUSS-IK am Gelände (`rig.footIK`/`twoBone`, `rig.groundFn` für Spieler + NSCs): Becken senkt sich auf den
+  tieferen Fuß, anderes Bein per Zwei-Gelenk-IK, Fußstellung bleibt; nicht auf Dielen/Brücken (|Gelände−Wurzel|
+  > 0,12), nicht beim Schwimmen/Fliegen, IK nur bei LOD 0. Einsinken schnell ausgleichen (dt·45), lösen weich.
+  Gemessen (rig-probe): Knöchelhöhe über Boden am Hang 0,4 gleich wie eben; bergauf gehend min. 6–7 cm statt 8.
+  Vorschau `?slope=0.3` / `?slopez=`, Fußkamera `&feet=1`.
+- Geprüft und NICHT übernommen: 77_03 (geduckt, keine Kampfhaltung), Sprung 16_01 (0,5 s Ausholen vor dem Absprung
+  → Sprung im Spiel verzögert). Prozedurale Sprung-/Kampfposen bleiben.
+- 44 Unit-Tests grün, Typprüfung ok, Build + Spielstart geprüft. Web-Artifact VERSION 18.
+
 ## 2026-09-26 – Cloud-Sitzung: echte Bewegungen, Waffen am Körper, Stimmen
 
 **Nutzer**: „Laufanimationen und andere Animationen kacke, Stimmen schlecht, Schild geht bei Bewegung durch

@@ -385,6 +385,11 @@ def span_clip(clip: str, f0: int, f1: int, loop: bool = False, sigma: float = 1.
 CLIPS = {
     # Gangarten (Schleifen, linker Fersenaufsatz = Phase 0)
     'walk': lambda: gait_clip('16_15', 140),
+    # weitere Gehweisen verschiedener Menschen (jede Figur geht auf ihre Art; walk_f: Frau, Subjekt 144)
+    'walk_b': lambda: gait_clip('104_19', 368),
+    'walk_c': lambda: gait_clip('81_04', 557),
+    'walk_d': lambda: gait_clip('35_01', 11),
+    'walk_f': lambda: gait_clip('144_33', 3162),
     'walk_fast': lambda: gait_clip('16_21', 45),
     'jog': lambda: gait_clip('16_36', 80),
     'run': lambda: gait_clip('16_55', 100),

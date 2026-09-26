@@ -228,6 +228,8 @@ export class HumanoidRig {
   /** einmalige Einleitung vor der Schleife (Hinsetzen) */
   private varIntro = '';
   private varIntroT = 0;
+  /** Eigene Gehweise dieser Figur (Aufnahme eines anderen Menschen; Frauen: Aufnahme einer Frau) */
+  private walkName = 'walk';
   /** Gangrichtung relativ zum Blick: 0 vorwärts, 1 links, 2 rechts, 3 rückwärts (eigene Aufnahmen) */
   private moveCat = 0;
   /** Beine drehen zur Bewegungsrichtung (schräg), Oberkörper bleibt beim Blick */
@@ -359,6 +361,12 @@ export class HumanoidRig {
     this.root.scale.setScalar((opts.scale ?? 1) * a.height);
     if (this.useSkin) this.bindSkin(outfit);
     this.setAppearance(a);
+    {
+      let h = 2166136261;
+      for (let i = 0; i < this.faceSeed.length; i++) { h ^= this.faceSeed.charCodeAt(i); h = Math.imul(h, 16777619); }
+      const opts = this.sex === 'female' ? ['walk_f'] : ['walk', 'walk_b', 'walk_c', 'walk_d'];
+      this.walkName = opts[(h >>> 0) % opts.length]!;
+    }
     if (hasMocap()) this.mrig = new MocapRig(this.j, JOINTS, (n) => { const p = this.j[n as JointName].parent; return p && p !== this.body ? p.name : null; });
     // Aufhängungen: linke Hüfte am Gürtel (Scheide, Axt; pendelt beim Gehen), Rücken (Schild, Bogen)
     const hw = this.human ? this.humanBw(0.85 + a.body * 0.3) : 0.85 + a.body * 0.3;
@@ -1088,7 +1096,9 @@ export class HumanoidRig {
     const lo = Math.min(groundL, groundR, 0);
     this.hipsDrop += (Math.max(-0.35, lo) - this.hipsDrop) * Math.min(1, dt * 12);
     const grounded = !['jump', 'fall', 'dodge', 'swim', 'tread', 'downed', 'dead', 'die', 'emote_sit'].includes(this.anim);
-    if (grounded && speed < 1.5) {
+    const ik = !!this.groundFn && grounded && this.anim !== 'sit';
+    if (ik) this.hipsDrop = 0;
+    if (grounded && speed < 1.5 && !ik) {
       const bendL = Math.max(0, groundL - this.hipsDrop), bendR = Math.max(0, groundR - this.hipsDrop);
       // Gelenkdrehung X: negativ = Oberschenkel nach vorn, positiv am Schienbein = Knie beugen (MakeHuman-Figur;
       // die alte Ersatzfigur ist gespiegelt)
@@ -1103,7 +1113,69 @@ export class HumanoidRig {
     this.body.position.set(this.rootOff.x, this.rootOff.y + (grounded ? this.hipsDrop : 0), -this.rootOff.z);
     this.body.rotation.set(this.rootRot.x, 0, this.rootRot.z);
     this.life(dt, speed, grounded);
+    if (ik) this.footIK(dt);
+    else this.ikDrop = 0;
     this.updateItems(dt);
+  }
+
+  /** Geländehöhe in Weltkoordinaten; gesetzt → jeder Fuß setzt auf dem Boden unter sich auf (IK). */
+  groundFn: ((x: number, z: number) => number) | null = null;
+  private ikDrop = 0;
+  private ikLift = [0, 0];
+
+  /**
+   * Füße auf unebenem Boden: Gelände unter jedem Fuß abfragen, Becken auf den tieferen Fuß absenken, das
+   * andere Bein mit Zwei-Gelenk-IK anheben (Knie beugt sich in seiner Ebene), Fußstellung bleibt erhalten.
+   */
+  private footIK(dt: number) {
+    const g = this.groundFn!;
+    this.root.updateMatrixWorld(true);
+    const rp = this.root.getWorldPosition(_v1);
+    const rootY = rp.y;
+    // auf Dielen, Brücken, Treppen (über dem Gelände) gilt das Gelände nicht → keine Anpassung
+    if (Math.abs(g(rp.x, rp.z) - rootY) > 0.12) { this.ikDrop *= 1 - Math.min(1, dt * 14); this.body.position.y += this.ikDrop / this.root.scale.y; return; }
+    const h = [0, 0];
+    (['L', 'R'] as const).forEach((sd, i) => {
+      const a = this.j[`foot${sd}`].getWorldPosition(_v1);
+      h[i] = THREE.MathUtils.clamp(g(a.x, a.z) - rootY, -0.45, 0.45);
+    });
+    // Einsinken sofort ausgleichen (schnell), Lösen weich – sonst gräbt sich der Fuß beim Bergaufgehen ein
+    const kFast = Math.min(1, dt * 45), kSlow = Math.min(1, dt * 12);
+    const dropT = Math.min(0, h[0]!, h[1]!);
+    this.ikDrop += (dropT - this.ikDrop) * (dropT < this.ikDrop ? kFast : kSlow);
+    this.body.position.y += this.ikDrop / this.root.scale.y;
+    if (this.lodLevel !== 0) return;
+    this.root.updateMatrixWorld(true);
+    (['L', 'R'] as const).forEach((sd, i) => {
+      const t = Math.max(0, h[i]! - this.ikDrop);
+      this.ikLift[i]! += (t - this.ikLift[i]!) * (t > this.ikLift[i]! ? kFast : kSlow);
+      if (this.ikLift[i]! > 0.004) this.twoBone(sd, this.ikLift[i]!);
+    });
+  }
+
+  private twoBone(sd: 'L' | 'R', lift: number) {
+    const th = this.j[`thigh${sd}`], sh = this.j[`shin${sd}`], ft = this.j[`foot${sd}`];
+    const H = th.getWorldPosition(new THREE.Vector3()), K = sh.getWorldPosition(new THREE.Vector3()), A = ft.getWorldPosition(new THREE.Vector3());
+    const T = A.clone(); T.y += lift;
+    const a = H.distanceTo(K), b = K.distanceTo(A);
+    const d = THREE.MathUtils.clamp(H.distanceTo(T), Math.abs(a - b) + 1e-3, (a + b) * 0.999);
+    const footQ = ft.getWorldQuaternion(new THREE.Quaternion());
+    const ka = A.clone().sub(K), kh = H.clone().sub(K);
+    const cur = ka.angleTo(kh);
+    const want = Math.acos(THREE.MathUtils.clamp((a * a + b * b - d * d) / (2 * a * b), -1, 1));
+    const n = new THREE.Vector3().crossVectors(ka, kh);
+    // gestrecktes Bein: Kniebeugung um die Querachse des Oberschenkels (Knie nach vorn)
+    if (n.lengthSq() < 1e-8) n.set(1, 0, 0).applyQuaternion(th.getWorldQuaternion(new THREE.Quaternion())).multiplyScalar(-1);
+    const applyWorld = (o: THREE.Object3D, R: THREE.Quaternion) => {
+      const pw = o.parent!.getWorldQuaternion(new THREE.Quaternion()).invert();
+      o.quaternion.copy(pw.multiply(R.multiply(o.getWorldQuaternion(new THREE.Quaternion()))));
+      o.updateMatrixWorld(true);
+    };
+    applyWorld(sh, new THREE.Quaternion().setFromAxisAngle(n.normalize(), cur - want));
+    const A2 = ft.getWorldPosition(new THREE.Vector3());
+    applyWorld(th, new THREE.Quaternion().setFromUnitVectors(A2.sub(H).normalize(), T.sub(H).normalize()));
+    const sw = sh.getWorldQuaternion(new THREE.Quaternion()).invert();
+    ft.quaternion.copy(sw.multiply(footQ));
   }
 
   /** Griff zur Waffe: rechte Hand zur linken Hüfte (Schwert, Axt), linke über die Schulter (Schild, Bogen). */
@@ -1132,7 +1204,8 @@ export class HumanoidRig {
 
   /** Gangarten nach Tempo (aufsteigend) je Richtung: 0 vorwärts, 1 links, 2 rechts, 3 rückwärts. */
   private gaitSet(cat = 0): MocapClip[] {
-    const names = [['walk', 'walk_fast', 'jog', 'run', 'sprint'], ['walk_left'], ['walk_right'], ['walk_back']][cat] ?? [];
+    const walk = mocapClip(this.walkName) ? this.walkName : 'walk';
+    const names = [[walk, 'walk_fast', 'jog', 'run', 'sprint'], ['walk_left'], ['walk_right'], ['walk_back']][cat] ?? [];
     return names.map((n) => mocapClip(n)).filter((c): c is MocapClip => !!c);
   }
 
@@ -1208,7 +1281,7 @@ export class HumanoidRig {
         if (!this.playVariant(opts, anim, dt)) return false;
         // Drehen auf der Stelle: kleine Schritte aus dem Gehzyklus beimischen
         if (this.turnStep > 0.02 && anim !== 'sit') {
-          const g = mocapClip('walk');
+          const g = mocapClip(this.walkName) ?? mocapClip('walk');
           if (g) {
             rig.sample(g, this.cyc * g.dur, this.mq2, this.mroot2);
             const w = Math.min(1, this.turnStep) * 0.42;
@@ -1733,6 +1806,7 @@ export class HumanoidRig {
 }
 
 const UP = new THREE.Vector3(0, 1, 0);
+const _v1 = new THREE.Vector3();
 
 function easeInOut(t: number) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
