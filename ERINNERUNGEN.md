@@ -325,7 +325,7 @@ Profiler nicht mitgezählt – behoben).
   BOGEN neu (Schlüsselposen: seitlich zum Ziel, Bogenarm [-1.55,0.55,0] + Hand X 1,5 = Bogen senkrecht, Sehne zur
   Wange, lösen, absenken) – vorher griff der linke Arm in die Luft. STAB: Ruhe/Gehen Hand X 2,3 (Kristall oben,
   vorher verkehrt herum), ZAUBER aufrichten → Stoß nach vorn; Handwinkel +2π (4,28/4,78), damit die Überblendung
-  nicht durch „Kristall unten“ dreht. Vorschau `&weapon=staff_oak`.
+  nicht durch „Kristall unten“ dreht. Vorschau `&weapon=staff_oak`. Web-Artifact VERSION 15 (gleicher Link).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.
