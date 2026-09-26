@@ -55,6 +55,8 @@ den Körper, alle Items kleben an Körperteilen – und andere Sachen auch beden
   [MP3-Base64, Dauer]} (Schlüssel `voiceKey`, in Python identisch nachgebaut). 866 Zeilen, ~47 min, 14 MB.
 - Client `audio/voice.ts`: lädt die Stimmen nach dem Start im Hintergrund, spielt über WebAudio (kein data:/
   blob: nötig), Web-Speech-Rückfall; Isra immer Kennung 'isra'. Im Browser geprüft (Zeile abgespielt, Mund an/aus).
+- Web-Artifact VERSION 17 (gleicher Link): nur JS, clips.json und 10 Stimmdateien hochgeladen (15,8 MB),
+  alles andere aus v16 behalten; beim ersten Versuch verlangte der Dienst erst das Lesen der Live-Fassung.
 
 ## 2026-09-24 – Cloud-Sitzung: Realismus + Leistung („wie KCD2“)
 
