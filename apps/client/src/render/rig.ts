@@ -1096,7 +1096,7 @@ export class HumanoidRig {
     const ready = (p: Pose): Pose => {
       // Waffenhaltung im Ruhezustand
       if (wt === 'bow') { p.upperArmL = [-0.3, 0, 0.15]; p.foreArmL = [-0.3, 0, 0]; }
-      else if (wt === 'staff') { p.upperArmR = [-0.25, 0, -0.15]; p.foreArmR = [-0.6, 0, 0]; }
+      else if (wt === 'staff') { p.upperArmR = [-0.25, 0, -0.15]; p.foreArmR = [-0.6, 0, 0]; p.handR = [2.3, 0, 0]; }
       else if (armed) { p.upperArmR = [-0.15, 0, -0.12]; p.foreArmR = [-0.7, 0, 0]; p.handR = [0.3, 0, 0]; }
       if (this.offhandId && ITEMS[this.offhandId]?.offhand?.type === 'shield') { p.upperArmL = [-0.2, 0, 0.2]; p.foreArmL = [-1.2, 0.2, 0]; }
       return p;
@@ -1165,12 +1165,29 @@ export class HumanoidRig {
       case 'atk1': case 'atk2': case 'atk3': case 'heavy': case 'skill': case 'skill:bash':
         return this.swordStrike(anim, prog);
       case 'bow': case 'skill:bow': {
-        const draw = Math.min(1, prog / 0.55), rel = prog > 0.55 ? 1 : 0;
-        return { chest: [0, -0.9, 0], head: [0, 0.8, 0], upperArmL: [-1.55, 0.9, 0.1], foreArmL: [0, 0, 0], upperArmR: [-1.5, 0.9 - draw * 0.2, -0.3 + rel * 0.3], foreArmR: [-2.1 * draw * (1 - rel), 0, 0], thighL: [-0.2, 0, 0.1], thighR: [0.2, 0, -0.1] };
+        // Bogen: Körper seitlich zum Ziel, Bogenarm gestreckt (Bogen senkrecht), Sehne bis zur Wange ziehen,
+        // lösen (Zughand fliegt zurück), absenken
+        const aim: Pose = { chest: [0, -0.9, 0], spine: [0, -0.2, 0], head: [0, 0.85, 0], upperArmL: [-1.55, 0.55, 0], foreArmL: [0, 0, 0], handL: [1.5, 0, 0],
+          thighL: [-0.18, 0, 0.12], shinL: [0.1, 0, 0], thighR: [0.18, 0, -0.12], shinR: [0.1, 0, 0] };
+        return sampleKeys([
+          [0, { upperArmL: [-0.3, 0, 0.15], foreArmL: [-0.3, 0, 0], upperArmR: [-0.2, 0, 0.1], foreArmR: [-0.4, 0, 0] }],
+          [0.25, { ...aim, upperArmR: [-1.5, 0.6, -0.2], foreArmR: [-0.9, 0, 0] }],
+          [0.55, { ...aim, upperArmR: [-1.45, 0.78, -0.3], foreArmR: [-2.25, 0, 0] }],
+          [0.62, { ...aim, upperArmR: [-1.25, 0.1, -0.7], foreArmR: [-1.4, 0, 0], chest: [0, -0.95, 0] }],
+          [0.85, { ...aim, upperArmR: [-0.9, 0.2, -0.4], foreArmR: [-0.9, 0, 0] }],
+          [1, { upperArmL: [-0.5, 0.2, 0.1], foreArmL: [-0.3, 0, 0], handL: [0.6, 0, 0], upperArmR: [-0.3, 0, 0.1], foreArmR: [-0.4, 0, 0], chest: [0, -0.3, 0], head: [0, 0.3, 0] }],
+        ], prog);
       }
       case 'cast': case 'skill:cast': {
-        const k1 = Math.min(1, prog / 0.45), k2 = Math.max(0, (prog - 0.45) / 0.55);
-        return { chest: [-0.15 * k1 + 0.2 * k2, 0, 0], upperArmR: [-1.4 * k1 - 0.2 * k2, 0.2, -0.3], foreArmR: [-0.8 * (1 - k2), 0, 0], upperArmL: [-1.2 * k1, -0.2, 0.3], foreArmL: [-0.9 * (1 - k2), 0, 0], root: [0, 0, -0.08 * k2] };
+        // Zauber: Stab aufrichten (Kristall oben), freie Hand öffnet sich nach vorn, dann Stoß nach vorn
+        return sampleKeys([
+          [0, { upperArmR: [-0.25, 0, -0.15], foreArmR: [-0.6, 0, 0], handR: [2.3, 0, 0] }],
+          [0.45, { upperArmR: [-1.45, 0.15, -0.3], foreArmR: [-0.8, 0, 0], handR: [4.28, 0, 0], upperArmL: [-1.25, -0.3, 0.2], foreArmL: [-0.5, 0, 0], handL: [-0.4, 0, 0],
+            chest: [-0.12, 0.1, 0], head: [-0.08, 0, 0], thighL: [-0.1, 0, 0.06], thighR: [0.1, 0, -0.06] }],
+          [0.6, { upperArmR: [-1.6, 0.05, -0.2], foreArmR: [-0.25, 0, 0], handR: [4.78, 0, 0], upperArmL: [-1.5, -0.2, 0.15], foreArmL: [-0.1, 0, 0], handL: [-0.6, 0, 0],
+            chest: [0.2, 0, 0], spine: [0.08, 0, 0], thighL: [-0.4, 0, 0.06], shinL: [0.45, 0, 0], thighR: [0.25, 0, -0.06], root: [0, -0.05, 0.1] }],
+          [1, { upperArmR: [-0.25, 0, -0.15], foreArmR: [-0.6, 0, 0], handR: [2.3, 0, 0] }],
+        ], prog);
       }
       case 'hit': return { chest: [-0.4, 0.2, 0], head: [-0.3, 0, 0], upperArmL: [-0.3, 0, 0.5], upperArmR: [-0.3, 0, -0.5] };
       case 'stun': case 'frozen': return { head: [0.3 + s(t * 3) * 0.2, s(t * 2) * 0.4, 0], chest: [0.2, 0, s(t * 2.5) * 0.1], upperArmL: [0, 0, 0.3], upperArmR: [0, 0, -0.3], thighL: [-0.2, 0, 0], shinL: [0.4, 0, 0], thighR: [-0.2, 0, 0], shinR: [0.4, 0, 0], root: [0, -0.1, 0] };

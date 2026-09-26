@@ -322,6 +322,10 @@ Profiler nicht mitgezählt – behoben).
   nach links, Z− abspreizen (rechts); Hand X+ = Klinge kippt nach vorn/oben aus Sicht des Unterarms (Ausholen
   hinter dem Kopf braucht Hand +1,1…1,2 bei wenig gebeugtem Ellbogen, sonst hängt die Klinge den Rücken hinab);
   Brust Y+ = links drehen. Vorschau `?anims=atk1:0.38,…` (t = Anteil von 0,8 s).
+  BOGEN neu (Schlüsselposen: seitlich zum Ziel, Bogenarm [-1.55,0.55,0] + Hand X 1,5 = Bogen senkrecht, Sehne zur
+  Wange, lösen, absenken) – vorher griff der linke Arm in die Luft. STAB: Ruhe/Gehen Hand X 2,3 (Kristall oben,
+  vorher verkehrt herum), ZAUBER aufrichten → Stoß nach vorn; Handwinkel +2π (4,28/4,78), damit die Überblendung
+  nicht durch „Kristall unten“ dreht. Vorschau `&weapon=staff_oak`.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

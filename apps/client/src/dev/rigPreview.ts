@@ -60,7 +60,7 @@ const anims = params.get('poses')
   ? (JSON.parse(params.get('poses')!) as object[]).map((p) => ({ a: 'dbg:' + JSON.stringify(p), t: 0.5 }))
   : params.get('anims')?.split(',').map((x) => { const [a, t] = x.split(':'); return { a: a!, t: Number(t ?? 0.5) }; });
 const list = anims
-  ? anims.map(({ a, t }) => ({ ...specs[Number(only ?? 0)]!, anim: a, t, speed: 0, weapon: a.startsWith('atk') || a.startsWith('dbg') || a === 'heavy' || a === 'block' ? (params.get('weapon') ?? 'sword_rusty') : undefined, offhand: a === 'block' ? 'shield_wood' : undefined }))
+  ? anims.map(({ a, t }) => ({ ...specs[Number(only ?? 0)]!, anim: a, t, speed: 0, weapon: params.get('weapon') && !a.startsWith('dbg') ? params.get('weapon')! : a.startsWith('bow') ? 'bow_short' : a.startsWith('cast') ? 'staff_oak' : a.startsWith('atk') || a.startsWith('dbg') || a === 'heavy' || a === 'block' ? (params.get('weapon') ?? 'sword_rusty') : undefined, offhand: a === 'block' || params.get('shield') ? 'shield_wood' : undefined }))
   : gait
   ? Array.from({ length: frames }, () => ({ ...specs[Number(only ?? 0)]!, anim: gait, speed: Number(params.get('speed') ?? 1.4), weapon: undefined, offhand: undefined }))
   : only !== null ? [specs[Number(only)]!] : specs;
