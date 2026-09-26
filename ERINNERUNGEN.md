@@ -310,6 +310,9 @@ Profiler nicht mitgezählt – behoben).
   Wurzeln dicht an der Kopfhaut, Abstand über die Länge (`lift_at`, keine Stacheln). Untere Wimpern entfernt
   (Augenmitte), obere auf 60 %, feinere Atlasspalte. Mann: Scan-Brauenende samt RELIEF (Normalen) geglättet bis
   unter Augenhöhe – der graue Schatten kam aus der Normalen-Textur. Frauen: Braue kürzer außen.
+  Web-Artifact VERSION 14 (neue Laufanimation). Tempi Spieler: Gehen 2,3 / Rennen 5 / Sprint 7,9 m/s (MOVE).
+  Sprint: Standanteil bis 0,18 (Kontakt ~0,1 s), Becken beim Rennen max. 7 cm (Sprint 4,5 cm) tiefer. Drehen auf
+  der Stelle: Trippelschritte (`turnRate` aus updateSwing, `turnStep`, `gait(v, inPlace)`), per rig-probe geprüft.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

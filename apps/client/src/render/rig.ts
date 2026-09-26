@@ -546,6 +546,8 @@ export class HumanoidRig {
   private hipY = 0.95;
   private swPrev: THREE.Vector3 | null = null;
   private swPrevYaw = 0;
+  private turnRate = 0;
+  private turnStep = 0;
   private swX = new THREE.Vector3();
   private swV = new THREE.Vector3();
   private clX = new THREE.Vector3();
@@ -565,6 +567,8 @@ export class HumanoidRig {
     // in den Körperraum drehen: Haare/Saum bleiben hinter der Bewegung zurück
     const local = vel.applyQuaternion(q.clone().invert());
     const turn = dyaw / dt;
+    // Drehrate für das Mittreten beim Drehen auf der Stelle (geglättet)
+    this.turnRate += (turn - this.turnRate) * Math.min(1, dt * 8);
     const target = new THREE.Vector3(-local.x * 0.012 + turn * 0.02, 0, -local.z * 0.012);
     target.clampLength(0, 0.07);
     // Feder (leicht unterdämpft): pendelt nach dem Anhalten kurz nach
@@ -750,6 +754,10 @@ export class HumanoidRig {
     this.flinch = Math.max(0, this.flinch - dt);
     // Schrittzyklus an die Strecke koppeln: je Zyklus (zwei Schritte) genau so weit, wie die Füße in der
     // Standphase zurücklegen → kein Rutschen. Rückwärts läuft der Zyklus rückwärts.
+    // Drehen auf der Stelle: Schrittzyklus läuft mit der Drehung (≈ 0,25 m Fußweg je Radiant)
+    const turning = speed < 0.4 && Math.abs(this.turnRate) > 1.0 && (this.anim === 'idle' || this.anim === 'recover');
+    this.turnStep += ((turning ? 1 : 0) - this.turnStep) * Math.min(1, dt * (turning ? 10 : 5));
+    if (this.turnStep > 0.05) this.cyc += Math.abs(this.turnRate) * 0.25 * dt / this.cycleLen(0.8);
     this.cyc += (fwd < -0.3 ? -1 : 1) * (speed * dt) / this.cycleLen(speed);
     this.cyc -= Math.floor(this.cyc);
     this.phase = this.cyc * Math.PI * 2;
@@ -938,7 +946,7 @@ export class HumanoidRig {
    * der Standphase ein und steigt in der Flugphase. Becken dreht und kippt mit, Brustkorb dreht gegen,
    * Arme pendeln gegengleich mit Verzögerung, der Kopf bleibt ruhig.
    */
-  private gait(v: number): Pose {
+  private gait(v: number, inPlace = false): Pose {
     const [L1, L2] = this.legs();
     const L = L1 + L2, sc = L / 0.9;
     const run = smooth(2.3, 3.8, v), spr = smooth(6.0, 8.0, v);
@@ -947,8 +955,8 @@ export class HumanoidRig {
     const duty = 0.61 * (1 - run) + (0.31 - 0.13 * spr) * run;
     const C = this.cycleLen(v);
     // halbe Standstrecke des Knöchels: ~10 cm übernimmt das Abrollen über den Fuß (Ferse → Ballen)
-    const a = Math.max(0, (C * duty) / 2 - 0.12 * sc) * move;
-    const lift = ((0.075 + 0.02 * Math.min(1, v / 2)) * (1 - run) + 0.2 * run + 0.08 * spr) * sc * move;
+    const a = inPlace ? 0.04 * sc : Math.max(0, (C * duty) / 2 - 0.12 * sc) * move;
+    const lift = ((0.075 + 0.02 * Math.min(1, v / 2)) * (1 - run) + 0.2 * run + 0.08 * spr) * sc * move * (inPlace ? 0.5 : 1);
     const cyc = this.cyc;
     const P: Pose = {};
     let rootY = 0;
@@ -1053,6 +1061,13 @@ export class HumanoidRig {
     const prog = Math.min(1, t / Math.max(0.1, this.actionDur));
     switch (anim) {
       case 'idle': case 'recover': case 'idle_boss': {
+        // Auf der Stelle drehen: kleine Trippelschritte statt über den Boden gleitender Füße
+        if (this.turnStep > 0.05) {
+          const g = this.gait(0.8, true);
+          const k = Math.min(1, this.turnStep);
+          for (const key of ['thighL', 'thighR', 'shinL', 'shinR', 'footL', 'footR'] as const) g[key] = g[key]!.map((x) => x * k) as [number, number, number];
+          return ready({ ...g, upperArmL: [0.04, 0.12, -0.1], upperArmR: [0.04, -0.12, 0.1], foreArmL: [-0.28, 0.25, 0], foreArmR: [-0.28, -0.25, 0], root: [0, (g.root?.[1] ?? 0) * k, 0] });
+        }
         const b = s(t * 1.6);
         // Entspannt stehen: Arme hängen nah am Körper, Ellbogen leicht gebeugt, Füße etwa hüftbreit,
         // Gewicht auf einem Bein (Kontrapost) statt Schaufensterpuppen-Haltung
