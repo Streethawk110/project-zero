@@ -295,6 +295,8 @@ export class AudioEngine {
     if (id.startsWith('bell_')) return this.bell(Number(id.slice(5)), pos);
     switch (id) {
       case 'coins': for (let i = 0; i < 4; i++) this.tone(o, t + i * 0.05, 2400 + Math.random() * 1200, 0.12, 'triangle', 0.08); break;
+      // Vögel fliegen auf: schnelle, trockene Flügelschläge, nach oben leiser werdend
+      case 'flutter': for (let i = 0; i < 9; i++) this.noiseBurst(o, t + i * 0.045 + Math.random() * 0.01, 0.035, 'bandpass', 900 + Math.random() * 700, 500, 1.4, 0.5 * (1 - i / 11)); break;
       case 'craft': for (let i = 0; i < 3; i++) { this.tone(o, t + i * 0.18, 1600, 0.2, 'square', 0.06, 1400); this.noiseBurst(o, t + i * 0.18, 0.1, 'bandpass', 3000, 2000, 5, 0.4); } break;
       case 'upgrade': this.tone(o, t, 523, 0.3, 'triangle', 0.15); this.tone(o, t + 0.12, 784, 0.4, 'triangle', 0.15); this.tone(o, t + 0.24, 1046, 0.6, 'triangle', 0.15); break;
       case 'lever': this.noiseBurst(o, t, 0.3, 'bandpass', 600, 200, 3, 0.8); this.tone(o, t + 0.1, 180, 0.2, 'square', 0.1, 120); break;

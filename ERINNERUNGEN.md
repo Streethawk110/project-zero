@@ -336,6 +336,13 @@ Profiler nicht mitgezählt – behoben).
   UE-artige OVERLAY-Stufe nach der Atmosphäre (`overlayScene`, `softDepth`, `SOFT_GLSL` in renderer.ts): durch-
   scheinende Effekte mit WEICHEN PARTIKELN (Tiefenvergleich) – vorher legte die Atmosphäre Wolken über den Rauch.
   Test-Hinweis: Bildhelligkeit schwankt zwischen Läufen (Wolken/Belichtung) – nicht jede Dunst-Änderung ist ein Fehler.
+  LEBENDIGE WELT Teil 2 (`render/critters.ts`, alles instanziert, Flügelschlag im Vertex-Shader `aFlap`/`aWing`):
+  Vogelschwärme (Schwalben Dorf, Krähen Feld/Burg/Wegkreuz, nachts Fledermäuse; Schwarmmitte fliegt liegende Acht,
+  Gleiten, Schräglage in Kurven), Bodenvögel (Tauben ~32 cm auf Dorfplatz/Markt/Brunnen/Burg, Spatzen am Feld:
+  picken, hüpfen; Spieler nah/rennend → ganze Gruppe fliegt auf, Klang `flutter`, landet woanders; gehende NSCs
+  scheuchen nur zur Seite, max. 4 m vom Futterplatz), Schmetterlinge auf Wiesen (nicht Dorfkern/Burghof),
+  fallendes Laub unter Eichen/Büschen (taumelt im Wind, liegt 8 s), Schwebestaub/Pollen im Licht (Overlay, weich).
+  Fund: erst 0,3er Taubengröße = 10 cm → unsichtbar; Flügel angelegt per `aFlap.y = −1`.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

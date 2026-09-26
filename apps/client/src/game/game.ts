@@ -29,6 +29,7 @@ import type { AudioEngine } from '../audio/audio.ts';
 import type { GameUI } from '../ui/gameui.ts';
 import { Rain } from '../render/rain.ts';
 import { Life, updateWind, wind } from '../render/life.ts';
+import { Critters } from '../render/critters.ts';
 import { windUniforms } from '../render/foliage.ts';
 
 export interface InteractTarget { label: string; key: string; id?: string; eid?: number; kind: string; x: number; z: number }
@@ -43,6 +44,7 @@ export class Game {
   water: Water;
   rain: Rain;
   life: Life;
+  critters: Critters;
   grass: Grass;
   world: WorldView;
   fx: FX;
@@ -113,6 +115,9 @@ export class Game {
     this.rain = new Rain(this.terrain.heightTex, settings.graphics === 'niedrig' ? 4000 : 9000);
     this.life = new Life();
     this.scene.add(this.life.group);
+    this.critters = new Critters();
+    this.scene.add(this.critters.group);
+    this.critters.birds.onTakeoff = (p) => { if (p.distanceTo(this.camera.position) < 30) this.audio.sfx('flutter', p); };
     this.scene.add(this.rain.mesh);
     this.ents = new EntityManager(this.fx);
     this.scene.add(this.ents.group);
@@ -748,6 +753,14 @@ export class Game {
     const sun = this.env.sun.color.clone().multiplyScalar(this.env.sun.intensity);
     const amb = this.env.hemi.color.clone().multiplyScalar(this.env.hemi.intensity);
     this.life.update(dt, this.time, this.camera, sunDir, sun, amb, this.env.nightFactor, weather, inDungeon);
+    // Wer Vögel aufscheucht: der Spieler (rennend von weiter weg) und gehende Leute
+    const threats: { p: THREE.Vector3; r: number; walk?: boolean }[] = [];
+    if (this.playerRig) threats.push({ p: this.playerRig.root.position, r: (this.playerRig.speed > 3.5 ? 8 : 3.5) });
+    for (const v of this.ents.views.values()) {
+      if (!v.rig || v.local || v.speed < 0.5) continue;
+      threats.push(v.speed > 3.2 ? { p: v.pos, r: 5 } : { p: v.pos, r: 1.6, walk: true });
+    }
+    this.critters.update(dt, this.time, this.camera.position, threats, this.env.nightFactor, weather, inDungeon, sun, this.renderer.renderSize().h);
     (this.rain as unknown as { mat: THREE.ShaderMaterial }).mat.uniforms['uWind']!.value.copy(wind.dir).multiplyScalar(0.6 + wind.strength * 0.8);
   }
 
