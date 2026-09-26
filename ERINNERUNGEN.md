@@ -355,6 +355,11 @@ Profiler nicht mitgezählt – behoben).
   Flammenzungen (Kerzen 1), senkrechte Billboards mit Rausch-Verzerrung, HDR-Farbe (Bloom), neigen sich im Wind;
   Funken bei Feuern > 0,28 m. Alle `glow_warm`-Flächen flackern und glimmen fleckig (`glowMaterial`, `glowTime`).
   Geprüft nachts an der Schmiede.
+  BRÜCKE neu (worldview.ts `buildBridge`): war 12 waagerechte Blöcke = Treppe → durchgehender Bogen aus ~90 Planken
+  (leicht unregelmäßig, gemergt), 2 Tragbalken, Geländer mit 2 Holmen + Pfosten entlang der Steigung, Pfeiler + Joch.
+  WASSER: Spiegelung verfolgt den Strahl über Höhenkarte + Waldanteil (Splat G × 14 m Kronen) → Ufer/Bäume statt
+  nur Himmel (vorher milchig „wie Eis“); Fluss: Strömungsschlieren/Blasen entlang `vFlow`, weniger Himmelsglanz
+  (Fresnel ×0,5), deckender zur Mitte. `new Water(heightTex, splatTex)`.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

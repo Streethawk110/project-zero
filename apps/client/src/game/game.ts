@@ -104,7 +104,7 @@ export class Game {
     this.env = new Environment(this.scene, this.renderer.renderer);
     this.terrain = new Terrain();
     this.scene.add(this.terrain.group);
-    this.water = new Water(this.terrain.heightTex);
+    this.water = new Water(this.terrain.heightTex, this.terrain.splatTex);
     this.scene.add(this.water.group);
     this.grass = new Grass(this.terrain.heightTex, this.terrain.splatTex);
     if (this.grass.mesh) this.scene.add(this.grass.mesh);

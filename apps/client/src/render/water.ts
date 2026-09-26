@@ -33,6 +33,7 @@ const frag = /* glsl */ `
   uniform vec3 uDeep;
   uniform vec3 uShallow;
   uniform sampler2D tHeight;
+  uniform sampler2D tSplat;
   uniform sampler2D tNormal;
   uniform float uWorldHalf;
   uniform float uNight;
@@ -57,15 +58,37 @@ const frag = /* glsl */ `
     vec3 R = reflect(-V, n);
     R.y = abs(R.y);
     vec3 sky = mix(uSkyHorizon, uSkyTop, pow(smoothstep(0.0, 0.8, R.y), 0.6));
+    // Spiegelbild der Umgebung: Ufer (Gelände) und Baumkronen (Waldanteil) verdecken den Himmel –
+    // Strahl entlang der Spiegelrichtung über die Höhenkarte verfolgen (wie ein grobes Screen-Space-Reflection)
+    {
+      vec3 rd = normalize(vec3(R.x, max(R.y, 0.015), R.z));
+      float hit = 0.0; float treeHit = 0.0;
+      for (int i = 1; i <= 6; i++) {
+        float d = pow(float(i) / 6.0, 1.7) * 55.0;
+        vec3 q = vWPos + rd * d;
+        vec2 quv = (q.xz + uWorldHalf) / (uWorldHalf * 2.0);
+        float gh = texture2D(tHeight, quv).r;
+        float canopy = texture2D(tSplat, quv).g * 14.0;
+        float hg = smoothstep(q.y - 0.4, q.y + 0.4, gh);
+        float ht = smoothstep(q.y - 1.5, q.y + 1.5, gh + canopy) * (1.0 - hg);
+        hit = max(hit, hg); treeHit = max(treeHit, ht);
+      }
+      vec3 amb = (uSkyTop + uSkyHorizon) * 0.5;
+      vec3 lightE = amb * 0.9 + uSunColor * 0.25 * (1.0 - uNight);
+      vec3 bankCol = vec3(0.1, 0.085, 0.06) * lightE;
+      vec3 treeCol = vec3(0.035, 0.06, 0.03) * lightE;
+      sky = mix(sky, treeCol, treeHit * 0.95);
+      sky = mix(sky, bankCol, hit * 0.95);
+    }
     // Flusswasser (vFlow ≠ 0) klarer und grünlich-braun, Meer blaugrün
     float isRiver = step(0.5, length(vFlow));
-    vec3 shallow = mix(uShallow, vec3(0.05, 0.075, 0.05), isRiver);
+    vec3 shallow = mix(uShallow, vec3(0.06, 0.085, 0.055), isRiver);
     vec3 deep = mix(uDeep, vec3(0.012, 0.025, 0.022), isRiver);
     vec3 water = mix(shallow, deep, smoothstep(0.0, isRiver > 0.5 ? 2.5 : 7.0, depth));
     // Durchleuchten der Wellenkämme gegen die Sonne
     float sss = pow(max(dot(V, -uSunDir), 0.0), 3.0) * max(n3.z * 0.5 + 0.5, 0.0) * (1.0 - uNight);
     water += vec3(0.05, 0.22, 0.18) * sss * 0.8;
-    vec3 col = mix(water, sky, fres * mix(1.0, 0.75, isRiver));
+    vec3 col = mix(water, sky, fres * mix(1.0, 0.5, isRiver));
     float spec = pow(max(dot(R, uSunDir), 0.0), 400.0) * 6.0 + pow(max(dot(R, uSunDir), 0.0), 40.0) * 0.25;
     col += uSunColor * spec * (1.0 - uNight * 0.7);
     // Uferschaum
@@ -73,7 +96,17 @@ const frag = /* glsl */ `
     float foam = smoothstep(0.3, 0.0, depth) * (0.55 + 0.45 * sin(uTime * 1.8 + vWPos.x * 0.6 + vWPos.z * 0.4)) * mix(1.0, 0.5, isRiver);
     foam *= smoothstep(0.35, 0.65, texture2D(tNormal, vWPos.xz * 0.2 + uTime * 0.03).b);
     col = mix(col, vec3(0.9, 0.94, 0.95), foam * 0.6);
-    float alpha = clamp(mix(0.55, 0.35, isRiver) + depth * 0.25 + fres * 0.3, 0.0, 0.96);
+    // Strömung: helle Schlieren und Blasen, die mit dem Fluss treiben (dichter am Ufer und hinter Hindernissen)
+    if (isRiver > 0.5) {
+      vec2 fd = normalize(vFlow);
+      float along = dot(vWPos.xz, fd), across = dot(vWPos.xz, vec2(-fd.y, fd.x));
+      float streak = texture2D(tNormal, vec2(across * 0.09, along * 0.012 - uTime * 0.09)).b;
+      streak = smoothstep(0.62, 0.8, streak) * (0.35 + 0.65 * smoothstep(1.4, 0.2, depth));
+      float bub = smoothstep(0.78, 0.9, texture2D(tNormal, vec2(across * 0.35, along * 0.05 - uTime * 0.35)).b);
+      col = mix(col, vec3(0.78, 0.82, 0.8) * (0.5 + 0.5 * (1.0 - uNight)), clamp(streak * 0.13 + bub * 0.1, 0.0, 0.3) * detail);
+    }
+    // Fluss: am Rand klar (Grund sichtbar), zur Mitte und bei flachem Blickwinkel spiegelnd und dunkler
+    float alpha = clamp(mix(0.55, 0.5, isRiver) + depth * mix(0.25, 0.4, isRiver) + fres * mix(0.3, 0.55, isRiver), 0.0, 0.97);
     gl_FragColor = vec4(col, alpha);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -138,7 +171,7 @@ export class Water {
   group = new THREE.Group();
   material: THREE.ShaderMaterial;
 
-  constructor(heightTex: THREE.Texture) {
+  constructor(heightTex: THREE.Texture, splatTex?: THREE.Texture) {
     const uniforms = THREE.UniformsUtils.merge([
       THREE.UniformsLib.fog,
       {
@@ -151,6 +184,7 @@ export class Water {
         uDeep: { value: new THREE.Color(0.02, 0.1, 0.13) },
         uShallow: { value: new THREE.Color(0.12, 0.32, 0.33) },
         tHeight: { value: null },
+        tSplat: { value: null },
         tNormal: { value: null },
         uWorldHalf: { value: WORLD_HALF },
         uNight: { value: 0 },
@@ -158,6 +192,8 @@ export class Water {
       },
     ]);
     uniforms['tHeight']!.value = heightTex;
+    // ohne Aufteilungskarte: schwarz = kein Wald
+    uniforms['tSplat']!.value = splatTex ?? new THREE.DataTexture(new Uint8Array(4), 1, 1);
     uniforms['tNormal']!.value = waveNormalTexture();
     // Tiefe schreiben: Umgebungsverdeckung und Nebel sollen die Wasseroberfläche sehen, nicht das
     // Flussbett darunter (sonst dunkle Streifen an steilen Ufern)

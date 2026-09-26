@@ -2,6 +2,7 @@
 // Dungeon-Geometrie, dynamische Lichtquellen und interaktive Objekte.
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BRIDGE, bridgeSegments, getWorldLayout, PROPS, type PlacedObject, INTERACTABLE_BY_ID } from '@pz/shared';
 import { flattenMeshes, getModel, namedMaterial } from './models.ts';
 import { TEX } from './textures.ts';
@@ -231,39 +232,78 @@ export class WorldView {
   }
 
   private buildBridge() {
+    // Holzbrücke als durchgehender Bogen: einzelne Planken quer zur Fahrbahn (leicht unregelmäßig), darunter
+    // zwei Tragbalken entlang der Wölbung, Geländer mit Pfosten, das der Steigung folgt, Steinpfeiler im Fluss
     const segs = bridgeSegments();
-    const plank = namedMaterial('wood_dark');
-    const g = new THREE.Group();
-    const dir = new THREE.Vector3(Math.sin(BRIDGE.rot), 0, Math.cos(BRIDGE.rot));
-    for (const s of segs) {
-      const deck = new THREE.Mesh(new THREE.BoxGeometry(BRIDGE.width, 0.25, s.len + 0.05), plank);
-      deck.position.set(s.x, s.y - 0.12, s.z);
-      deck.rotation.y = BRIDGE.rot;
-      deck.castShadow = deck.receiveShadow = true;
-      g.add(deck);
+    const hf = getWorldLayout().hf;
+    const dx = Math.sin(BRIDGE.rot), dz = Math.cos(BRIDGE.rot);
+    const half = BRIDGE.length / 2;
+    const a = hf.height(BRIDGE.x - dx * half, BRIDGE.z - dz * half), b = hf.height(BRIDGE.x + dx * half, BRIDGE.z + dz * half);
+    const yAt = (t: number) => a + (b - a) * t + Math.sin(t * Math.PI) * 0.9 + 0.08;
+    const at = (t: number) => new THREE.Vector3(BRIDGE.x + dx * (t - 0.5) * BRIDGE.length, yAt(t), BRIDGE.z + dz * (t - 0.5) * BRIDGE.length);
+    const side = new THREE.Vector3(Math.cos(BRIDGE.rot), 0, -Math.sin(BRIDGE.rot));
+    const up = new THREE.Vector3(0, 1, 0);
+    let seed = 7;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const deckParts: THREE.BufferGeometry[] = [], frameParts: THREE.BufferGeometry[] = [];
+    /** Quader zwischen zwei Punkten (Länge entlang p0→p1), Breite quer, Höhe senkrecht zur Strecke */
+    const beamBetween = (p0: THREE.Vector3, p1: THREE.Vector3, w: number, h: number, out: THREE.BufferGeometry[]) => {
+      const d = p1.clone().sub(p0);
+      const g = new THREE.BoxGeometry(w, h, d.length());
+      const m = new THREE.Matrix4().lookAt(new THREE.Vector3(), d, up);
+      m.setPosition(p0.clone().add(p1).multiplyScalar(0.5));
+      g.applyMatrix4(m);
+      out.push(g);
+    };
+    const n = Math.round(BRIDGE.length / 0.27);
+    for (let i = 0; i < n; i++) {
+      const t0 = i / n, t1 = (i + 0.93) / n;
+      const p0 = at(t0), p1 = at(t1);
+      const w = BRIDGE.width * (0.95 + rnd() * 0.05);
+      const c = p0.clone().add(p1).multiplyScalar(0.5).addScaledVector(side, (rnd() - 0.5) * 0.08);
+      const g = new THREE.BoxGeometry(w, 0.07, p1.distanceTo(p0));
+      const m = new THREE.Matrix4().lookAt(new THREE.Vector3(), p1.clone().sub(p0), up);
+      m.multiply(new THREE.Matrix4().makeRotationY((rnd() - 0.5) * 0.03));
+      m.setPosition(c.x, c.y - 0.035 + (rnd() - 0.5) * 0.015, c.z);
+      g.applyMatrix4(m);
+      deckParts.push(g);
     }
-    for (const side of [-1, 1]) {
-      for (let i = 1; i < segs.length - 1; i++) {
-        const s = segs[i]!;
-        const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.2, 0.18), plank);
-        const off = new THREE.Vector3(Math.cos(BRIDGE.rot), 0, -Math.sin(BRIDGE.rot)).multiplyScalar(side * (BRIDGE.width / 2 + 0.05));
-        post.position.set(s.x + off.x, s.y + 0.5, s.z + off.z);
-        post.castShadow = true;
-        g.add(post);
-        const next = segs[i + 1]!;
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, s.len + 0.1), plank);
-        rail.position.set((s.x + next.x) / 2 + off.x, (s.y + next.y) / 2 + 1.05, (s.z + next.z) / 2 + off.z);
-        rail.lookAt(rail.position.clone().add(dir));
-        g.add(rail);
+    // Tragbalken unter der Fahrbahn und Geländer
+    const steps = 24;
+    for (let i = 0; i < steps; i++) {
+      const p0 = at(i / steps), p1 = at((i + 1) / steps);
+      for (const sgn of [-1, 1]) {
+        const o = side.clone().multiplyScalar(sgn * (BRIDGE.width / 2 - 0.35));
+        beamBetween(p0.clone().add(o).add(new THREE.Vector3(0, -0.2, 0)), p1.clone().add(o).add(new THREE.Vector3(0, -0.2, 0)), 0.22, 0.3, frameParts);
+        const r = side.clone().multiplyScalar(sgn * (BRIDGE.width / 2 + 0.02));
+        const lift = (p: THREE.Vector3) => p.clone().add(r).add(new THREE.Vector3(0, 1.0, 0));
+        if (i > 0 && i < steps - 1) {
+          beamBetween(lift(p0), lift(p1), 0.1, 0.12, frameParts);
+          beamBetween(lift(p0).add(new THREE.Vector3(0, -0.45, 0)), lift(p1).add(new THREE.Vector3(0, -0.45, 0)), 0.06, 0.08, frameParts);
+        }
+        if (i % 3 === 1 || i === steps - 2) {
+          const base = p0.clone().add(r);
+          beamBetween(base.clone().add(new THREE.Vector3(0, -0.25, 0)), base.clone().add(new THREE.Vector3(0, 1.1, 0)), 0.16, 0.16, frameParts);
+        }
       }
     }
-    // Pfeiler im Fluss
+    const g = new THREE.Group();
+    const deck = new THREE.Mesh(mergeGeometries(deckParts)!, namedMaterial('wood'));
+    const frame = new THREE.Mesh(mergeGeometries(frameParts)!, namedMaterial('wood_dark'));
+    for (const m of [deck, frame]) { m.castShadow = m.receiveShadow = true; g.add(m); }
+    // Steinpfeiler mit Eisbrecher und Querjoch
     for (const i of [3, 8]) {
       const s = segs[i]!;
-      const pier = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 5, 8), namedMaterial('stone'));
-      pier.position.set(s.x, s.y - 2.6, s.z);
+      const pier = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.6, 5, 10), namedMaterial('stone_block'));
+      pier.position.set(s.x, s.y - 2.8, s.z);
+      pier.castShadow = true;
       g.add(pier);
+      const yoke = new THREE.Mesh(new THREE.BoxGeometry(BRIDGE.width + 0.4, 0.3, 0.35), namedMaterial('wood_dark'));
+      yoke.position.set(s.x, s.y - 0.42, s.z);
+      yoke.rotation.y = BRIDGE.rot;
+      g.add(yoke);
     }
+    g.name = 'Brücke';
     this.group.add(g);
   }
 
