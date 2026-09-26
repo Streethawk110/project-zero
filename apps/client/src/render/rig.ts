@@ -943,7 +943,8 @@ export class HumanoidRig {
     const L = L1 + L2, sc = L / 0.9;
     const run = smooth(2.3, 3.8, v), spr = smooth(6.0, 8.0, v);
     const move = Math.min(1, v / 0.9); // beim Anlaufen/Anhalten weniger Schwung
-    const duty = 0.61 * (1 - run) + (0.31 - 0.05 * spr) * run;
+    // Standanteil: Gehen ~60 %, Rennen ~30 % (Bodenkontakt ~0,2 s), Sprint ~18 % (~0,1 s)
+    const duty = 0.61 * (1 - run) + (0.31 - 0.13 * spr) * run;
     const C = this.cycleLen(v);
     // halbe Standstrecke des Knöchels: ~10 cm übernimmt das Abrollen über den Fuß (Ferse → Ballen)
     const a = Math.max(0, (C * duty) / 2 - 0.12 * sc) * move;
@@ -976,7 +977,9 @@ export class HumanoidRig {
     let need = 0;
     for (const f of [fl, fr]) if (f.st > 0 || f.y < 0.02 * sc) need = Math.min(need, Math.sqrt(Math.max(0, Lr * Lr - f.x * f.x)) + f.y - Lr);
     const spring = (-0.02 - 0.03 * (b + 1) / 2) * sc; // Rennen: Einfedern in der Standmitte
-    rootY = Math.min(need, spring * run) - 0.004 * sc;
+    // Rennen: Knie federt ohnehin – Becken höchstens 7 cm tiefer, der Rest wird über die Kniebeuge aufgenommen
+    rootY = Math.min(need, spring * run);
+    rootY = (rootY * (1 - run) + Math.max(rootY, (-0.07 + 0.025 * spr) * sc) * run) - 0.004 * sc;
     const leg = (f: { x: number; y: number; pitch: number }, side: 'L' | 'R') => {
       const x = f.x, y = L + rootY - f.y; // Abstand Hüfte → Knöchel nach unten
       let d = Math.hypot(x, y);
