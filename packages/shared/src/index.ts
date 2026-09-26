@@ -1,4 +1,5 @@
 export * from './math.ts';
+export * from './voices.ts';
 export * from './types.ts';
 export * from './protocol.ts';
 export * from './world/region.ts';

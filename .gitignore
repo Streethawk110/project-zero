@@ -17,3 +17,4 @@ release/
 tools/blender/.mh_cache/
 tools/anim/.cache/
 tools/anim/__pycache__/
+tools/voice/.cache/

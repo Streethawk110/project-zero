@@ -173,6 +173,21 @@ python3 tools/anim/mocap.py strip 16_15 0 400 20 x.png   # Strichfiguren zum Sic
 Waffen stecken außerhalb des Kampfes in der Scheide bzw. hängen am Gürtel (Axt, Keule) oder auf dem Rücken
 (Schild, Bogen); im Kampf wird gezogen. Hängende Dinge (Scheide, Laterne) pendeln mit der Bewegung.
 
+## Stimmen
+
+Alle Dialogzeilen, Zurufe und Grüße der Figuren sind vorab mit der neuronalen Sprachsynthese Piper
+gesprochen (866 Zeilen, ~47 min, MP3 in `apps/client/public/assets/voice/<stimme>.json`). Jede Figur hat eine
+von zehn Stimmen (fünf Sprecher, je nach Statur und Alter höher oder tiefer, `voiceSlot` in
+`packages/shared/src/voices.ts`); der Spielername wird aus Zeilen herausgenommen, damit sie vorab erzeugt
+werden können. Zeilen mit wechselnden Beträgen liest die Sprachausgabe des Browsers.
+
+```bash
+pip install piper-tts soundfile
+# Stimmmodelle (Piper v0.0.2, GitHub-Release rhasspy/piper) nach tools/voice/.cache/voices/<modell>/
+npx tsx tools/voice/lines.ts > tools/voice/.cache/lines.json
+python3 tools/voice/build.py
+```
+
 ## Texturen (Blender)
 
 Alle Oberflächen sind nahtlos kachelbare 2K-PBR-Texturen, gebacken aus prozeduralen Blender-Materialien
@@ -306,6 +321,10 @@ Ehrlich festgehalten, was geprüft ist und was nicht:
   getestet, aber noch nicht ausgiebig von Menschen durchgespielt – Balance und Feinschliff brauchen Spieltests.
 
 ## Fremdmaterial und Namensnennung
+
+- **Stimmen:** Piper-Stimmmodelle (MIT-Lizenz, rhasspy/piper). Sprecherdaten: „Thorsten“ (Thorsten Müller,
+  CC0), „Kerstin“ (CC0), „Karlsson“, „Eva K.“ und „Ramona“ (M-AILABS Speech Dataset). Die nur nicht-kommerziell
+  nutzbare Stimme „Pavoque“ wird bewusst nicht verwendet.
 
 - **Bewegungsaufnahmen:** The data used in this project was obtained from mocap.cs.cmu.edu. The database
   was created with funding from NSF EIA-0196217. (CMU Graphics Lab Motion Capture Database, frei nutzbar

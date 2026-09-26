@@ -42,6 +42,20 @@ den Körper, alle Items kleben an Körperteilen – und andere Sachen auch beden
   Kopf am Boden, Axt von der Brust durch die Hände, Angel nach vorn oben. Pendel (`Dangle`) für Scheide und
   Isras Laterne; Fackel aufrecht mit vorgestrecktem Unterarm (`holdTorch`).
 
+**Erledigt (Teil 2: Stimmen)**
+- Neuronale Sprachsynthese Piper (pip `piper-tts` 1.8 + `soundfile` für MP3, venv im Scratchpad) mit deutschen
+  Stimmen aus dem GitHub-Release v0.0.2 (Hugging Face gesperrt): Thorsten, Karlsson (m), Kerstin, Eva K., Ramona (w);
+  Pavoque NICHT (CC BY-NC-SA). 10 Stimmen = Modell × Tonhöhe (`VOICE_SLOTS`, `voiceSlot` in
+  `packages/shared/src/voices.ts`; Profil aus Geschlecht/Größe/Statur/graues Haar). Tonhöhe: gesprochen mit
+  length_scale = p, abgespielt mit playbackRate = p → gleiche Dauer. Tempo je Modell auf ~14,5 Zeichen/s.
+- `tools/voice/lines.ts` (tsx): Dialogknoten je NSC (erreichbar vom Gesprächsanfang, Wachen + `caught_root`),
+  Varianten, eigene Sätze, Grüße/Rufe aus world.ts (TS-Syntaxbaum), Isra (companion.ts), Rückzug (ai.ts, alle
+  Stimmen), Boss. `{name}`/`${name}` entfernt (`withoutName`), andere Platzhalter → Browser-Stimme. Achtung
+  Reihenfolge: erst `${name}` ersetzen. `tools/voice/build.py` → `assets/voice/<stimme>.json` {Schlüssel:
+  [MP3-Base64, Dauer]} (Schlüssel `voiceKey`, in Python identisch nachgebaut). 866 Zeilen, ~47 min, 14 MB.
+- Client `audio/voice.ts`: lädt die Stimmen nach dem Start im Hintergrund, spielt über WebAudio (kein data:/
+  blob: nötig), Web-Speech-Rückfall; Isra immer Kennung 'isra'. Im Browser geprüft (Zeile abgespielt, Mund an/aus).
+
 ## 2026-09-24 – Cloud-Sitzung: Realismus + Leistung („wie KCD2“)
 
 **Wunsch**: Grafik viel realistischer (Ziel Kingdom Come Deliverance 2), weniger

@@ -696,7 +696,8 @@ export class Game {
     const v = this.viewForSpeaker(e.speaker, e.npc);
     const partner = this.viewForSpeaker('npc', e.npc) ?? v;
     this.talkPartner = partner;
-    voice.say(voiceProfile(v?.def || e.speaker, v?.rig?.appearance), e.text, (on, secs) => { if (v?.rig) v.rig.talking = on ? secs + 0.2 : 0; });
+    voice.playerName = this.char?.name ?? '';
+    voice.say(voiceProfile(v?.kind === 'c' || e.speaker === 'isra' ? 'isra' : v?.def || e.speaker, v?.rig?.appearance), e.text, (on, secs) => { if (v?.rig) v.rig.talking = on ? secs + 0.2 : 0; });
   }
 
   private speakBark(e: Extract<GameEvent, { e: 'bark' }>) {
@@ -704,7 +705,8 @@ export class Game {
     if (!v) return;
     const d = v.pos.distanceTo(this.camera.position);
     if (d > 28 || this.ui.dialogueOpen) { if (v.rig) v.rig.talking = 2; return; }
-    voice.say(voiceProfile(v.def || v.name, v.rig?.appearance), e.text, (on, secs) => { if (v.rig) v.rig.talking = on ? secs + 0.2 : 0; }, { interrupt: false, volume: Math.max(0.15, 1 - d / 28) });
+    voice.playerName = this.char?.name ?? '';
+    voice.say(voiceProfile(v.kind === 'c' ? 'isra' : v.def || v.name, v.rig?.appearance), e.text, (on, secs) => { if (v.rig) v.rig.talking = on ? secs + 0.2 : 0; }, { interrupt: false, volume: Math.max(0.15, 1 - d / 28) });
   }
 
   /** NSCs und Begleiterin schauen den Spieler an, wenn er nahe ist; im Gespräch Nahaufnahme. */

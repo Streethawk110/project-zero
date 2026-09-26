@@ -10,6 +10,7 @@ import { hasCharacterModel } from './render/skinned.ts';
 import { diag, gpuName } from './diag.ts';
 import { loadHumanTextures } from './render/human.ts';
 import { loadMocap } from './render/mocap.ts';
+import { voice } from './audio/voice.ts';
 import { loadCloudNoise } from './render/clouds.ts';
 import { AudioEngine } from './audio/audio.ts';
 import { Game } from './game/game.ts';
@@ -73,6 +74,8 @@ async function boot() {
   const audio = new AudioEngine();
   const game = new Game(canvas, audio);
   game.startMenu();
+  // Stimmaufnahmen im Hintergrund nachladen (je Stimme eine Datei)
+  setTimeout(() => void voice.preloadAll(), 4000);
   await progress(0.9, 'Grafik vorbereiten …');
   await game.prewarm();
   await progress(1, 'Bereit');
@@ -182,7 +185,7 @@ async function boot() {
   // Beim Verlassen der Seite sichern
   window.addEventListener('pagehide', () => save(false));
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(false); });
-  (window as unknown as { __pz: unknown }).__pz = { game, gameUi, THREE, wetness, get local() { return local; } };
+  (window as unknown as { __pz: unknown }).__pz = { game, gameUi, THREE, wetness, voice, get local() { return local; } };
 }
 
 function findSlotFor(charId: string) {
