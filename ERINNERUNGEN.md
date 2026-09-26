@@ -313,6 +313,8 @@ Profiler nicht mitgezählt – behoben).
   Web-Artifact VERSION 14 (neue Laufanimation). Tempi Spieler: Gehen 2,3 / Rennen 5 / Sprint 7,9 m/s (MOVE).
   Sprint: Standanteil bis 0,18 (Kontakt ~0,1 s), Becken beim Rennen max. 7 cm (Sprint 4,5 cm) tiefer. Drehen auf
   der Stelle: Trippelschritte (`turnRate` aus updateSwing, `turnStep`, `gait(v, inPlace)`), per rig-probe geprüft.
+  Schrittgeräusche im Takt der Fußaufsätze (`rig.footfalls`, statt fester Periode), NSC-Schritte räumlich bis 14 m
+  (`audio.footstep(…, spatial)`). Im Spiel geprüft (keine Fehler, Bewohner verteilt).
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

@@ -734,20 +734,30 @@ export class Game {
   }
 
   private footT2 = 0;
+  private lastFootfalls = 0;
   private footsteps(dt: number, p: THREE.Vector3) {
     const rig = this.playerRig;
     if (!rig || this.paused) return;
-    const moving = ['walk', 'run', 'sprint'].includes(rig.anim);
-    if (!moving) { this.footT = 0; return; }
-    const period = rig.anim === 'sprint' ? 0.28 : rig.anim === 'run' ? 0.34 : 0.5;
-    this.footT += dt;
-    if (this.footT >= period) {
-      this.footT -= period;
+    // Geräusch genau beim Fußaufsatz der Laufanimation (auch Trippelschritte beim Drehen)
+    const fell = rig.footfalls !== this.lastFootfalls;
+    this.lastFootfalls = rig.footfalls;
+    if (fell && rig.anim !== 'swim' && rig.anim !== 'tread' && rig.anim !== 'jump' && rig.anim !== 'fall') {
       const surface = this.inDungeon ? 'stone' : getWorldLayout().hf.height(p.x, p.z) < 1.5 ? 'sand' : zoneAt(p.x, p.z)?.kind === 'village' ? 'stone' : 'grass';
       this.audio.footstep(surface, p, rig.anim === 'sprint');
     }
     this.footT2 += dt;
+    // Schritte der Leute ringsum (räumlich): Dorfleben hörbar
+    for (const v of this.ents.views.values()) {
+      if (!v.rig || v.local) continue;
+      const last = this.npcFootfalls.get(v.id);
+      this.npcFootfalls.set(v.id, v.rig.footfalls);
+      if (last === undefined || last === v.rig.footfalls || v.pos.distanceToSquared(p) > 14 * 14) continue;
+      if (v.anim === 'swim' || v.anim === 'jump' || v.anim === 'fall') continue;
+      const surface = this.inDungeon ? 'stone' : zoneAt(v.pos.x, v.pos.z)?.kind === 'village' ? 'stone' : 'grass';
+      this.audio.footstep(surface, v.pos, v.anim === 'sprint', true);
+    }
   }
+  private npcFootfalls = new Map<number, number>();
 
   private updateOwnView(p: THREE.Vector3, dt: number) {
     if (!this.playerRig) {

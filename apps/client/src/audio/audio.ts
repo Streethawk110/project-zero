@@ -273,17 +273,17 @@ export class AudioEngine {
     }
   }
 
-  footstep(surface: string, pos: THREE.Vector3, sprint: boolean) {
+  /** Schritt; spatial = andere Figur (räumlich, leiser), sonst die eigene Figur. */
+  footstep(surface: string, pos: THREE.Vector3, sprint: boolean, spatial = false) {
     if (!this.ready) return;
     const c = this.ctx!;
-    const t = c.currentTime;
-    const o = this.out(undefined);
+    const t = c.currentTime + (spatial ? Math.random() * 0.02 : 0);
+    const o = this.out(spatial ? pos : undefined);
     if (!o) return;
-    const g = sprint ? 0.22 : 0.15;
+    const g = (sprint ? 0.22 : 0.15) * (spatial ? 0.7 : 1);
     if (surface === 'stone') this.noiseBurst(o, t, 0.08, 'bandpass', 2200, 1200, 2, g);
     else if (surface === 'sand') this.noiseBurst(o, t, 0.14, 'lowpass', 1800, 600, 0.8, g * 0.9);
     else this.noiseBurst(o, t, 0.11, 'bandpass', 900 + Math.random() * 300, 500, 1.2, g);
-    void pos;
   }
 
   sfx(id: string, pos?: THREE.Vector3) {

@@ -201,6 +201,8 @@ export class HumanoidRig {
   phase = 0;
   /** Schrittzyklus 0–1 (linker Fuß setzt bei 0 auf, rechter bei 0,5) */
   private cyc = 0;
+  /** Zähler der Fußaufsätze (für Schrittgeräusche) */
+  footfalls = 0;
   private legLen: [number, number] | null = null;
   speed = 0;
   weapon: THREE.Object3D | null = null;
@@ -757,8 +759,11 @@ export class HumanoidRig {
     // Drehen auf der Stelle: Schrittzyklus läuft mit der Drehung (≈ 0,25 m Fußweg je Radiant)
     const turning = speed < 0.4 && Math.abs(this.turnRate) > 1.0 && (this.anim === 'idle' || this.anim === 'recover');
     this.turnStep += ((turning ? 1 : 0) - this.turnStep) * Math.min(1, dt * (turning ? 10 : 5));
+    const before = this.cyc;
     if (this.turnStep > 0.05) this.cyc += Math.abs(this.turnRate) * 0.25 * dt / this.cycleLen(0.8);
     this.cyc += (fwd < -0.3 ? -1 : 1) * (speed * dt) / this.cycleLen(speed);
+    // Fußaufsatz (linker Fuß bei 0, rechter bei 0,5) → Schrittgeräusch genau im Takt
+    if (Math.floor(before * 2) !== Math.floor(this.cyc * 2)) this.footfalls++;
     this.cyc -= Math.floor(this.cyc);
     this.phase = this.cyc * Math.PI * 2;
     const pose = this.computePose(this.anim, this.animT);
