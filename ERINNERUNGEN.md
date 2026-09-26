@@ -350,6 +350,11 @@ Profiler nicht mitgezählt – behoben).
   „Bewegungsunschärfe“ (`motionBlur` 0,7) und „Blendenflecke“ (`lensFlare`), aus bei „niedrig“/reduzierten Effekten.
   Kamera (`camera.ts`): Erschütterung als weiches Rauschen statt Zufallszittern, Schrittwippen (`motion.phase`),
   Landen federt nach, Neigung in Kurven, leichtes Atmen der Handkamera. Geprüft per Standbild (Blur mit ×40).
+  FEUER: Blender markiert `embers`/`ember`/`coals`/`fire`/`flame` (und `lantern`) als Emitter `fire` {p, s, k} (Herde,
+  Esse, Wachfeuer, Rastschrein, Alchemie-Glut, Kerzen im Gasthaus/Altar). Client (life.ts `Fires`): je Feuer 3
+  Flammenzungen (Kerzen 1), senkrechte Billboards mit Rausch-Verzerrung, HDR-Farbe (Bloom), neigen sich im Wind;
+  Funken bei Feuern > 0,28 m. Alle `glow_warm`-Flächen flackern und glimmen fleckig (`glowMaterial`, `glowTime`).
+  Geprüft nachts an der Schmiede.
 - NEU auf der Liste (Nutzer): 1) FOKUS Grafik „wie im Film“ (filmreifes
   Licht, Farbgebung, Kamera, Nachbearbeitung). 2) Sound/Stimmen: deutlich
   unterscheidbare Männer- und Frauenstimmen, hell/dunkel, verschiedene Klänge.

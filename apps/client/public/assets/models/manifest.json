@@ -1,9 +1,62 @@
 {
  "alchemy_table": {
-  "file": "alchemy_table.glb"
+  "file": "alchemy_table.glb",
+  "emit": {
+   "fire": [
+    {
+     "p": [
+      1.45,
+      0.106,
+      -0.0
+     ],
+     "s": 0.286,
+     "k": "embers"
+    }
+   ]
+  }
  },
  "altar": {
-  "file": "altar.glb"
+  "file": "altar.glb",
+  "emit": {
+   "fire": [
+    {
+     "p": [
+      -1.0,
+      1.32,
+      -0.3
+     ],
+     "s": 0.036,
+     "k": "flame"
+    },
+    {
+     "p": [
+      -0.8,
+      1.4,
+      -0.1
+     ],
+     "s": 0.036,
+     "k": "flame"
+    },
+    {
+     "p": [
+      0.85,
+      1.32,
+      -0.3
+     ],
+     "s": 0.036,
+     "k": "flame"
+    },
+    {
+     "p": [
+      1.05,
+      1.4,
+      -0.1
+     ],
+     "s": 0.036,
+     "k": "flame"
+    }
+   ]
+  }
  },
  "anvil": {
   "file": "anvil.glb"
@@ -184,6 +237,17 @@
      8.575,
      1.08
     ]
+   ],
+   "fire": [
+    {
+     "p": [
+      2.24,
+      1.55,
+      2.26
+     ],
+     "s": 0.8,
+     "k": "embers"
+    }
    ]
   },
   "lod1": "house_a_lod1.glb"
@@ -197,6 +261,17 @@
      10.575,
      1.35
     ]
+   ],
+   "fire": [
+    {
+     "p": [
+      2.8,
+      1.55,
+      2.76
+     ],
+     "s": 0.8,
+     "k": "embers"
+    }
    ]
   },
   "lod1": "house_b_lod1.glb"
@@ -221,6 +296,62 @@
      11.475,
      1.71
     ]
+   ],
+   "fire": [
+    {
+     "p": [
+      3.36,
+      1.755,
+      3.68
+     ],
+     "s": 1.2,
+     "k": "embers"
+    },
+    {
+     "p": [
+      -3.56,
+      1.56,
+      -1.5
+     ],
+     "s": 0.045,
+     "k": "flame"
+    },
+    {
+     "p": [
+      -3.56,
+      1.56,
+      1.1
+     ],
+     "s": 0.045,
+     "k": "flame"
+    },
+    {
+     "p": [
+      0.6,
+      1.56,
+      1.5
+     ],
+     "s": 0.045,
+     "k": "flame"
+    },
+    {
+     "p": [
+      -1.1,
+      2.5,
+      -4.75
+     ],
+     "s": 0.22,
+     "k": "lantern"
+    },
+    {
+     "p": [
+      1.1,
+      2.5,
+      -4.75
+     ],
+     "s": 0.22,
+     "k": "lantern"
+    }
    ]
   },
   "lod1": "inn_lod1.glb"
@@ -239,7 +370,20 @@
   "lod1": "kontor_lod1.glb"
  },
  "lamp": {
-  "file": "lamp.glb"
+  "file": "lamp.glb",
+  "emit": {
+   "fire": [
+    {
+     "p": [
+      0.0,
+      2.72,
+      -0.5
+     ],
+     "s": 0.18,
+     "k": "lantern"
+    }
+   ]
+  }
  },
  "lever": {
   "file": "lever.glb"
@@ -251,7 +395,20 @@
   "file": "mine_cart.glb"
  },
  "mine_entrance": {
-  "file": "mine_entrance.glb"
+  "file": "mine_entrance.glb",
+  "emit": {
+   "fire": [
+    {
+     "p": [
+      2.5,
+      3.0,
+      -0.35
+     ],
+     "s": 0.25,
+     "k": "lantern"
+    }
+   ]
+  }
  },
  "mine_house": {
   "file": "mine_house.glb"
@@ -273,7 +430,20 @@
   "file": "raven_stone.glb"
  },
  "rest_shrine": {
-  "file": "rest_shrine.glb"
+  "file": "rest_shrine.glb",
+  "emit": {
+   "fire": [
+    {
+     "p": [
+      0.0,
+      1.4,
+      -0.0
+     ],
+     "s": 0.626,
+     "k": "ember"
+    }
+   ]
+  }
  },
  "rock_large": {
   "file": "rock_large.glb",
@@ -307,6 +477,17 @@
      5.53,
      -2.2
     ]
+   ],
+   "fire": [
+    {
+     "p": [
+      -1.5,
+      1.07,
+      -2.2
+     ],
+     "s": 0.9,
+     "k": "coals"
+    }
    ]
   },
   "lod1": "smithy_lod1.glb"
@@ -332,6 +513,17 @@
      6.99,
      -0.0
     ]
+   ],
+   "fire": [
+    {
+     "p": [
+      0.0,
+      6.94,
+      -0.0
+     ],
+     "s": 0.394,
+     "k": "fire"
+    }
    ]
   },
   "lod1": "tower_lod1.glb"

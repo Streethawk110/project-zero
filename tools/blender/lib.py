@@ -253,23 +253,27 @@ def _tag_emitters(objs):
         if o.type != "MESH":
             continue
         base = o.name.split(".")[0]
-        kind = "smoke" if base in ("chimneycap", "fire") else "banner" if base == "banner" else "flag" if base == "flag" else None
-        if kind is None or any(g.name.startswith("emit_") for g in o.vertex_groups):
+        # Feuerstellen: Glut/Kohlen/Feuer/Laternen/Kerzen (Flammen im Client); Wachfeuer qualmen auch
+        kinds = {"chimneycap": ["smoke"], "fire": ["smoke", "fire"], "banner": ["banner"], "flag": ["flag"],
+                 "embers": ["fire"], "ember": ["fire"], "coals": ["fire"], "lantern": ["fire"], "flame": ["fire"]}.get(base)
+        if not kinds or any(g.name.startswith("emit_") for g in o.vertex_groups):
             continue
-        _EMIT_ID[0] += 1
-        g = o.vertex_groups.new(name=f"emit_{kind}_{_EMIT_ID[0]}")
-        g.add([v.index for v in o.data.vertices], 1.0, "REPLACE")
+        for kind in kinds:
+            _EMIT_ID[0] += 1
+            g = o.vertex_groups.new(name=f"emit_{kind}_{base}_{_EMIT_ID[0]}")
+            g.add([v.index for v in o.data.vertices], 1.0, "REPLACE")
+        kind = kinds[0]
         if kind == "flag":
             # Fahnenstangenseite (lokal kleinstes x) gesondert merken → Richtung Stange → Spitze
             x0 = min(v.co.x for v in o.data.vertices)
-            gp = o.vertex_groups.new(name=f"emit_flagpole_{_EMIT_ID[0]}")
+            gp = o.vertex_groups.new(name=f"emit_flagpole_flag_{_EMIT_ID[0]}")
             gp.add([v.index for v in o.data.vertices if v.co.x < x0 + 1e-4], 1.0, "REPLACE")
 
 
 def collect_emitters(objs, remove_banners=True):
     """Markierte Punkte in glTF-Koordinaten (x, z, −y) auslesen; Banner-Geometrie danach entfernen."""
     import bmesh
-    smoke, banners, flags = [], [], []
+    smoke, banners, flags, fires = [], [], [], []
     for o in objs:
         if o.type != "MESH":
             continue
@@ -286,8 +290,15 @@ def collect_emitters(objs, remove_banners=True):
             cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
             if gname.startswith("emit_flagpole"):
                 continue
+            if gname.startswith("emit_fire_"):
+                src = gname.split("_")[2]
+                w = max(max(xs) - min(xs), max(ys) - min(ys))
+                # Flammenfuß: Oberseite der Glut; Laternen/Kerzen: Mitte (Flamme sitzt im Glas bzw. auf dem Docht)
+                y0 = (min(zs) + max(zs)) / 2 if src in ("lantern", "flame") else max(zs)
+                fires.append({"p": [round(cx, 3), round(y0, 3), round(-cy, 3)], "s": round(w, 3), "k": src})
+                continue
             if gname.startswith("emit_flag_"):
-                pole = pts.get("emit_flagpole_" + gname.split("_")[-1], ps)
+                pole = pts.get("emit_flagpole_flag_" + gname.split("_")[-1], ps)
                 px = sum(p.x for p in pole) / len(pole); py = sum(p.y for p in pole) / len(pole)
                 dx, dy = cx - px, cy - py
                 ln = max((dx * dx + dy * dy) ** 0.5, 1e-6)
@@ -320,6 +331,8 @@ def collect_emitters(objs, remove_banners=True):
         out["banner"] = banners
     if flags:
         out["flag"] = flags
+    if fires:
+        out["fire"] = fires
     return out
 
 

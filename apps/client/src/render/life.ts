@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { getWorldLayout, PROPS } from '@pz/shared';
-import { modelEmitters } from './models.ts';
+import { modelEmitters, glowTime } from './models.ts';
 import { settings } from '../settings.ts';
 import { overlayScene, softDepth, SOFT_GLSL } from './renderer.ts';
 
@@ -21,6 +21,7 @@ export function updateWind(time: number, weather: string, wInt: number) {
 }
 
 interface WorldEmitters {
+  fire: { p: THREE.Vector3; s: number; k: string }[];
   smoke: { p: THREE.Vector3; strength: number }[];
   banner: { p: THREE.Vector3; w: number; h: number; d: THREE.Vector2 }[];
   flag: { p: THREE.Vector3; w: number; h: number; d: THREE.Vector2 }[];
@@ -28,7 +29,7 @@ interface WorldEmitters {
 
 /** Effektpunkte aller platzierten Gebäude in Weltkoordinaten. */
 function worldEmitters(): WorldEmitters {
-  const out: WorldEmitters = { smoke: [], banner: [], flag: [] };
+  const out: WorldEmitters = { fire: [], smoke: [], banner: [], flag: [] };
   const q = new THREE.Quaternion(), m = new THREE.Matrix4(), up = new THREE.Vector3(0, 1, 0);
   for (const o of getWorldLayout().objects) {
     if (o.x > 900) continue; // Unterwelt
@@ -39,6 +40,7 @@ function worldEmitters(): WorldEmitters {
     const dirW = (d: [number, number]) => { const v = new THREE.Vector3(d[0], 0, d[1]).applyQuaternion(q); return new THREE.Vector2(v.x, v.z).normalize(); };
     // Wachfeuer auf Türmen qualmen dünner als Herde
     for (const p of em.smoke ?? []) out.smoke.push({ p: new THREE.Vector3(...p).applyMatrix4(m), strength: o.t === 'tower' ? 0.45 : 1 });
+    for (const f of em.fire ?? []) if (f.k !== 'lantern') out.fire.push({ p: new THREE.Vector3(...f.p).applyMatrix4(m), s: f.s * o.s, k: f.k });
     for (const b of em.banner ?? []) out.banner.push({ p: new THREE.Vector3(...b.p).applyMatrix4(m), w: b.w * o.s, h: b.h * o.s, d: dirW(b.d) });
     // Wimpel etwas größer als im Modell: aus der Ferne sonst kaum zu sehen
     for (const f of em.flag ?? []) out.flag.push({ p: new THREE.Vector3(...f.p).applyMatrix4(m), w: f.w * o.s * 1.5, h: f.h * o.s * 1.4, d: dirW(f.d) });
@@ -147,6 +149,140 @@ class Smoke {
   }
 }
 
+
+/**
+ * Flammen: je Feuerstelle mehrere senkrecht ausgerichtete Flammenzungen (Rauschen verzerrt die Form, heißer
+ * weißgelber Kern, orange/rote Ränder) und bei größeren Feuern aufsteigende Funken. Alles auf der GPU; die
+ * Helligkeit liegt über 1, damit der Bloom sie aufnimmt. Zeichnung in der Overlay-Stufe (weiche Kanten,
+ * Verdeckung über die Szenentiefe).
+ */
+class Fires {
+  flames: THREE.Mesh;
+  sparks: THREE.Mesh;
+  private fMat: THREE.ShaderMaterial;
+  private sMat: THREE.ShaderMaterial;
+  constructor(src: WorldEmitters['fire'], sparkPer: number) {
+    const quad = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0);
+    // Flammenzungen: 3 je Feuer, Kerzen 1
+    const inst: number[] = [], seeds: number[] = [];
+    for (const f of src) {
+      const small = f.k === 'flame';
+      const w = small ? 0.035 : Math.min(1.1, f.s * 0.8), h = small ? 0.075 : Math.min(1.2, 0.35 + f.s * 0.7);
+      const tongues = small ? 1 : 3;
+      for (let i = 0; i < tongues; i++) {
+        const off = small ? 0 : (i - 1) * w * 0.25;
+        inst.push(f.p.x + off, f.p.y - (small ? 0.01 : 0.02), f.p.z + (small ? 0 : (Math.random() - 0.5) * w * 0.3), 0);
+        seeds.push(w * (i === 1 ? 1 : 0.7), h * (i === 1 ? 1 : 0.75), Math.random() * 100, small ? 1 : 0);
+      }
+    }
+    const fg = new THREE.InstancedBufferGeometry();
+    fg.index = quad.index;
+    fg.setAttribute('position', quad.getAttribute('position'));
+    fg.setAttribute('uv', quad.getAttribute('uv'));
+    fg.setAttribute('aPos', new THREE.InstancedBufferAttribute(new Float32Array(inst), 4));
+    fg.setAttribute('aSeed', new THREE.InstancedBufferAttribute(new Float32Array(seeds), 4));
+    fg.instanceCount = seeds.length / 4;
+    this.fMat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      uniforms: { uTime: { value: 0 }, uWind: { value: new THREE.Vector2() }, ...softDepth },
+      vertexShader: /* glsl */ `
+        attribute vec4 aPos; attribute vec4 aSeed; uniform float uTime; uniform vec2 uWind;
+        varying vec2 vUv; varying float vSeed; varying float vViewZ; varying float vSmall;
+        void main() {
+          vec3 base = aPos.xyz;
+          vec3 toCam = cameraPosition - base; toCam.y = 0.0;
+          vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), normalize(toCam + vec3(1e-4))));
+          float flick = 1.0 + 0.12 * sin(uTime * 13.0 + aSeed.z) + 0.08 * sin(uTime * 29.0 + aSeed.z * 1.7);
+          vec3 p = base + right * position.x * aSeed.x + vec3(0.0, position.y * aSeed.y * flick, 0.0);
+          // Flammen neigen sich mit dem Wind (oben stärker)
+          p.xz += uWind * position.y * position.y * aSeed.y * 0.25 * (1.0 - aSeed.w);
+          vec4 mv = viewMatrix * vec4(p, 1.0);
+          vViewZ = mv.z;
+          gl_Position = projectionMatrix * mv;
+          vUv = uv; vSeed = aSeed.z; vSmall = aSeed.w;
+        }`,
+      fragmentShader: /* glsl */ `
+        uniform float uTime; varying vec2 vUv; varying float vSeed; varying float vViewZ; varying float vSmall;
+        ${NOISE}
+        ${SOFT_GLSL}
+        void main() {
+          vec2 uv = vUv;
+          // aufsteigendes Rauschen verzerrt die Flamme seitlich, oben stärker
+          float n = lFbm(vec2(uv.x * 3.0 + vSeed, uv.y * 2.2 - uTime * (vSmall > 0.5 ? 1.5 : 2.6)));
+          float x = (uv.x - 0.5) * 2.0 + (n - 0.5) * 0.9 * uv.y * (1.0 - vSmall * 0.7);
+          float h = uv.y + (n - 0.5) * 0.35 * (1.0 - vSmall * 0.6);
+          // Tropfenform: unten breit, nach oben spitz
+          float width = (1.0 - h) * (0.55 + 0.45 * smoothstep(0.0, 0.25, h));
+          float shape = smoothstep(width, width * 0.35, abs(x)) * smoothstep(1.0, 0.72, h) * smoothstep(0.0, 0.06, uv.y);
+          if (shape < 0.01) discard;
+          float core = smoothstep(width * 0.6, 0.0, abs(x)) * smoothstep(0.75, 0.1, h);
+          vec3 col = mix(vec3(1.4, 0.28, 0.04), vec3(2.6, 1.1, 0.25), shape);
+          col = mix(col, vec3(3.2, 2.5, 1.4), core * 0.8);
+          // Flammenspitzen verlöschen rötlich
+          col *= mix(1.0, 0.45, smoothstep(0.55, 1.0, h));
+          gl_FragColor = vec4(col * shape * softFade(vViewZ, 0.25), 1.0);
+        }`,
+    });
+    this.flames = new THREE.Mesh(fg, this.fMat);
+    this.flames.frustumCulled = false;
+    this.flames.renderOrder = 6;
+    this.flames.name = 'Flammen';
+
+    // Funken: nur bei größeren offenen Feuern
+    const big = src.filter((f) => f.k !== 'flame' && f.s > 0.28);
+    const sp: number[] = [], ss: number[] = [];
+    for (const f of big) for (let i = 0; i < sparkPer; i++) { sp.push(f.p.x, f.p.y, f.p.z, f.s); ss.push(Math.random(), Math.random(), Math.random(), Math.random()); }
+    const sg = new THREE.InstancedBufferGeometry();
+    const sq = new THREE.PlaneGeometry(1, 1);
+    sg.index = sq.index;
+    sg.setAttribute('position', sq.getAttribute('position'));
+    sg.setAttribute('aPos', new THREE.InstancedBufferAttribute(new Float32Array(sp), 4));
+    sg.setAttribute('aSeed', new THREE.InstancedBufferAttribute(new Float32Array(ss), 4));
+    sg.instanceCount = ss.length / 4;
+    this.sMat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      uniforms: { uTime: { value: 0 }, uWind: { value: new THREE.Vector2() }, ...softDepth },
+      vertexShader: /* glsl */ `
+        attribute vec4 aPos; attribute vec4 aSeed; uniform float uTime; uniform vec2 uWind;
+        varying float vA; varying float vViewZ; varying vec2 vUv;
+        void main() {
+          float life = 1.4 + aSeed.y * 1.4;
+          float t = fract(uTime / life + aSeed.x);
+          vec3 p = aPos.xyz + vec3((aSeed.z - 0.5) * aPos.w * 0.8, 0.0, (aSeed.w - 0.5) * aPos.w * 0.5);
+          p.y += t * (1.6 + aSeed.w * 1.8) - t * t * 0.4;
+          p.x += sin(t * 9.0 + aSeed.z * 30.0) * 0.12 * t + uWind.x * t * 0.8;
+          p.z += cos(t * 7.0 + aSeed.w * 30.0) * 0.12 * t + uWind.y * t * 0.8;
+          vec4 mv = viewMatrix * vec4(p, 1.0);
+          mv.xy += position.xy * 0.018;
+          vViewZ = mv.z;
+          gl_Position = projectionMatrix * mv;
+          // funkeln und verglühen
+          vA = (1.0 - t) * (0.6 + 0.4 * sin(uTime * 30.0 + aSeed.x * 60.0)) * step(0.35, aSeed.y);
+          vUv = position.xy + 0.5;
+        }`,
+      fragmentShader: /* glsl */ `
+        varying float vA; varying float vViewZ; varying vec2 vUv;
+        ${SOFT_GLSL}
+        void main() {
+          vec2 c = vUv * 2.0 - 1.0;
+          float f = max(0.0, 1.0 - dot(c, c));
+          if (f * vA < 0.01) discard;
+          gl_FragColor = vec4(vec3(3.0, 1.2, 0.3) * f * vA * softFade(vViewZ, 0.1), 1.0);
+        }`,
+    });
+    this.sparks = new THREE.Mesh(sg, this.sMat);
+    this.sparks.frustumCulled = false;
+    this.sparks.renderOrder = 6;
+    this.sparks.name = 'Funken';
+  }
+  update(time: number) {
+    for (const m of [this.fMat, this.sMat]) {
+      m.uniforms['uTime']!.value = time;
+      (m.uniforms['uWind']!.value as THREE.Vector2).copy(wind.dir).multiplyScalar(wind.strength);
+    }
+  }
+}
+
 /** Wappentuch auf Leinwand: Blau mit goldenem Turm, Webstruktur, Fransen unten; Wimpel mit Schwalbenschwanz. */
 function clothTexture(kind: 'banner' | 'flag') {
   const w = kind === 'banner' ? 128 : 256, h = kind === 'banner' ? 256 : 96;
@@ -235,6 +371,7 @@ function clothMaterial(kind: 'banner' | 'flag', map: THREE.Texture, time: { valu
 export class Life {
   group = new THREE.Group();
   private smoke: Smoke | null = null;
+  private fires: Fires | null = null;
   private time = { value: 0 };
   private windU = { value: new THREE.Vector3() };
   private flags: { mesh: THREE.Mesh; base: THREE.Vector2; yaw: number }[] = [];
@@ -247,6 +384,10 @@ export class Life {
     if (em.smoke.length) {
       this.smoke = new Smoke(em.smoke, per);
       overlayScene.add(this.smoke.mesh);
+    }
+    if (em.fire.length) {
+      this.fires = new Fires(em.fire, settings.graphics === 'niedrig' ? 6 : 14);
+      overlayScene.add(this.fires.flames, this.fires.sparks);
     }
     const seg = settings.graphics === 'niedrig' ? 4 : 10;
     if (em.banner.length) {
@@ -282,6 +423,11 @@ export class Life {
   /** Einmal pro Bild. sunDir: Richtung zur Sonne (Welt). */
   update(dt: number, time: number, camera: THREE.Camera, sunDir: THREE.Vector3, sun: THREE.Color, amb: THREE.Color, night: number, weather: string, inDungeon: boolean) {
     this.time.value = time;
+    glowTime.value = time;
+    if (this.fires) {
+      this.fires.flames.visible = this.fires.sparks.visible = !inDungeon;
+      this.fires.update(time);
+    }
     this.windU.value.set(wind.dir.x, wind.dir.y, wind.strength);
     this.group.visible = !inDungeon;
     if (this.smoke) {

@@ -31,6 +31,8 @@ export interface ModelEmitters {
   banner?: { p: [number, number, number]; w: number; h: number; d: [number, number] }[];
   /** Wimpel: Stangenpunkt (Mitte der Stangenkante), Richtung zur Spitze (x, z), Länge, Höhe */
   flag?: { p: [number, number, number]; w: number; h: number; d: [number, number] }[];
+  /** Feuerstellen: Flammenfuß, Breite, Art (embers/ember/coals/fire/lantern/flame) */
+  fire?: { p: [number, number, number]; s: number; k: string }[];
 }
 let manifest: Record<string, { file: string; lod1?: string; emit?: ModelEmitters }> = {};
 
@@ -71,6 +73,38 @@ function windowMaterial() {
   return m;
 }
 
+/** Glut, Laternen, Kerzen: Leuchten flackert (je Ort eigener Takt) und glimmt fleckig wie echte Glut. */
+export const glowTime = { value: 0 };
+function glowMaterial() {
+  const m = new THREE.MeshStandardMaterial({ color: 0xffb060, emissive: 0xff8a30, emissiveIntensity: 3 });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms['uGlowT'] = glowTime;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vGlowW;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        #ifdef USE_INSTANCING
+          vGlowW = (modelMatrix * instanceMatrix * vec4(position, 1.0)).xyz;
+        #else
+          vGlowW = (modelMatrix * vec4(position, 1.0)).xyz;
+        #endif`);
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+        varying vec3 vGlowW; uniform float uGlowT;
+        float gHash3(vec3 p) { p = fract(p * 0.3183 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        {
+          vec3 cell = floor(vGlowW * 0.7);
+          float ph = gHash3(cell) * 50.0;
+          float fl = 0.8 + 0.12 * sin(uGlowT * 11.0 + ph) + 0.08 * sin(uGlowT * 23.7 + ph * 1.7) + 0.06 * sin(uGlowT * 5.3 + ph * 0.3);
+          // Glut: fleckige, langsam wandernde Hitze
+          float spots = 0.65 + 0.35 * sin(vGlowW.x * 31.0 + uGlowT * 1.3) * sin(vGlowW.z * 27.0 - uGlowT * 1.1) * sin(vGlowW.y * 23.0 + uGlowT * 0.7);
+          totalEmissiveRadiance *= fl * spots;
+        }`);
+  };
+  m.customProgramCacheKey = () => 'pz-glow';
+  return m;
+}
+
 export function namedMaterial(name: string, fallbackColor?: THREE.Color): THREE.Material {
   const key = name.toLowerCase().replace(/\.\d+$/, '');
   const hit = matCache.get(key);
@@ -105,7 +139,7 @@ export function namedMaterial(name: string, fallbackColor?: THREE.Color): THREE.
     case key.startsWith('cloth'): m = tex(TEX.cloth(), 2, { color: 0x8a7c66 }); break;
     case key.startsWith('leather'): m = tex(TEX.leather(), 1); break;
     case key.startsWith('crystal'): m = std({ color: 0x9ff8ff, emissive: 0x3cc9e0, emissiveIntensity: 1.6, roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.88 }); break;
-    case key.startsWith('glow_warm') || key.startsWith('fire'): m = std({ color: 0xffb060, emissive: 0xff8a30, emissiveIntensity: 3 }); break;
+    case key.startsWith('glow_warm') || key.startsWith('fire'): m = glowMaterial(); break;
     case key.startsWith('glow_null'): m = std({ color: 0x9ff8ff, emissive: 0x7ff6ff, emissiveIntensity: 3 }); break;
     case key.startsWith('leaves_pine') || key.startsWith('needles'): m = std({ color: 0x2e4a2a, roughness: 0.9, side: THREE.DoubleSide }); break;
     case key.startsWith('leaves'): m = std({ color: 0x4a6a2e, roughness: 0.9, side: THREE.DoubleSide }); break;
