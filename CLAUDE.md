@@ -13,4 +13,9 @@ Desktop-App. Damit der Kontext zwischen den Sitzungen nicht verloren geht:
   zusammenfassen, wenn die Datei zu lang wird.
 - Sprache: Deutsch.
 
+## Projektaufbau (seit 28.09.2026)
+
+- `ProjectZeroUE5/` – neue Fassung für Unreal Engine 5.8.3 (Hauptarbeit, lokal am PC des Nutzers).
+- `alte-version-browser/` – bisherige Browser-Fassung (nicht löschen; Quelle für Daten-Export).
+
 @ERINNERUNGEN.md

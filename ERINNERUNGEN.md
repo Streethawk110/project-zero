@@ -2,6 +2,24 @@
 
 Zusammenfassung der bisherigen Claude-Sitzungen. Neueste Einträge oben.
 
+## 2026-09-28 – Cloud-Sitzung: Kampf-Fixes, Wechsel auf Unreal Engine 5
+
+- Nutzer: Ausweichen u. a. verbuggt → behoben (Browser): Ausweichen = gerichteter Satz (vor/zurück/seitlich,
+  `dodgeF/L` im Rig, Vorschau `?ddir=`), vorher immer Vorwärtssalto + schwebende Hocke. Tod versank im Boden
+  (Drehpunkt an den Füßen + root y −0,8) → Knie knicken, Fall nach hinten, liegt auf dem Boden; „am Boden“ = sitzt
+  gestützt. Neue Treffer-/Sprung-/Fallposen.
+- Kampf (Browser, 47 Tests): Haltung der Gegner (`poise`, `poiseMax`, 3 s ohne Treffer → erholt), voll → Taumeln
+  (betäubt), Gnadenstoß ×2,5 + kritisch, Konter nach perfekter Parade (`riposteT` 1,4 s, ×2,2), rote Warnung bei nicht
+  blockbaren Angriffen, Trefferstopp im Client, Haltungsleiste im HUD. Test `combat.test.ts`.
+- Nutzerfrage Unreal: ehrlich beraten (Grafik viel besser, aber kein Browser, Server neu, Editor-Arbeit, Monate).
+  NUTZERENTSCHEIDUNG: Unreal Engine 5.8.3, kein Browserspiel, alte Sachen NICHT löschen → alles nach
+  `alte-version-browser/` verschoben (läuft dort, 47 Tests grün), neuer Ordner `ProjectZeroUE5/`.
+- Export für UE: `alte-version-browser/tools/ue-export/export.ts` (Daten-JSON + Höhenkarte/Masken) und `textures.py`
+  (Texturen → JPEG/PNG, ORM = AO/Rauheit/255; ~51 MB, NICHT im Repo). Modelle noch nicht exportiert (Idee: glTF ohne
+  Meshopt, ein Mesh je Modell „SM_<name>“, externe Texturen; Kreaturen/Waffen mehrteilig).
+- NUTZER: will lokal weiterarbeiten, damit Claude auf sein Unreal Engine zugreifen kann → Sitzung wird auf den PC
+  geholt. Nächste Schritte siehe `ProjectZeroUE5/README.md` (C++-Projekt anlegen, kompilieren, Import, Kampf-Kern).
+
 ## 2026-09-26 – Cloud-Sitzung: „Mach besser“ (Laufstile, Füße am Hang)
 
 - Laufstile: jede Figur geht auf ihre Art (`walkName` aus `faceSeed`): Männer walk/walk_b (104_19)/walk_c (81_04)/

@@ -1,0 +1,989 @@
+[
+ {
+  "Id": "mq_1",
+  "Name": "Asche und Glas",
+  "Type": "main",
+  "Act": 1,
+  "Giver": "isra",
+  "Level": 1,
+  "Summary": "Du erwachst neben dem zerstörten Wagen der Expedition. Isra Venn, die Kartografin, lebt. Alle anderen nicht.",
+  "Stages": [
+   {
+    "Id": "wake",
+    "Text": "Durchsuche die Trümmer des Expeditionswagens.",
+    "Objectives": [
+     {
+      "Id": "search",
+      "Type": "interact",
+      "Target": "wagon_search",
+      "Text": "Wagentrümmer durchsuchen",
+      "Marker": {
+       "X": -150,
+       "Z": -41
+      }
+     }
+    ],
+    "OnComplete": [
+     "item:+expedition_seal:1",
+     "codex:person_isra"
+    ]
+   },
+   {
+    "Id": "road",
+    "Text": "Folge dem Weg nach Haldenbruck. Etwas lauert am Waldrand.",
+    "Objectives": [
+     {
+      "Id": "runner",
+      "Type": "kill",
+      "Target": "glassrunner",
+      "Count": 1,
+      "Text": "Glasläufer abwehren",
+      "Marker": {
+       "X": -118,
+       "Z": -16
+      }
+     },
+     {
+      "Id": "village",
+      "Type": "reach",
+      "Target": "haldenbruck",
+      "Text": "Haldenbruck erreichen",
+      "Marker": {
+       "X": -30,
+       "Z": 38
+      }
+     }
+    ]
+   },
+   {
+    "Id": "vogt",
+    "Text": "Sprich mit Vogt Berengar über die Expedition.",
+    "Objectives": [
+     {
+      "Id": "talk",
+      "Type": "flag",
+      "Target": "met_vogt",
+      "Text": "Mit dem Vogt sprechen",
+      "Marker": {
+       "X": 6,
+       "Z": 69
+      }
+     }
+    ]
+   }
+  ],
+  "Rewards": {
+   "Xp": 180,
+   "Gold": 30
+  }
+ },
+ {
+  "Id": "mq_2",
+  "Name": "Drei Stimmen",
+  "Type": "main",
+  "Act": 2,
+  "Giver": "vogt",
+  "Level": 2,
+  "Summary": "Die neue Welle des Nulllichts hat alle aufgeschreckt. Drei Fraktionen wollen wissen, was du gesehen hast – und was du bist.",
+  "Stages": [
+   {
+    "Id": "voices",
+    "Text": "Höre die drei Fraktionen an.",
+    "Objectives": [
+     {
+      "Id": "order",
+      "Type": "flag",
+      "Target": "heard_order",
+      "Text": "Präzeptorin Ysolde (Kapelle)",
+      "Marker": {
+       "X": 1,
+       "Z": 15
+      }
+     },
+     {
+      "Id": "kontor",
+      "Type": "flag",
+      "Target": "heard_kontor",
+      "Text": "Kontormeister Aldric (Kontor)",
+      "Marker": {
+       "X": 42,
+       "Z": 48
+      }
+     },
+     {
+      "Id": "rooted",
+      "Type": "flag",
+      "Target": "heard_rooted",
+      "Text": "Seherin Maren (Flüsterforst)",
+      "Marker": {
+       "X": -193,
+       "Z": -100
+      }
+     }
+    ]
+   },
+   {
+    "Id": "traces",
+    "Text": "Folge den Spuren der Welle: zur Ruine Sankt Odas Wacht und in die Glasnarbe.",
+    "Objectives": [
+     {
+      "Id": "bells",
+      "Type": "flag",
+      "Target": "oda_bells_solved",
+      "Text": "Das Glockenrätsel von Sankt Oda lösen",
+      "Marker": {
+       "X": -60,
+       "Z": -230
+      }
+     },
+     {
+      "Id": "vision",
+      "Type": "flag",
+      "Target": "oda_vision",
+      "Text": "Den Altar der Gezeiten berühren",
+      "Marker": {
+       "X": -60,
+       "Z": -230
+      }
+     },
+     {
+      "Id": "scar",
+      "Type": "reach",
+      "Target": "pt:200:-60:14",
+      "Text": "Das Zentrum der Glasnarbe erreichen",
+      "Marker": {
+       "X": 200,
+       "Z": -60
+      }
+     }
+    ]
+   },
+   {
+    "Id": "shard",
+    "Text": "Im Herzen der Glasnarbe pulsiert etwas. Birg es.",
+    "Objectives": [
+     {
+      "Id": "take",
+      "Type": "collect",
+      "Target": "herzsplitter",
+      "Count": 1,
+      "Text": "Herzsplitter bergen",
+      "Marker": {
+       "X": 200,
+       "Z": -62
+      }
+     }
+    ]
+   },
+   {
+    "Id": "decide",
+    "Text": "Der Herzsplitter schlägt im Takt deines Herzens. Entscheide, wem du ihn gibst – oder ob du ihn behältst.",
+    "Objectives": [
+     {
+      "Id": "decided",
+      "Type": "flag",
+      "Target": "splitter_decided",
+      "Text": "Über den Herzsplitter entscheiden (Ysolde, Aldric, Maren oder Isra)"
+     }
+    ]
+   }
+  ],
+  "Rewards": {
+   "Xp": 450,
+   "Gold": 60,
+   "SkillPoints": 1
+  }
+ },
+ {
+  "Id": "mq_3",
+  "Name": "Tiefenrast",
+  "Type": "main",
+  "Act": 3,
+  "Giver": "vogt",
+  "Level": 5,
+  "Summary": "Die Spur führt hinab in die Grube Tiefenrast, wo vor vierzig Jahren alles begann – und wo Hauptmann Rast verschwand.",
+  "Stages": [
+   {
+    "Id": "gate",
+    "Text": "Öffne das Tor der Grube Tiefenrast und steige hinab.",
+    "Objectives": [
+     {
+      "Id": "enter",
+      "Type": "reach",
+      "Target": "tiefenrast",
+      "Text": "Die Grube betreten",
+      "Marker": {
+       "X": 254,
+       "Z": -236
+      }
+     }
+    ]
+   },
+   {
+    "Id": "seal",
+    "Text": "Ein Zwillingssiegel versperrt den Stollen. Zwei Druckplatten müssen gleichzeitig belastet sein.",
+    "Objectives": [
+     {
+      "Id": "seal",
+      "Type": "flag",
+      "Target": "gate_twin_door",
+      "Text": "Zwillingssiegel öffnen",
+      "Marker": {
+       "X": 1500,
+       "Z": -68
+      }
+     }
+    ]
+   },
+   {
+    "Id": "echoes",
+    "Text": "Nachhalle klammern sich an den Hebel in der Kristallkammer. Bring sie zum Schweigen und öffne den Weg zur Kathedrale.",
+    "Objectives": [
+     {
+      "Id": "kill",
+      "Type": "kill",
+      "Target": "echo",
+      "Count": 3,
+      "Text": "Nachhalle der Kristallkammer",
+      "Marker": {
+       "X": 1520,
+       "Z": -94
+      }
+     },
+     {
+      "Id": "lever",
+      "Type": "flag",
+      "Target": "cathedral_open",
+      "Text": "Hebel umlegen",
+      "Marker": {
+       "X": 1530,
+       "Z": -88
+      }
+     },
+     {
+      "Id": "letter",
+      "Type": "flag",
+      "Target": "read_rast_letter",
+      "Text": "(Optional) Den Brief vor der Kathedrale lesen",
+      "Optional": true,
+      "Marker": {
+       "X": 1501.5,
+       "Z": -112
+      }
+     }
+    ],
+    "OnComplete": [
+     "flag:echoes_cleared"
+    ]
+   },
+   {
+    "Id": "captain",
+    "Text": "Stelle dich dem, was in der Kristallkathedrale wartet.",
+    "Objectives": [
+     {
+      "Id": "boss",
+      "Type": "flag",
+      "Target": "boss_rast_dead",
+      "Text": "Den Hohlen Hauptmann besiegen",
+      "Marker": {
+       "X": 1500,
+       "Z": -176
+      }
+     }
+    ],
+    "OnComplete": [
+     "codex:event_captain",
+     "quest:start:mq_4"
+    ]
+   }
+  ],
+  "Rewards": {
+   "Xp": 900,
+   "Gold": 150,
+   "SkillPoints": 1
+  }
+ },
+ {
+  "Id": "mq_4",
+  "Name": "Nummer Null",
+  "Type": "main",
+  "Act": 5,
+  "Giver": "vogt",
+  "Level": 8,
+  "Summary": "Der Hauptmann ist gefallen. Doch das Herz der Grube schlägt weiter – im Takt deines eigenen.",
+  "Stages": [
+   {
+    "Id": "report",
+    "Text": "Kehre nach Haldenbruck zurück und berichte Vogt Berengar.",
+    "Objectives": [
+     {
+      "Id": "vogt",
+      "Type": "flag",
+      "Target": "epilogue_vogt",
+      "Text": "Mit dem Vogt sprechen",
+      "Marker": {
+       "X": 6,
+       "Z": 69
+      }
+     }
+    ]
+   },
+   {
+    "Id": "isra",
+    "Text": "Isra wartet auf dich. Es gibt etwas, das sie dir nie gesagt hat.",
+    "Objectives": [
+     {
+      "Id": "isra",
+      "Type": "flag",
+      "Target": "epilogue_isra",
+      "Text": "Mit Isra sprechen"
+     }
+    ]
+   }
+  ],
+  "Rewards": {
+   "Xp": 1000,
+   "Gold": 200,
+   "SkillPoints": 1
+  }
+ },
+ {
+  "Id": "s_ledger",
+  "Name": "Das Messingschloss",
+  "Type": "side",
+  "Giver": "brann",
+  "Level": 3,
+  "Summary": "Rotbarts Plünderer überfallen Kontorwagen – aber nur bestimmte. Wachfrau Brann glaubt, dass jemand sie bezahlt.",
+  "Stages": [
+   {
+    "Id": "chief",
+    "Text": "Finde das Plündererlager im westlichen Flüsterforst und stelle Rotbart.",
+    "Objectives": [
+     {
+      "Id": "chief",
+      "Type": "kill",
+      "Target": "bandit_chief",
+      "Count": 1,
+      "Text": "Rotbart besiegen",
+      "Marker": {
+       "X": -250,
+       "Z": 18
+      }
+     }
+    ]
+   },
+   {
+    "Id": "ledger",
+    "Text": "Rotbart trug einen Messingschlüssel mit dem Zeichen des Kontors. Im Kontor steht ein verschlossenes Buch …",
+    "Objectives": [
+     {
+      "Id": "read",
+      "Type": "flag",
+      "Target": "read_ledger",
+      "Text": "Das Kontorbuch lesen",
+      "Marker": {
+       "X": 45,
+       "Z": 49
+      }
+     }
+    ]
+   },
+   {
+    "Id": "decide",
+    "Text": "Das Buch beweist: Aldric Vey bezahlt die Plünderer – und hat vor vierzig Jahren den Einsturz befohlen. Was tust du mit diesem Wissen?",
+    "Objectives": [
+     {
+      "Id": "dec",
+      "Type": "flag",
+      "Target": "ledger_decided",
+      "Text": "Entscheiden: Ysolde, Aldric oder Maren"
+     }
+    ]
+   }
+  ],
+  "Rewards": {
+   "Xp": 380,
+   "Gold": 40,
+   "Rep": {
+    "Folk": 10
+   }
+  }
+ },
+ {
+  "Id": "s_smith",
+  "Name": "Glut für Oswin",
+  "Type": "side",
+  "Giver": "oswin",
+  "Level": 2,
+  "Summary": "Oswins Esse ist kalt, weil kein Erz mehr aus den Nordhängen kommt.",
+  "Stages": [
+   {
+    "Id": "ore",
+    "Text": "Sammle Eisenerz an den Nordhängen und Hartholz im Wald.",
+    "Objectives": [
+     {
+      "Id": "ore",
+      "Type": "collect",
+      "Target": "iron_ore",
+      "Count": 6,
+      "Text": "Eisenerz",
+      "Marker": {
+       "X": 120,
+       "Z": -250
+      }
+     },
+     {
+      "Id": "wood",
+      "Type": "collect",
+      "Target": "wood",
+      "Count": 4,
+      "Text": "Hartholz",
+      "Marker": {
+       "X": -170,
+       "Z": -60
+      }
+     }
+    ]
+   },
+   {
+    "Id": "return",
+    "Text": "Bring Oswin das Material.",
+    "Objectives": [
+     {
+      "Id": "talk",
+      "Type": "flag",
+      "Target": "smith_done",
+      "Text": "Mit Oswin sprechen",
+      "Marker": {
+       "X": 3,
+       "Z": 51
+      }
+     }
+    ]
+   }
+  ],
+  "Rewards": {
+   "Xp": 220,
+   "Gold": 25,
+   "Items": [
+    [
+     "iron_ingot",
+     3
+    ]
+   ],
+   "Rep": {
+    "Folk": 10
+   }
+  }
+ },
+ {
+  "Id": "s_cat",
+  "Name": "Die gläserne Katze",
+  "Type": "side",
+  "Giver": "lina",
+  "Level": 1,
+  "Summary": "Linas Katze Glimmer ist in den Wald gelaufen. Lina sagt, sie sei „ein bisschen durchsichtig geworden“.",
+  "Stages": [
+   {
+    "Id": "search",
+    "Text": "Suche Glimmer am Waldrand westlich des Dorfes.",
+    "Objectives": [
+     {
+      "Id": "find",
+      "Type": "flag",
+      "Target": "cat_found",
+      "Text": "Glimmer finden",
+      "Marker": {
+       "X": -214,
+       "Z": -30
+      }
+     }
+    ]
+   },
+   {
+    "Id": "choose",
+    "Text": "Glimmer ist halb aus Glas und summt leise. Was tust du?",
+    "Objectives": [
+     {
+      "Id": "dec",
+      "Type": "flag",
+      "Target": "cat_decided",
+      "Text": "Mit Lina, Maren oder Ysolde sprechen"
+     }
+    ]
+   }
+  ],
+  "Rewards": {
+   "Xp": 160,
+   "Gold": 10,
+   "Rep": {
+    "Folk": 10
+   }
+  }
+ },
+ {
+  "Id": "s_nets",
+  "Name": "Joruns Netze",
+  "Type": "side",
+  "Giver": "jorun",
+  "Level": 2,
+  "Summary": "Plünderer haben sich am Wrack eingenistet, und Joruns Netze hängen irgendwo an der Küste fest.",
+  "Stages": [
+   {
+    "Id": "nets",
+    "Text": "Befreie Joruns Netze und vertreibe die Plünderer am Wrack.",
+    "Objectives": [
+     {
+      "Id": "n1",
+      "Type": "flag",
+      "Target": "net_1",
+      "Text": "Netz am Westufer",
+      "Marker": {
+       "X": -88,
+       "Z": 276
+      }
+     },
+     {
+      "Id": "n2",
+      "Type": "flag",
+      "Target": "net_2",
+      "Text": "Netz am Ostufer",
+      "Marker": {
+       "X": 30,
+       "Z": 262
+      }
+     },
+     {
+      "Id": "bandits",
+      "Type": "kill",
+      "Target": "bandit",
+      "Count": 2,
+      "Text": "Plünderer am Wrack",
+      "Marker": {
+       "X": -110,
+       "Z": 270
+      }
+     }
+    ]
+   },
+   {
+    "Id": "return",
+    "Text": "Kehre zu Jorun zurück.",
+    "Objectives": [
+     {
+      "Id": "talk",
+      "Type": "flag",
+      "Target": "nets_done",
+      "Text": "Mit Jorun sprechen",
+      "Marker": {
+       "X": -34,
+       "Z": 262
+      }
+     }
+    ]
+   }
+  ],
+  "Rewards": {
+   "Xp": 220,
+   "Gold": 35,
+   "Items": [
+    [
+     "potion_stamina",
+     2
+    ]
+   ],
+   "Rep": {
+    "Folk": 10
+   }
+  }
+ },
+ {
+  "Id": "s_hedda",
+  "Name": "Die Stimme im Keller",
+  "Type": "side",
+  "Giver": "hedda",
+  "Level": 3,
+  "Summary": "Jede Nacht flüstert jemand Heddas Namen. Die Stimme klingt wie ihr verstorbener Mann.",
+  "Stages": [
+   {
+    "Id": "night",
+    "Text": "Warte die Nacht ab und finde die Quelle der Stimme im Flüsterforst.",
+    "Objectives": [
+     {
+      "Id": "echo",
+      "Type": "kill",
+      "Target": "echo",
+      "Count": 1,
+      "Text": "Den Nachhall zum Schweigen bringen (nachts)",
+      "Marker": {
+       "X": -180,
+       "Z": -110
+      }
+     }
+    ]
+   },
+   {
+    "Id": "return",
+    "Text": "Erzähle Hedda, was du gefunden hast.",
+    "Objectives": [
+     {
+      "Id": "talk",
+      "Type": "flag",
+      "Target": "hedda_done",
+      "Text": "Mit Hedda sprechen",
+      "Marker": {
+       "X": 44,
+       "Z": 24
+      }
+     }
+    ]
+   }
+  ],
+  "Rewards": {
+   "Xp": 260,
+   "Gold": 30,
+   "Items": [
+    [
+     "bread",
+     5
+    ]
+   ],
+   "Rep": {
+    "Folk": 10
+   }
+  }
+ },
+ {
+  "Id": "s_emrik",
+  "Name": "Licht für die Tiefe",
+  "Type": "side",
+  "Giver": "emrik",
+  "Level": 4,
+  "Summary": "Emrik braucht Glassplitter und Irrlichtstaub für Grubenlampen, die Nachhalle blenden.",
+  "Stages": [
+   {
+    "Id": "gather",
+    "Text": "Sammle Glassplitter und Irrlichtstaub.",
+    "Objectives": [
+     {
+      "Id": "glass",
+      "Type": "collect",
+      "Target": "glass_shard",
+      "Count": 5,
+      "Text": "Glassplitter"
+     },
+     {
+      "Id": "dust",
+      "Type": "collect",
+      "Target": "moth_dust",
+      "Count": 2,
+      "Text": "Irrlichtstaub"
+     }
+    ]
+   },
+   {
+    "Id": "return",
+    "Text": "Bring die Materialien zu Emrik.",
+    "Objectives": [
+     {
+      "Id": "talk",
+      "Type": "flag",
+      "Target": "emrik_done",
+      "Text": "Mit Emrik sprechen",
+      "Marker": {
+       "X": 236,
+       "Z": -212
+      }
+     }
+    ]
+   }
+  ],
+  "Rewards": {
+   "Xp": 260,
+   "Gold": 40,
+   "Items": [
+    [
+     "potion_heal_big",
+     2
+    ]
+   ]
+  }
+ },
+ {
+  "Id": "c_tobin",
+  "Name": "Tobins Tagebuch",
+  "Type": "companion",
+  "Giver": "isra",
+  "Level": 2,
+  "Summary": "Isras Bruder Tobin verschwand vor einem Jahr in der Region. Seine Tagebuchseiten sind verstreut.",
+  "Stages": [
+   {
+    "Id": "pages",
+    "Text": "Finde die drei Seiten aus Tobins Tagebuch.",
+    "Objectives": [
+     {
+      "Id": "p1",
+      "Type": "flag",
+      "Target": "tobin_page_1",
+      "Text": "Seite im Flüsterforst",
+      "Marker": {
+       "X": -214,
+       "Z": -92
+      }
+     },
+     {
+      "Id": "p2",
+      "Type": "flag",
+      "Target": "tobin_page_2",
+      "Text": "Seite in der Glasnarbe",
+      "Marker": {
+       "X": 172,
+       "Z": -38
+      }
+     },
+     {
+      "Id": "p3",
+      "Type": "flag",
+      "Target": "tobin_page_3",
+      "Text": "Seite in Tiefenrast",
+      "Marker": {
+       "X": 1524,
+       "Z": -92
+      }
+     }
+    ]
+   },
+   {
+    "Id": "talk",
+    "Text": "Gib Isra die Seiten.",
+    "Objectives": [
+     {
+      "Id": "talk",
+      "Type": "flag",
+      "Target": "tobin_done",
+      "Text": "Mit Isra sprechen"
+     }
+    ]
+   }
+  ],
+  "Rewards": {
+   "Xp": 400,
+   "Items": [
+    [
+     "relic_compass",
+     1
+    ]
+   ]
+  }
+ },
+ {
+  "Id": "o_fires",
+  "Name": "Die Wachfeuer",
+  "Type": "faction",
+  "Faction": "order",
+  "Giver": "ysolde",
+  "Level": 2,
+  "Summary": "Der Orden will die alten Wachfeuer entzünden, um „das Licht mit Licht zu bannen“.",
+  "Stages": [
+   {
+    "Id": "light",
+    "Text": "Entzünde die drei Ordensfeuerschalen.",
+    "Objectives": [
+     {
+      "Id": "b1",
+      "Type": "flag",
+      "Target": "brazier_1",
+      "Text": "Feuerschale am Nordweg",
+      "Marker": {
+       "X": -30,
+       "Z": -130
+      }
+     },
+     {
+      "Id": "b2",
+      "Type": "flag",
+      "Target": "brazier_2",
+      "Text": "Feuerschale am Ostweg",
+      "Marker": {
+       "X": 128,
+       "Z": -30
+      }
+     },
+     {
+      "Id": "b3",
+      "Type": "flag",
+      "Target": "brazier_3",
+      "Text": "Feuerschale am Fluss",
+      "Marker": {
+       "X": -110,
+       "Z": 120
+      }
+     }
+    ]
+   },
+   {
+    "Id": "return",
+    "Text": "Berichte Präzeptorin Ysolde.",
+    "Objectives": [
+     {
+      "Id": "talk",
+      "Type": "flag",
+      "Target": "fires_done",
+      "Text": "Mit Ysolde sprechen",
+      "Marker": {
+       "X": 1,
+       "Z": 15
+      }
+     }
+    ]
+   }
+  ],
+  "Rewards": {
+   "Xp": 240,
+   "Gold": 30,
+   "Rep": {
+    "Order": 15
+   }
+  }
+ },
+ {
+  "Id": "k_probes",
+  "Name": "Messungen in der Glasnarbe",
+  "Type": "faction",
+  "Faction": "kontor",
+  "Giver": "aldric",
+  "Level": 3,
+  "Summary": "Das Kontor hat Messsonden in der Glasnarbe verloren. Aldric will ihre Daten – und zwar vor dem Orden.",
+  "Stages": [
+   {
+    "Id": "read",
+    "Text": "Lies die drei Messsonden in der Glasnarbe aus.",
+    "Objectives": [
+     {
+      "Id": "p1",
+      "Type": "flag",
+      "Target": "probe_1",
+      "Text": "Sonde West",
+      "Marker": {
+       "X": 175,
+       "Z": -75
+      }
+     },
+     {
+      "Id": "p2",
+      "Type": "flag",
+      "Target": "probe_2",
+      "Text": "Sonde Süd",
+      "Marker": {
+       "X": 222,
+       "Z": -88
+      }
+     },
+     {
+      "Id": "p3",
+      "Type": "flag",
+      "Target": "probe_3",
+      "Text": "Sonde Nord",
+      "Marker": {
+       "X": 205,
+       "Z": -30
+      }
+     }
+    ]
+   },
+   {
+    "Id": "return",
+    "Text": "Bring die Daten zu Aldric Vey.",
+    "Objectives": [
+     {
+      "Id": "talk",
+      "Type": "flag",
+      "Target": "probes_done",
+      "Text": "Mit Aldric sprechen",
+      "Marker": {
+       "X": 42,
+       "Z": 48
+      }
+     }
+    ]
+   }
+  ],
+  "Rewards": {
+   "Xp": 260,
+   "Gold": 80,
+   "Rep": {
+    "Kontor": 15
+   }
+  }
+ },
+ {
+  "Id": "r_seed",
+  "Name": "Der Samen",
+  "Type": "faction",
+  "Faction": "rooted",
+  "Giver": "maren",
+  "Level": 3,
+  "Summary": "Maren will einen Samen am Wurzelschrein pflanzen – doch ein Wurzelkoloss an den Nordhängen trägt, was der Samen braucht.",
+  "Stages": [
+   {
+    "Id": "bark",
+    "Text": "Hole eine Borkenplatte von einem Wurzelkoloss.",
+    "Objectives": [
+     {
+      "Id": "bark",
+      "Type": "collect",
+      "Target": "bark_plate",
+      "Count": 1,
+      "Text": "Borkenplatte",
+      "Marker": {
+       "X": 100,
+       "Z": -180
+      }
+     }
+    ]
+   },
+   {
+    "Id": "plant",
+    "Text": "Pflanze den Samen am Wurzelschrein.",
+    "Objectives": [
+     {
+      "Id": "plant",
+      "Type": "flag",
+      "Target": "seed_planted",
+      "Text": "Samen pflanzen",
+      "Marker": {
+       "X": -200,
+       "Z": -104
+      }
+     }
+    ],
+    "OnComplete": [
+     "item:-bark_plate:1"
+    ]
+   },
+   {
+    "Id": "return",
+    "Text": "Sprich mit Maren.",
+    "Objectives": [
+     {
+      "Id": "talk",
+      "Type": "flag",
+      "Target": "seed_done",
+      "Text": "Mit Maren sprechen",
+      "Marker": {
+       "X": -193,
+       "Z": -100
+      }
+     }
+    ]
+   }
+  ],
+  "Rewards": {
+   "Xp": 260,
+   "Gold": 20,
+   "Rep": {
+    "Rooted": 15
+   }
+  }
+ }
+]

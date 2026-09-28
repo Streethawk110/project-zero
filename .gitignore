@@ -1,20 +1,13 @@
-node_modules/
-dist/
-dist-*/
-*.log
-.env
-.env.*
-!.env.example
-apps/server/data/
-apps/desktop/out/
-apps/desktop/release/
-test-results/
-playwright-report/
-.vite/
-*.tsbuildinfo
-tools/blender/__pycache__/
-release/
-tools/blender/.mh_cache/
-tools/anim/.cache/
-tools/anim/__pycache__/
-tools/voice/.cache/
+# Unreal Engine 5
+ProjectZeroUE5/Binaries/
+ProjectZeroUE5/Intermediate/
+ProjectZeroUE5/Saved/
+ProjectZeroUE5/DerivedDataCache/
+ProjectZeroUE5/.vs/
+ProjectZeroUE5/*.sln
+ProjectZeroUE5/*.VC.db
+ProjectZeroUE5/*.VC.opendb
+# Import-Texturen werden lokal erzeugt (python3 alte-version-browser/tools/ue-export/textures.py, ~50 MB)
+ProjectZeroUE5/Import/Textures/
+# Browser-Fassung
+alte-version-browser/node_modules/
