@@ -24,6 +24,8 @@ export class EntityView {
   animT = 0;
   hp = 1;
   hpAbs = 0;
+  /** Haltung 0–100, 255 = taumelt */
+  poise = 0;
   hpMax = 0;
   status = '';
   party?: string;
@@ -299,6 +301,7 @@ export class EntityManager {
       if (s.h < v.hp - 0.001) v.lastHit = performance.now();
       v.hp = s.h;
       if (s.hp !== undefined) v.hpAbs = s.hp;
+      v.poise = s.po ?? 0;
       if (s.mhp !== undefined) v.hpMax = s.mhp;
       v.status = s.s ?? '';
       v.party = s.pt;

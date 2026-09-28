@@ -348,11 +348,18 @@ export class Game {
           }
           if (isMe && !e.heal && e.n > 0) { this.cam.addShake(Math.min(0.6, e.n / 60)); this.playerRig?.hit(); this.ui.damageFlash(); }
           if (fromMe && e.crit) this.cam.addShake(0.12);
+          if (fromMe && !isMe && !e.heal && e.n > 0 && e.dt === 'physical') this.hitStop = Math.max(this.hitStop, e.crit ? 0.085 : 0.05);
           this.audio.hit(e.dt, e.crit, e.blocked ?? false, e.perfect ?? false, new THREE.Vector3(e.x, e.y, e.z), isMe);
           this.ui.damageNumber(e, isMe, fromMe);
           break;
         }
         case 'fx':
+          if (e.src === this.conn.eid) {
+            if (e.kind === 'finisher') { this.hitStop = 0.2; this.cam.addShake(0.4); }
+            else if (e.kind === 'riposte') { this.hitStop = 0.12; this.cam.addShake(0.2); }
+            else if (e.kind === 'stagger') this.ui.hud.toast('Gegner taumelt – jetzt zuschlagen!', 'good', 2);
+          }
+          if (e.kind === 'parry' && Math.hypot(e.x - this.pred.x, e.z - this.pred.z) < 2) this.ui.hud.toast('Perfekte Parade – Konter!', 'good', 1.6);
           this.fx.event(e.kind, e.x, e.y, e.z, e.r, e.yaw, e.dur, e.tx, e.tz, e.r);
           this.audio.fx(e.kind, new THREE.Vector3(e.x, e.y, e.z));
           break;
@@ -582,7 +589,10 @@ export class Game {
     this.inDungeon = ppos.x > 1000;
     const pv = this.ents.views.get(this.conn.eid);
     // Die eigene Figur ist nicht in den Snapshots enthalten: eigene Ansicht verwalten
-    this.updateOwnView(ppos, dt);
+    // Trefferstopp: Figuren frieren für einen Moment ein (Simulation und Bewegung laufen weiter)
+    const vdt = this.hitStop > 0 ? dt * 0.06 : dt;
+    this.hitStop = Math.max(0, this.hitStop - dt);
+    this.updateOwnView(ppos, vdt);
 
     // Entitäten
     const renderTime = performance.now() / 1000 - (this.serverTimeOffset ?? 0) - this.interpDelay;
@@ -590,7 +600,7 @@ export class Game {
     this.ents.night = this.env.nightFactor;
     // Kälte für sichtbaren Atem: nachts, im Regen, im Nebel am Morgen; im Gebirge zusätzlich je Höhe (EntityManager)
     this.ents.cold = this.inDungeon ? 0 : this.env.nightFactor * 0.55 + (this.weather === 'rain' || this.weather === 'fog' ? 0.15 * (this.snap?.wInt ?? 0) : 0);
-    if (!this.paused) this.ents.update(dt, renderTime, this.groundAt, this.time);
+    if (!this.paused) this.ents.update(vdt, renderTime, this.groundAt, this.time);
     void pv;
 
     // Kamera & Umgebung
@@ -815,6 +825,8 @@ export class Game {
     }
   }
   private npcFootfalls = new Map<number, number>();
+  /** Trefferstopp: kurzes Einfrieren der Animationen, damit Treffer Gewicht haben (Sekunden) */
+  private hitStop = 0;
   /** Restzeit mit gezogener Waffe (Sekunden) */
   private drawnT = 0;
 

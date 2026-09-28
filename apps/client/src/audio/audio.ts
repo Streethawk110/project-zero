@@ -342,6 +342,10 @@ export class AudioEngine {
     if (!o) return;
     switch (kind) {
       case 'slash': case 'enemy_slash': this.noiseBurst(o, t, 0.18, 'bandpass', 2500, 700, 2, 0.35, 0.03); break;
+      case 'warn_unblockable': this.tone(o, t, 1300, 0.25, 'square', 0.12, 1700); break;
+      case 'stagger': this.tone(o, t, 220, 0.5, 'triangle', 0.25, 110); this.noiseBurst(o, t, 0.4, 'bandpass', 900, 300, 2, 0.3); break;
+      case 'riposte': this.noiseBurst(o, t, 0.25, 'bandpass', 3200, 900, 3, 0.6, 0.02); this.tone(o, t, 900, 0.35, 'sine', 0.2, 1400); break;
+      case 'finisher': this.tone(o, t, 70, 0.9, 'sine', 0.9, 35); this.noiseBurst(o, t, 0.6, 'lowpass', 1800, 150, 1, 0.9, 0.01); break;
       case 'slash_heavy': this.noiseBurst(o, t, 0.3, 'bandpass', 1600, 300, 1.5, 0.5, 0.06); break;
       case 'ground_slam': case 'meteor_impact': this.tone(o, t, 60, 0.8, 'sine', 0.9, 30); this.noiseBurst(o, t, 0.9, 'lowpass', 1200, 80, 1, 1); break;
       case 'fire_burst': case 'flame_cone': case 'impact_ember': this.noiseBurst(o, t, 0.7, 'lowpass', 2500, 300, 0.7, 0.8, 0.02); break;

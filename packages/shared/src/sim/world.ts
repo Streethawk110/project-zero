@@ -117,7 +117,7 @@ export class World {
     const stats = computeStats(char);
     const p: PlayerEnt = {
       id: this.newId(), kind: 'player', pid, char, stats, m: newMoveState(x, Math.max(y, char.pos.y), z, char.pos.yaw ?? 0), statuses: [], area, anim: 'idle',
-      hp: stats.maxHp, mana: stats.maxMana, stamina: stats.maxStamina, shield: 0, cds: {}, action: null, combo: 0, comboT: 0,
+      hp: stats.maxHp, mana: stats.maxMana, stamina: stats.maxStamina, shield: 0, cds: {}, action: null, combo: 0, comboT: 0, riposteT: 0,
       inputs: [], lastInput: { ...EMPTY_INPUT }, lastSeq: 0, inputBudget: 0.3, blocking: false, blockStart: -10, blocks: 0,
       downedT: 0, dead: false, deadT: 0, sight: false, combatT: 99, party: null, lastPath: 'guardian', lastDmgType: 'physical', lastAtkAnim: 'atk1',
       interacting: null, dialogue: null, quickCd: 0, zone: null, laststandCd: 0, vengeance: false, critNext: 0, empowerNext: 0,
@@ -472,7 +472,10 @@ export class World {
     else if (w.type === 'bow') { dur = 1 / speed; hitAt = dur * 0.55; id = 'bow'; }
     else if (w.type === 'staff') { dur = 1 / speed; hitAt = dur * 0.4; id = 'cast'; p.mana -= 4; }
     else { dur = (1 / speed) * (idx === 2 ? 1.25 : 0.95); hitAt = dur * 0.42; id = `atk${idx + 1}`; p.stamina -= 5; }
-    p.action = { type: heavy ? 'heavy' : 'attack', id, t: 0, dur, hitAt, hit: false, yaw, lockMove: false, moveMult: ranged ? 0.55 : 0.35, data: { combo: idx, heavy } };
+    // Konter: nach perfekter Parade ein schneller, wuchtiger Hieb von oben
+    const riposte = !ranged && !heavy && p.riposteT > 0;
+    if (riposte) { dur = 0.8 / speed; hitAt = dur * 0.45; id = 'atk3'; p.riposteT = 0; }
+    p.action = { type: heavy ? 'heavy' : 'attack', id, t: 0, dur, hitAt, hit: false, yaw, lockMove: false, moveMult: ranged ? 0.55 : 0.35, data: { combo: idx, heavy, riposte } };
     p.m.yaw = yaw;
     p.lastAtkAnim = id;
     p.combo = idx + 1;
@@ -487,7 +490,7 @@ export class World {
   }
 
   /** Nahkampftreffer-Prüfung (Kegel). */
-  meleeHit(p: PlayerEnt, yaw: number, range: number, arc: number, mult: number, opts: { dmgType?: DamageType; stun?: number; knock?: number; path?: SkillPath; heavy?: boolean; skill?: string; maxTargets?: number; slow?: number } = {}) {
+  meleeHit(p: PlayerEnt, yaw: number, range: number, arc: number, mult: number, opts: { dmgType?: DamageType; stun?: number; knock?: number; path?: SkillPath; heavy?: boolean; skill?: string; maxTargets?: number; slow?: number; poise?: number; forceCrit?: boolean; riposte?: boolean } = {}) {
     const dir = yawDir(yaw);
     let hits = 0;
     const w = weaponDamage(p.char);
@@ -499,7 +502,7 @@ export class World {
       if (Math.abs(e.m.y - p.m.y) > 3) continue;
       const ang = Math.acos(clamp((dx * dir.x + dz * dir.z) / (d || 1), -1, 1));
       if (d > r && ang > arc + Math.atan2(r, d)) continue;
-      this.damageFromPlayer(p, e, w.dmg * mult * p.stats.melee, opts.dmgType ?? w.dmgType, { path: opts.path ?? 'guardian', heavy: opts.heavy, skill: opts.skill });
+      this.damageFromPlayer(p, e, w.dmg * mult * p.stats.melee, opts.dmgType ?? w.dmgType, { path: opts.path ?? 'guardian', heavy: opts.heavy, skill: opts.skill, poise: opts.poise, forceCrit: opts.forceCrit, riposte: opts.riposte, melee: true });
       if (opts.stun) this.addStatus(e, 'stunned', opts.stun, 1, p.id);
       if (opts.slow) this.addStatus(e, 'slowed', 3, opts.slow, p.id);
       if (opts.knock) this.knockback(e, p.m.x, p.m.z, opts.knock);
@@ -543,16 +546,25 @@ export class World {
   }
 
   /** Schaden von Spieler (oder Begleiter) an Gegner bzw. Duellgegner. */
-  damageFromPlayer(p: PlayerEnt, e: EnemyEnt | PlayerEnt, base: number, type: DamageType, o: { path: SkillPath; heavy?: boolean; skill?: string; noCrit?: boolean; aoe?: boolean; proj?: boolean; forceCrit?: boolean; companion?: boolean } = { path: 'guardian' }) {
+  damageFromPlayer(p: PlayerEnt, e: EnemyEnt | PlayerEnt, base: number, type: DamageType, o: { path: SkillPath; heavy?: boolean; skill?: string; noCrit?: boolean; aoe?: boolean; proj?: boolean; forceCrit?: boolean; companion?: boolean; poise?: number; riposte?: boolean; melee?: boolean } = { path: 'guardian' }) {
     if (e.kind === 'enemy' && e.state === 'dead') return 0;
     let dmg = base;
     const c = p.char;
+    // Gnadenstoß: Nahkampftreffer auf einen taumelnden Gegner
+    const finisher = e.kind === 'enemy' && e.staggerT > 0 && !!o.melee && !o.companion;
+    if (finisher) {
+      dmg *= 2.5;
+      e.staggerT = 0;
+      e.statuses = e.statuses.filter((st) => st.id !== 'stunned');
+      this.emitNear(e.m.x, e.m.z, { e: 'fx', kind: 'finisher', x: e.m.x, y: e.m.y + this.entHeight(e) * 0.6, z: e.m.z, src: p.id }, 60, e.area);
+    }
+    if (o.riposte) this.emitNear(e.m.x, e.m.z, { e: 'fx', kind: 'riposte', x: e.m.x, y: e.m.y + this.entHeight(e) * 0.6, z: e.m.z, src: p.id }, 60, e.area);
     // Kritischer Treffer
     let critChance = p.stats.critChance;
     const hpFrac = e.kind === 'enemy' ? e.hp / e.maxHp : e.hp / e.stats.maxHp;
     if (hpFrac < 0.5) critChance += rank(c, 'h_predator') * 0.06;
     let crit = !o.noCrit && this.rand.next() < critChance;
-    if (p.critNext > 0 || o.forceCrit) { crit = true; p.critNext = 0; }
+    if (p.critNext > 0 || o.forceCrit || finisher) { crit = true; p.critNext = 0; }
     let critDmg = p.stats.critDmg + (rank(c, 'h_predator') >= 3 ? 0.2 : 0);
     if (crit) dmg *= critDmg;
     // Schwachstelle / Rücken
@@ -593,6 +605,7 @@ export class World {
       e.threat.set(p.id, (e.threat.get(p.id) ?? 0) + dealt);
       e.dmgBy.set(p.id, (e.dmgBy.get(p.id) ?? 0) + dealt);
       this.recordResonance(p, e, o.path, o.companion);
+      if (!finisher && e.state !== 'dead') this.addPoise(e, p, o.poise ?? (o.heavy ? 38 : o.proj ? 8 : o.aoe ? 6 : 14) * (e.def.weakSpot && e.def.behaviour === 'tank' && !weak && !o.aoe ? 0.5 : 1));
       // Statuseffekte von Waffe/Passiven
       if (!o.aoe && !o.companion) {
         const bleedChance = (w.special === 'bleed_chance' ? 0.2 : 0) + (rank(c, 'h_barbs') === 1 ? 0.2 : rank(c, 'h_barbs') >= 2 ? 0.35 : 0) + (o.proj && this.equippedSpecial(p, 'bleed_arrows') ? 0.3 : 0);
@@ -607,6 +620,19 @@ export class World {
     p.lastDmgType = type;
     p.combatT = 0;
     return dealt;
+  }
+
+  /** Haltung eines Gegners zermürben; voll → taumelt (betäubt, offen für einen Gnadenstoß). */
+  addPoise(e: EnemyEnt, p: PlayerEnt | null, amount: number) {
+    if (e.def.behaviour === 'passive' || e.staggerT > 0 || amount <= 0) return;
+    e.poise += amount;
+    e.poiseT = 0;
+    if (e.poise < poiseMax(e)) return;
+    e.poise = 0;
+    e.staggerT = e.boss ? 1.6 : e.def.behaviour === 'tank' ? 2.4 : 3;
+    e.attack = null;
+    this.addStatus(e, 'stunned', e.staggerT, 1, p?.id ?? 0);
+    this.emitNear(e.m.x, e.m.z, { e: 'fx', kind: 'stagger', x: e.m.x, y: e.m.y + this.entHeight(e), z: e.m.z, src: p?.id ?? 0 }, 60, e.area);
   }
 
   equippedSpecial(p: PlayerEnt, special: string) {
@@ -735,6 +761,9 @@ export class World {
           }
           if (this.equippedSpecial(p, 'signet') || weaponDamage(p.char).special === 'rast_blade') p.empowerNext = 3;
           this.emit(p, { e: 'fx', kind: 'parry', x: p.m.x, y: p.m.y + 1.2, z: p.m.z });
+          // Konterfenster: der nächste leichte Hieb innerhalb von 1,4 s wird zum Konter
+          p.riposteT = 1.4;
+          if (src && src.kind === 'enemy' && src.state !== 'dead') this.addPoise(src, p, 30);
         } else {
           const bp = p.stats.blockPower;
           const cost = dmg * 0.9 * (1 - rank(p.char, 'g_steadfast') * 0.25);
@@ -2030,7 +2059,14 @@ export class World {
     if (this.spawnCheckT <= 0) { this.spawnCheckT = 1; this.updateSpawns(); }
     for (const e of [...this.ents.values()]) {
       switch (e.kind) {
-        case 'enemy': this.updateStatuses(e, dt); updateEnemy(this, e, dt); break;
+        case 'enemy':
+          this.updateStatuses(e, dt);
+          // Haltung erholt sich nach 3 s ohne Treffer; Taumeln läuft ab
+          e.poiseT += dt;
+          if (e.poiseT > 3) e.poise = Math.max(0, e.poise - dt * 25);
+          if (e.staggerT > 0) e.staggerT = Math.max(0, e.staggerT - dt);
+          updateEnemy(this, e, dt);
+          break;
         case 'companion': this.updateStatuses(e, dt); updateCompanion(this, e, dt); break;
         case 'npc': this.updateNpc(e, dt); break;
         case 'proj': this.updateProjectile(e, dt); break;
@@ -2068,6 +2104,7 @@ export class World {
     p.critNext = Math.max(0, p.critNext - dt);
     p.empowerNext = Math.max(0, p.empowerNext - dt);
     p.comboT -= dt;
+    p.riposteT = Math.max(0, p.riposteT - dt);
     p.combatT += dt;
     p.regenDelay -= dt;
     for (const k in p.cds) { p.cds[k] = p.cds[k]! - dt; if (p.cds[k]! <= 0) delete p.cds[k]; }
@@ -2251,9 +2288,11 @@ export class World {
         this.fireProjectile(p, a.yaw, { kind: w.dmgType === 'fire' ? 'ember' : 'bolt', speed: 30, dmg: this.spellBase(p) * 0.9, type: w.dmgType, path: 'arcanist', homing: true });
       } else {
         const combo = Number(a.data?.combo ?? 0);
-        const mult = heavy ? 2.2 : [1, 1.1, 1.5][combo]!;
-        const arc = heavy ? 1.2 : combo === 2 ? 1.25 : 1.0;
-        this.meleeHit(p, a.yaw, w.range + (heavy ? 0.3 : 0), arc, mult, { path: 'guardian', heavy, knock: heavy ? 1.5 : combo === 2 ? 0.6 : 0 });
+        const riposte = !!a.data?.riposte;
+        const mult = riposte ? 2.2 : heavy ? 2.2 : [1, 1.1, 1.5][combo]!;
+        const arc = heavy ? 1.2 : combo === 2 || riposte ? 1.25 : 1.0;
+        this.meleeHit(p, a.yaw, w.range + (heavy ? 0.3 : 0), arc, mult, { path: 'guardian', heavy, knock: heavy || riposte ? 1.5 : combo === 2 ? 0.6 : 0,
+          poise: riposte ? 55 : heavy ? 38 : combo === 2 ? 22 : 14, forceCrit: riposte, riposte });
         this.emitNear(p.m.x, p.m.z, { e: 'fx', kind: heavy ? 'slash_heavy' : 'slash', x: p.m.x, y: p.m.y + 1.1, z: p.m.z, yaw: a.yaw, src: p.id }, 50, p.area);
       }
     } else if (a.type === 'skill') {
@@ -2468,7 +2507,7 @@ export class World {
     const e: EnemyEnt = {
       id: this.newId(), kind: 'enemy', def, level, hp, maxHp: hp, dmgMult: sc.dmg, spawn, home: { x, z }, state: 'idle', target: null, threat: new Map(),
       attack: null, atkCd: {}, dmgBy: new Map(), deadT: 0, thinkT: this.rand.next() * 0.5, strafe: this.rand.next() < 0.5 ? 1 : -1, wanderT: this.rand.next() * 5, wanderTo: null,
-      lastHits: [], tauntBy: null, fleeT: 0, gazed: false, lastPos: { x, z }, stuckT: 0, playersInScale: nPlayers,
+      lastHits: [], tauntBy: null, fleeT: 0, gazed: false, lastPos: { x, z }, stuckT: 0, playersInScale: nPlayers, poise: 0, poiseT: 0, staggerT: 0,
       m: newMoveState(x, 0, z, this.rand.next() * 6.28), statuses: [], area, anim: 'idle',
     };
     e.m.y = groundHeight(this.moveEnv(null), x, z, 60);
@@ -2896,6 +2935,8 @@ export class World {
         if (full) { base.st = 1; base.d = e.def.id; base.l = e.level; base.n = e.def.name; }
         base.tg = e.target ?? undefined;
         if (e.boss) { base.hp = Math.ceil(e.hp); base.mhp = e.maxHp; base.d = e.def.id; }
+        if (e.staggerT > 0) base.po = 255;
+        else if (e.poise > 0.5) base.po = Math.round((e.poise / poiseMax(e)) * 100);
         break;
       case 'npc':
         base.k = 'n';
@@ -3004,4 +3045,10 @@ export function needStaminaMult(n: { food: number }) {
 /** Müdigkeit: langsamere Erholung der Ausdauer (müde −30 %, erschöpft −50 %). */
 export function needRegenMult(n: { rest: number }) {
   return n.rest < 8 ? 0.5 : n.rest < 25 ? 0.7 : 1;
+}
+
+/** Haltung, bis ein Gegner taumelt: robuste Gegner und Bosse halten mehr aus. */
+export function poiseMax(e: EnemyEnt) {
+  const base = 40 + e.def.hp * 0.25;
+  return e.boss ? base * 1.6 : e.def.behaviour === 'tank' ? base * 1.3 : base;
 }

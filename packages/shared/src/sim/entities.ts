@@ -55,6 +55,8 @@ export interface PlayerEnt extends BaseEnt {
   action: ActionState | null;
   combo: number;
   comboT: number;
+  /** Konterfenster nach perfekter Parade (s): nächster leichter Hieb = Konter */
+  riposteT: number;
   inputs: MoveInput[];
   lastInput: MoveInput;
   lastSeq: number;
@@ -144,6 +146,10 @@ export interface EnemyEnt extends BaseEnt {
   lastPos: { x: number; z: number };
   stuckT: number;
   playersInScale: number;
+  /** Haltung: Wucht der Treffer; voll → Gegner taumelt (Gnadenstoß möglich) */
+  poise: number;
+  poiseT: number;
+  staggerT: number;
 }
 
 export interface BossState {

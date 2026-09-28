@@ -76,6 +76,8 @@ const rigs: HumanoidRig[] = [];
 list.forEach((s, i) => {
   const rig = new HumanoidRig({ faceSeed: params.get('seed') ? params.get('seed')! + i : undefined, appearance: { skin: s.skin, hair: params.get('hair') ? Number(params.get('hair')) : s.hair, hairColor: params.get('hc') ? Number(params.get('hc')) : i % 6, beard: params.get('beard') ? Number(params.get('beard')) : s.beard, body: s.body, height: 1, eyes: i % 4, scar: 0, sex: s.sex ?? 0 }, outfit: s.outfit });
   rig.setEquipment(s.weapon ?? '', s.offhand ?? '', s.outfit);
+  // Ausweichrichtung (?ddir=Grad: 0 vorwärts, 90 links, 180 rückwärts)
+  if (params.get('ddir')) { const a = Number(params.get('ddir')) * Math.PI / 180; Object.assign(rig, { dodgeF: Math.cos(a), dodgeL: Math.sin(a) }); }
   // Laufstil erzwingen (?walk=walk_f)
   if (params.get('walk')) (rig as unknown as { walkName: string }).walkName = params.get('walk')!;
   rig.root.position.set((i - (list.length - 1) / 2) * 1.25, 0, 0);

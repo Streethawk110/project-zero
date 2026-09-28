@@ -334,7 +334,10 @@ export class Hud {
       placed.push({ el, x: (p.x * 0.5 + 0.5) * w, y: (-p.y * 0.5 + 0.5) * hh, d });
       el.style.opacity = String(Math.max(0.35, 1 - d / 45));
       const color = isEnemy ? '#ffb0a0' : v.kind === 'n' ? '#f1d59a' : v.kind === 'c' ? '#9ff8ff' : '#bfe0ff';
-      const hp = isEnemy || v.kind === 'p' ? `<div style="width:5em;height:0.3em;background:rgba(0,0,0,0.6);margin:0.15em auto 0"><div style="height:100%;width:${Math.max(0, v.hp) * 100}%;background:${isEnemy ? '#c8423a' : '#6fcf6a'}"></div></div>` : '';
+      const hp = (isEnemy || v.kind === 'p' ? `<div style="width:5em;height:0.3em;background:rgba(0,0,0,0.6);margin:0.15em auto 0"><div style="height:100%;width:${Math.max(0, v.hp) * 100}%;background:${isEnemy ? '#c8423a' : '#6fcf6a'}"></div></div>` : '')
+        // Haltung: füllt sich mit jedem Treffer; voll → Gegner taumelt (Gnadenstoß)
+        + (isEnemy && v.poise === 255 ? `<div style="font-size:0.7em;color:#ffd35a;font-weight:600;text-shadow:0 0 6px #b8860b">Taumelt – Gnadenstoß!</div>`
+          : isEnemy && v.poise > 0 ? `<div style="width:5em;height:0.18em;background:rgba(0,0,0,0.5);margin:0.1em auto 0"><div style="height:100%;width:${Math.min(100, v.poise)}%;background:#e0b040"></div></div>` : '');
       const html = `<div style="color:${color}">${escapeHtml(v.name)}${isEnemy && v.level ? ` <span style="opacity:.7">${v.level}</span>` : ''}${v.anim === 'downed' ? ' ✚' : ''}</div>${hp}`;
       if (el.dataset['h'] !== html) { el.innerHTML = html; el.dataset['h'] = html; }
     }

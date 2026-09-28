@@ -230,6 +230,9 @@ export class HumanoidRig {
   private varIntroT = 0;
   /** Eigene Gehweise dieser Figur (Aufnahme eines anderen Menschen; Frauen: Aufnahme einer Frau) */
   private walkName = 'walk';
+  /** Ausweichrichtung relativ zum Blick (vorwärts / links) */
+  private dodgeF = -1;
+  private dodgeL = 0;
   /** Gangrichtung relativ zum Blick: 0 vorwärts, 1 links, 2 rechts, 3 rückwärts (eigene Aufnahmen) */
   private moveCat = 0;
   /** Beine drehen zur Bewegungsrichtung (schräg), Oberkörper bleibt beim Blick */
@@ -1017,6 +1020,8 @@ export class HumanoidRig {
     this.speed = speed;
     if (this.human) this.updateSwing(dt);
     this.flinch = Math.max(0, this.flinch - dt);
+    // Ausweichrichtung zu Beginn festhalten (relativ zum Blick; vorwärts, links = +)
+    if (this.anim === 'dodge' && this.animT <= dt + 1e-6 && speed > 0.5) { const l = Math.hypot(fwd, side) || 1; this.dodgeF = fwd / l; this.dodgeL = side / l; }
     const gaitAnim = this.anim === 'walk' || this.anim === 'run' || this.anim === 'sprint';
     // Richtung: vorwärts, seitwärts (links/rechts) und rückwärts mit eigenen Aufnahmen; die Restabweichung
     // (schräg) übernehmen die Beine, der Oberkörper bleibt beim Blick
@@ -1739,11 +1744,30 @@ export class HumanoidRig {
       case 'sprint': return this.mocapOn ? ready({}) : this.gait(Math.max(this.speed, 5));
       case 'swim': return { rootRot: [1.3, 0, 0], root: [0, 0.4, 0], upperArmL: [-2.6 + s(t * 4) * 1.2, 0, 0.3], upperArmR: [-2.6 - s(t * 4) * 1.2, 0, -0.3], thighL: [s(t * 6) * 0.3, 0, 0], thighR: [-s(t * 6) * 0.3, 0, 0] };
       case 'tread': return { root: [0, 0.2 + s(t * 2) * 0.05, 0], upperArmL: [-0.4, 0, 0.9 + s(t * 3) * 0.3], upperArmR: [-0.4, 0, -0.9 - s(t * 3) * 0.3], thighL: [s(t * 3) * 0.4, 0, 0], thighR: [-s(t * 3) * 0.4, 0, 0], shinL: [0.6, 0, 0], shinR: [0.6, 0, 0] };
-      case 'jump': return ready({ thighL: [-0.9, 0, 0], shinL: [1.4, 0, 0], thighR: [-0.2, 0, 0], shinR: [0.6, 0, 0], upperArmL: [-0.8, 0, 0.5], upperArmR: [-0.8, 0, -0.5], spine: [0.1, 0, 0] });
-      case 'fall': return ready({ thighL: [-0.5, 0, 0.1], shinL: [0.8, 0, 0], thighR: [-0.3, 0, -0.1], shinR: [0.5, 0, 0], upperArmL: [-0.3, 0, 0.9], upperArmR: [-0.3, 0, -0.9] });
+      case 'jump': return ready({ thighL: [-0.75, 0, 0.04], shinL: [1.15, 0, 0], footL: [-0.25, 0, 0], thighR: [-0.25, 0, -0.04], shinR: [0.55, 0, 0], footR: [-0.15, 0, 0], spine: [0.06, 0, 0], head: [-0.08, 0, 0],
+        upperArmL: [-0.45, 0, 0.35], foreArmL: [-0.7, 0.2, 0], upperArmR: [-0.45, 0, -0.35], foreArmR: [-0.7, -0.2, 0] });
+      case 'fall': return ready({ thighL: [-0.4, 0, 0.08], shinL: [0.6, 0, 0], footL: [-0.15, 0, 0], thighR: [-0.12, 0, -0.08], shinR: [0.35, 0, 0], spine: [-0.04, 0, 0], head: [0.1, 0, 0],
+        upperArmL: [-0.2, 0, 0.65 + s(t * 7) * 0.08], foreArmL: [-0.45, 0.2, 0], upperArmR: [-0.2, 0, -0.65 - s(t * 7) * 0.08], foreArmR: [-0.45, -0.2, 0] });
       case 'dodge': {
-        const k = Math.min(1, t / 0.38);
-        return { rootRot: [k * Math.PI * 2, 0, 0], root: [0, -0.35 * s(k * Math.PI), 0], spine: [0.9, 0, 0], chest: [0.5, 0, 0], head: [0.5, 0, 0], thighL: [-1.6, 0, 0], shinL: [2.2, 0, 0], thighR: [-1.6, 0, 0], shinR: [2.2, 0, 0], upperArmL: [-1.2, 0, 0.3], upperArmR: [-1.2, 0, -0.3], foreArmL: [-1.2, 0, 0], foreArmR: [-1.2, 0, 0] };
+        // Ausweichen wie ein schneller Satz zur Seite / zurück / nach vorn (kein Salto): abfedern, abstoßen
+        // (Körper neigt sich in die Richtung, führendes Bein greift aus), landen und abfangen
+        const f = this.dodgeF, l = this.dodgeL;
+        const fw = Math.max(0, f), bk = Math.max(0, -f), lf = Math.max(0, l), rt = Math.max(0, -l);
+        const crouch: Pose = { root: [0, -0.1, 0], rootRot: [0.12 * fw - 0.1 * bk, 0, 0.14 * lf - 0.14 * rt],
+          thighL: [-0.45, 0, 0.05], shinL: [0.85, 0, 0], footL: [-0.35, 0, 0], thighR: [-0.45, 0, -0.05], shinR: [0.85, 0, 0], footR: [-0.35, 0, 0],
+          spine: [0.12, 0, 0], chest: [0.1, 0, 0], head: [-0.15, 0, 0],
+          upperArmL: [-0.15, 0, 0.3], foreArmL: [-0.8, 0.2, 0], upperArmR: [-0.15, 0, -0.3], foreArmR: [-0.8, -0.2, 0] };
+        const air: Pose = { root: [0, -0.04, 0], rootRot: [0.3 * fw - 0.24 * bk, 0, 0.32 * lf - 0.32 * rt],
+          thighL: [-0.6 * fw - 0.3 * bk - 0.15 * (lf + rt), 0, 0.38 * lf - 0.12 * rt], shinL: [0.25 + 0.35 * fw + 0.3 * bk, 0, 0], footL: [-0.1, 0, 0],
+          thighR: [0.4 * fw + 0.5 * bk - 0.15 * (lf + rt), 0, -0.38 * rt + 0.12 * lf], shinR: [0.3 + 0.45 * fw + 0.2 * bk, 0, 0], footR: [0.1, 0, 0],
+          spine: [0.08 * fw + 0.05, 0, 0], chest: [0.05, 0, -0.12 * l], head: [-0.25 * fw + 0.2 * bk, 0, -0.25 * l],
+          upperArmL: [-0.2 + 0.25 * bk, 0, 0.4 + 0.35 * rt], foreArmL: [-0.7, 0.2, 0], upperArmR: [-0.2 + 0.25 * bk, 0, -0.4 - 0.35 * lf], foreArmR: [-0.7, -0.2, 0] };
+        const land: Pose = { root: [0, -0.14, 0], rootRot: [-0.06 * fw + 0.05 * bk, 0, -0.08 * lf + 0.08 * rt],
+          thighL: [-0.55 - 0.1 * bk, 0, 0.08 + 0.15 * lf], shinL: [0.95, 0, 0], footL: [-0.4, 0, 0],
+          thighR: [-0.4 + 0.15 * fw, 0, -0.08 - 0.15 * rt], shinR: [0.85, 0, 0], footR: [-0.4, 0, 0],
+          spine: [0.15, 0, 0], chest: [0.12, 0, 0], head: [-0.2, 0, 0],
+          upperArmL: [-0.2, 0, 0.4], foreArmL: [-0.9, 0.2, 0], upperArmR: [-0.2, 0, -0.4], foreArmR: [-0.9, -0.2, 0] };
+        return ready(sampleKeys([[0, {}], [0.16, crouch], [0.48, air], [0.78, land], [1, {}]], Math.min(1, t / 0.46)));
       }
       case 'block': return { chest: [0.1, -0.3, 0], upperArmL: [-1.0, -0.45, 0.1], foreArmL: [-0.75, -0.55, 0], upperArmR: [-0.4, 0, -0.3], foreArmR: [-1.1, 0, 0], thighL: [-0.3, 0, 0.1], shinL: [0.4, 0, 0], thighR: [0.2, 0, -0.1], shinR: [0.3, 0, 0], root: [0, -0.08, 0] };
       case 'atk1': case 'atk2': case 'atk3': case 'heavy': case 'skill': case 'skill:bash':
@@ -1773,11 +1797,33 @@ export class HumanoidRig {
           [1, { upperArmR: [-0.25, 0, -0.15], foreArmR: [-0.6, 0, 0], handR: [2.3, 0, 0] }],
         ], prog);
       }
-      case 'hit': return { chest: [-0.4, 0.2, 0], head: [-0.3, 0, 0], upperArmL: [-0.3, 0, 0.5], upperArmR: [-0.3, 0, -0.5] };
+      case 'hit': {
+        // Treffer: Oberkörper wird zurück und zur Seite gestoßen, Knie geben kurz nach, dann fangen
+        const hp: Pose = { chest: [-0.28, 0.22, 0.06], spine: [-0.12, 0.08, 0], head: [-0.22, 0.25, 0.1], root: [0, -0.05, -0.06],
+          upperArmL: [-0.3, 0, 0.35], foreArmL: [-0.9, 0.2, 0], upperArmR: [-0.25, 0, -0.3], foreArmR: [-0.8, -0.2, 0],
+          thighL: [-0.25, 0, 0.05], shinL: [0.4, 0, 0], thighR: [0.12, 0, -0.05], shinR: [0.25, 0, 0] };
+        return ready(sampleKeys([[0, {}], [0.22, hp], [1, {}]], Math.min(1, t / 0.5)));
+      }
       case 'stun': case 'frozen': return { head: [0.3 + s(t * 3) * 0.2, s(t * 2) * 0.4, 0], chest: [0.2, 0, s(t * 2.5) * 0.1], upperArmL: [0, 0, 0.3], upperArmR: [0, 0, -0.3], thighL: [-0.2, 0, 0], shinL: [0.4, 0, 0], thighR: [-0.2, 0, 0], shinR: [0.4, 0, 0], root: [0, -0.1, 0] };
-      case 'die': case 'dead': case 'downed': {
-        const k = Math.min(1, t / 0.6);
-        return { rootRot: [(-Math.PI / 2) * k * 0.95, 0, 0.2 * k], root: [0, -0.8 * k, 0.4 * k], chest: [0.2, 0.3, 0], head: [0.3, 0.4, 0], upperArmL: [-0.6, 0, 1.1], upperArmR: [anim === 'downed' ? -1.5 : -0.3, 0, -1.0], thighL: [0.1, 0, 0.1], thighR: [-0.3, 0, -0.1], shinR: [0.6, 0, 0] };
+      case 'downed': {
+        // Kampfunfähig: auf dem Boden sitzend, auf den rechten Arm gestützt, Kopf hängt
+        const k = Math.min(1, t / 0.6), b = s(t * 1.8) * 0.02;
+        return sampleKeys([[0, {}], [1, { root: [0, -0.64, 0.05], rootRot: [-0.32, 0, 0.05], thighL: [-1.25, 0, 0.25], shinL: [1.1, 0, 0], thighR: [-1.45, 0, -0.15], shinR: [1.7, 0, 0],
+          spine: [0.1 + b, 0, 0], chest: [0.2, 0.15, 0], head: [0.45, 0.2, 0.1], upperArmR: [0.55, 0, -0.35], foreArmR: [-0.15, 0, 0], upperArmL: [-0.5, 0, 0.2], foreArmL: [-1.1, 0.3, 0] }]], k);
+      }
+      case 'die': case 'dead': {
+        // Tod: Knie knicken ein, der Körper fällt nach hinten und bleibt liegen (Drehpunkt an den Füßen:
+        // auf dem Rücken liegend braucht es ~12 cm Anhebung, sonst steckt der Rücken im Boden)
+        const k = anim === 'dead' ? 1 : Math.min(1, t / 1.1);
+        return sampleKeys([
+          [0, {}],
+          [0.3, { root: [0, -0.28, 0], thighL: [-0.75, 0, 0.1], shinL: [1.35, 0, 0], thighR: [-0.55, 0, -0.1], shinR: [1.15, 0, 0], footL: [-0.5, 0, 0], footR: [-0.45, 0, 0],
+            spine: [0.2, 0, 0], chest: [0.15, 0.1, 0], head: [0.35, 0.1, 0], upperArmL: [0.1, 0, 0.15], foreArmL: [-0.3, 0, 0], upperArmR: [0.1, 0, -0.15], foreArmR: [-0.3, 0, 0] }],
+          [0.72, { root: [0, 0.1, 0.3], rootRot: [-1.5, 0, 0.12], thighL: [-0.7, 0, 0.12], shinL: [1.1, 0, 0], thighR: [-0.2, 0, -0.1], shinR: [0.35, 0, 0],
+            spine: [-0.05, 0, 0], chest: [0.05, 0.2, 0], head: [0.1, 0.55, 0], upperArmL: [-0.2, 0, 1.0], foreArmL: [-0.4, 0, 0], upperArmR: [-0.6, 0, -0.9], foreArmR: [-0.5, 0, 0] }],
+          [1, { root: [0, 0.11, 0.3], rootRot: [-1.57, 0, 0.1], thighL: [-0.55, 0, 0.14], shinL: [0.95, 0, 0], thighR: [-0.08, 0, -0.1], shinR: [0.2, 0, 0], footL: [0.3, 0, 0], footR: [0.4, 0, 0],
+            spine: [-0.05, 0, 0], chest: [0, 0.2, 0], head: [0.05, 0.7, 0.1], upperArmL: [-0.1, 0, 1.15], foreArmL: [-0.35, 0, 0], upperArmR: [-0.4, 0, -1.05], foreArmR: [-0.6, 0, 0] }],
+        ], k);
       }
       case 'interact': case 'revive': {
         const r = s(t * 5) * 0.1;

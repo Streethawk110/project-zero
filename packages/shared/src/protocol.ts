@@ -94,6 +94,8 @@ export interface SnapEntity {
   mhp?: number;
   /** Kleidung: Schmutz (obere 4 Bit) und Blut (untere 4 Bit), je 0–15 */
   gr?: number;
+  /** Gegner: Haltung 0–100 (voll = taumelt), 255 = taumelt gerade */
+  po?: number;
 }
 
 export interface WorldEventState {

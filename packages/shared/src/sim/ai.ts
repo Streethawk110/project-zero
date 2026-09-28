@@ -251,6 +251,8 @@ function chooseAttack(e: EnemyEnt, d: number): EnemyAttack | null {
 export function startAttack(w: World, e: EnemyEnt, atk: EnemyAttack, t: { m: { x: number; y: number; z: number } }) {
   e.attack = { def: atk, t: 0, phase: 'windup', yaw: yawTo(e.m.x, e.m.z, t.m.x, t.m.z), tx: t.m.x, tz: t.m.z, hit: new Set(), ticks: 0 };
   e.atkCd[atk.id] = atk.cooldown + atk.windup;
+  // Nicht blockbar: rotes Aufblitzen als Warnung (ausweichen statt blocken)
+  if (atk.unblockable) w.emitNear(e.m.x, e.m.z, { e: 'fx', kind: 'warn_unblockable', x: e.m.x, y: e.m.y + w.entHeight(e) * 0.9, z: e.m.z, src: e.id }, 60, e.area);
   e.state = 'attack';
   if (atk.kind === 'aoe' && atk.radius && atk.radius > 4) {
     // Bodenmarkierung für lesbare Flächenangriffe

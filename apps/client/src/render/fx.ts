@@ -307,6 +307,10 @@ export class FX {
       case 'heal_burst': case 'revive': this.burst(x, y + 1, z, 30, 0x9aff9a, 2, 0.6, 1.2, -2); this.flash(x, y + 1.5, z, 0x9aff9a, 5, 0.6); break;
       case 'use_item': this.burst(x, y + 1, z, 10, 0xb0ffb0, 1.5, 0.4, 0.7, -2); break;
       case 'perfect_dodge': this.burst(x, y, z, 14, 0xbff9ff, 3, 0.5, 0.4, 0); break;
+      case 'warn_unblockable': this.burst(x, y, z, 10, 0xff3020, 1.5, 0.3, 0.45, -1); this.flash(x, y, z, 0xff2010, 9, 0.35); break;
+      case 'stagger': this.burst(x, y, z, 18, 0xffd35a, 2.5, 0.45, 0.6, -1); this.flash(x, y, z, 0xffc040, 5, 0.3); break;
+      case 'riposte': this.burst(x, y, z, 30, 0xfff0c0, 7, 0.35, 0.35, 6); this.flash(x, y, z, 0xffe8b0, 12, 0.18); break;
+      case 'finisher': this.burst(x, y, z, 50, 0xffe0a0, 9, 0.5, 0.5, 7); this.burst(x, y, z, 28, 0x8a1010, 5, 0.35, 0.8, 9, false); this.flash(x, y, z, 0xffd080, 18, 0.3); break;
       case 'parry': this.burst(x, y, z, 24, 0xffe8a0, 6, 0.4, 0.3, 8); this.flash(x, y, z, 0xffe8a0, 10, 0.2); break;
       case 'laststand': this.ring(x, y, z, 2, 40, 0xffd070, 5, 1); break;
       case 'vengeance': this.burst(x, y, z, 20, 0xff6040, 4, 0.6, 0.5); break;
