@@ -1,0 +1,739 @@
+[
+ {
+  "Id": "vogt",
+  "Name": "Berengar",
+  "Title": "Vogt von Haldenbruck",
+  "X": 600,
+  "Y": 6900,
+  "Z": 689.8,
+  "Yaw": 90,
+  "Dialogue": "vogt_root",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "noble",
+  "Shop": "",
+  "Bark": [
+   "Haldenbruck steht noch. Das allein ist ein Wunder.",
+   "Drei Fraktionen, ein Dorf, kein Schlaf."
+  ]
+ },
+ {
+  "Id": "oswin",
+  "Name": "Oswin",
+  "Title": "Schmied",
+  "X": 300,
+  "Y": 5100,
+  "Z": 704.9,
+  "Yaw": -180,
+  "Dialogue": "oswin_root",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "smith",
+  "Shop": "oswin",
+  "Bark": [
+   "Gutes Eisen singt. Schlechtes Eisen lügt.",
+   "Wenn du Erz findest, bring es mir."
+  ]
+ },
+ {
+  "Id": "pell",
+  "Name": "Pell",
+  "Title": "Krämer",
+  "X": 2800,
+  "Y": 4400,
+  "Z": 716,
+  "Yaw": 0,
+  "Dialogue": "pell_root",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "merchant",
+  "Shop": "pell",
+  "Bark": [
+   "Tränke! Salben! Brot, das nicht leuchtet!",
+   "Frische Ware aus Vardenfall – na ja, fast frisch."
+  ]
+ },
+ {
+  "Id": "hedda",
+  "Name": "Hedda",
+  "Title": "Wirtin der „Letzten Laterne“",
+  "X": 4075,
+  "Y": 1740,
+  "Z": 683.4,
+  "Yaw": 137.51,
+  "Dialogue": "hedda_root",
+  "Cond": "",
+  "Female": true,
+  "Outfit": "villager",
+  "Shop": "",
+  "Bark": [
+   "Die Suppe ist warm, die Betten sind kalt.",
+   "Nachts kratzt etwas an meiner Kellertür."
+  ]
+ },
+ {
+  "Id": "brann",
+  "Name": "Brann",
+  "Title": "Wachfrau am Westtor",
+  "X": -3400,
+  "Y": 3400,
+  "Z": 701.4,
+  "Yaw": -90,
+  "Dialogue": "brann_root",
+  "Cond": "",
+  "Female": true,
+  "Outfit": "guard",
+  "Shop": "",
+  "Bark": [
+   "Augen offen. Der Wald hat Zähne bekommen.",
+   "Rotbart und seine Bande werden dreister."
+  ]
+ },
+ {
+  "Id": "lina",
+  "Name": "Lina",
+  "Title": "Tochter der Wäscherin",
+  "X": 3000,
+  "Y": 6400,
+  "Z": 683.8,
+  "Yaw": -28.65,
+  "Dialogue": "lina_root",
+  "Cond": "",
+  "Female": true,
+  "Outfit": "child",
+  "Shop": "",
+  "Bark": [
+   "Hast du Glimmer gesehen? Er ist ganz grau und ein bisschen durchsichtig."
+  ]
+ },
+ {
+  "Id": "ysolde",
+  "Name": "Ysolde Harn",
+  "Title": "Präzeptorin der Stillen Flamme",
+  "X": 100,
+  "Y": 1500,
+  "Z": 691.3,
+  "Yaw": 90,
+  "Dialogue": "ysolde_root",
+  "Cond": "",
+  "Female": true,
+  "Outfit": "priest",
+  "Shop": "order",
+  "Bark": [
+   "Die Flamme reinigt, was das Licht verdirbt.",
+   "Jede Nacht zähle ich die Feuer. Jede Nacht sind es weniger."
+  ]
+ },
+ {
+  "Id": "aldric",
+  "Name": "Aldric Vey",
+  "Title": "Kontormeister von Vardenfall",
+  "X": 4200,
+  "Y": 4800,
+  "Z": 716.8,
+  "Yaw": 0,
+  "Dialogue": "aldric_root",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "noble",
+  "Shop": "kontor",
+  "Bark": [
+   "Alles hat einen Preis. Besonders das, was leuchtet.",
+   "Vertrauen ist eine Währung. Ich prüfe jede Münze."
+  ]
+ },
+ {
+  "Id": "maren",
+  "Name": "Maren",
+  "Title": "Seherin der Verwurzelten",
+  "X": -19300,
+  "Y": -10000,
+  "Z": 619.5,
+  "Yaw": -126.05,
+  "Dialogue": "maren_root",
+  "Cond": "",
+  "Female": true,
+  "Outfit": "rooted",
+  "Shop": "maren",
+  "Bark": [
+   "Hörst du es? Es atmet unter uns.",
+   "Die Wurzeln erinnern sich an alles."
+  ]
+ },
+ {
+  "Id": "anselm",
+  "Name": "Bruder Anselm",
+  "Title": "Feldpriester des Ordens",
+  "X": -4600,
+  "Y": -20600,
+  "Z": 2011.5,
+  "Yaw": 143.24,
+  "Dialogue": "anselm_root",
+  "Cond": "!quest:mq_3:any",
+  "Female": false,
+  "Outfit": "priest",
+  "Shop": "",
+  "Bark": [
+   "Die Heilige Oda schweigt. Seit Jahren schon."
+  ]
+ },
+ {
+  "Id": "anselm_mine",
+  "Name": "Bruder Anselm",
+  "Title": "Feldpriester des Ordens",
+  "X": 24000,
+  "Y": -21000,
+  "Z": 2225.6,
+  "Yaw": 137.51,
+  "Dialogue": "anselm_mine",
+  "Cond": "quest:mq_3:any",
+  "Female": false,
+  "Outfit": "priest",
+  "Shop": "",
+  "Bark": [
+   "Ich bete für alle, die dort hinuntergehen."
+  ]
+ },
+ {
+  "Id": "jorun",
+  "Name": "Jorun",
+  "Title": "Alter Fischer",
+  "X": -3400,
+  "Y": 26200,
+  "Z": 352.5,
+  "Yaw": -166.16,
+  "Dialogue": "jorun_root",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "fisher",
+  "Shop": "jorun",
+  "Bark": [
+   "Das Meer ist ehrlicher als die Leute.",
+   "Salz. Immer Salz in den Taschen."
+  ]
+ },
+ {
+  "Id": "emrik",
+  "Name": "Emrik",
+  "Title": "Grubenwart von Tiefenrast",
+  "X": 23600,
+  "Y": -21200,
+  "Z": 2220.7,
+  "Yaw": -45.84,
+  "Dialogue": "emrik_root",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "miner",
+  "Shop": "",
+  "Bark": [
+   "Vierzig Jahre war das Tor zu. Vierzig gute Jahre."
+  ]
+ },
+ {
+  "Id": "isra_npc",
+  "Name": "Isra Venn",
+  "Title": "Kartografin der Expedition",
+  "X": 4000,
+  "Y": 3000,
+  "Z": 682.5,
+  "Yaw": -148.97,
+  "Dialogue": "isra_root",
+  "Cond": "mode:mp",
+  "Female": true,
+  "Outfit": "scholar",
+  "Shop": "",
+  "Bark": [
+   "Jede Karte lügt ein bisschen. Meine lügen weniger."
+  ]
+ },
+ {
+  "Id": "tam",
+  "Name": "Tam",
+  "Title": "Bauer",
+  "X": 5000,
+  "Y": 7000,
+  "Z": 714.1,
+  "Yaw": -57.3,
+  "Dialogue": "tam_root",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "villager",
+  "Shop": "",
+  "Bark": [
+   "Die Rüben leuchten. RÜBEN!",
+   "Früher hatten wir nur Angst vor Wölfen."
+  ]
+ },
+ {
+  "Id": "ute",
+  "Name": "Ute",
+  "Title": "Wäscherin",
+  "X": 1350,
+  "Y": 5750,
+  "Z": 710.9,
+  "Yaw": 57.3,
+  "Dialogue": "ute_root",
+  "Cond": "",
+  "Female": true,
+  "Outfit": "villager",
+  "Shop": "",
+  "Bark": [
+   "Lina! LINA! Wo steckt das Kind wieder?",
+   "Der Fluss ist so kalt wie das Herz des Kontormeisters."
+  ]
+ },
+ {
+  "Id": "order_guard",
+  "Name": "Ordenswache",
+  "Title": "Stille Flamme",
+  "X": -3750,
+  "Y": 4100,
+  "Z": 685.9,
+  "Yaw": -90,
+  "Dialogue": "order_guard",
+  "Cond": "flag:choice_order",
+  "Female": false,
+  "Outfit": "priest",
+  "Shop": "",
+  "Bark": [
+   "Berührte werden am Tor kontrolliert."
+  ]
+ },
+ {
+  "Id": "kontor_foreman",
+  "Name": "Vorarbeiterin Gisla",
+  "Title": "Kontor",
+  "X": 24400,
+  "Y": -22200,
+  "Z": 2100,
+  "Yaw": 0,
+  "Dialogue": "kontor_foreman",
+  "Cond": "flag:choice_kontor",
+  "Female": true,
+  "Outfit": "miner",
+  "Shop": "",
+  "Bark": [
+   "Schichtwechsel in zehn Minuten!"
+  ]
+ },
+ {
+  "Id": "rooted_keeper",
+  "Name": "Wurzelhüter Ilm",
+  "Title": "Die Verwurzelten",
+  "X": 1400,
+  "Y": 3000,
+  "Z": 706.6,
+  "Yaw": 0,
+  "Dialogue": "rooted_keeper",
+  "Cond": "flag:choice_rooted",
+  "Female": false,
+  "Outfit": "rooted",
+  "Shop": "",
+  "Bark": [
+   "Das Dorf atmet jetzt mit dem Wald."
+  ]
+ },
+ {
+  "Id": "folk_grete",
+  "Name": "Grete",
+  "Title": "Bäuerin",
+  "X": 2000,
+  "Y": 3800,
+  "Z": 686.5,
+  "Yaw": 0,
+  "Dialogue": "folk_a",
+  "Cond": "",
+  "Female": true,
+  "Outfit": "peasant",
+  "Shop": "",
+  "Bark": [
+   "Die Ernte wird schlecht. Die Ähren glühen nachts.",
+   "Hast du den Himmel gesehen? Zu hell für die Jahreszeit."
+  ]
+ },
+ {
+  "Id": "folk_jost",
+  "Name": "Jost",
+  "Title": "Knecht",
+  "X": 2200,
+  "Y": 3800,
+  "Z": 693.8,
+  "Yaw": 0,
+  "Dialogue": "folk_b",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "peasant",
+  "Shop": "",
+  "Bark": [
+   "Heu machen, Heu fahren, Heu machen …",
+   "Einer von uns hat Tam die Rüben geklaut. Ich war’s nicht."
+  ]
+ },
+ {
+  "Id": "folk_anna",
+  "Name": "Anna",
+  "Title": "Magd im Gasthaus",
+  "X": 2400,
+  "Y": 3800,
+  "Z": 697,
+  "Yaw": 0,
+  "Dialogue": "folk_c",
+  "Cond": "",
+  "Female": true,
+  "Outfit": "maid",
+  "Shop": "",
+  "Bark": [
+   "Noch ein Bier? Oder zwei?",
+   "Hedda zahlt schlecht, aber pünktlich."
+  ]
+ },
+ {
+  "Id": "folk_ulf",
+  "Name": "Ulf",
+  "Title": "Holzfäller",
+  "X": 2600,
+  "Y": 3800,
+  "Z": 690.7,
+  "Yaw": 0,
+  "Dialogue": "folk_a",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "woodsman",
+  "Shop": "",
+  "Bark": [
+   "Im Nordwald splittern die Bäume von innen.",
+   "Axt, Rücken, Bier. Mehr brauch ich nicht."
+  ]
+ },
+ {
+  "Id": "folk_kuno",
+  "Name": "Kuno",
+  "Title": "Fischer",
+  "X": 2800,
+  "Y": 3800,
+  "Z": 674.8,
+  "Yaw": 0,
+  "Dialogue": "folk_b",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "fisher",
+  "Shop": "",
+  "Bark": [
+   "Die Fische kommen in Schwärmen, die man nie gesehen hat.",
+   "Salz und Netze, Netze und Salz."
+  ]
+ },
+ {
+  "Id": "folk_veit",
+  "Name": "Veit",
+  "Title": "Tagelöhner",
+  "X": 2000,
+  "Y": 4000,
+  "Z": 689.9,
+  "Yaw": 0,
+  "Dialogue": "folk_c",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "peasant",
+  "Shop": "",
+  "Bark": [
+   "Arbeit gibt’s genug. Lohn nicht.",
+   "Der Kontor zahlt in Nullglas. Wer will das schon?"
+  ]
+ },
+ {
+  "Id": "folk_elsa",
+  "Name": "Elsa",
+  "Title": "Weberin",
+  "X": 2200,
+  "Y": 4000,
+  "Z": 698.2,
+  "Yaw": 0,
+  "Dialogue": "folk_a",
+  "Cond": "",
+  "Female": true,
+  "Outfit": "maid",
+  "Shop": "",
+  "Bark": [
+   "Leinen ist ehrlich. Seide lügt.",
+   "Meine Schwester sagt, im Moor singt etwas."
+  ]
+ },
+ {
+  "Id": "folk_bodo",
+  "Name": "Bodo",
+  "Title": "Hirte",
+  "X": 2400,
+  "Y": 4000,
+  "Z": 699.8,
+  "Yaw": 0,
+  "Dialogue": "folk_b",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "woodsman",
+  "Shop": "",
+  "Bark": [
+   "Drei Schafe weg. Keine Spuren. Keine Wölfe.",
+   "Die Hunde bellen den Mond an. Jede Nacht."
+  ]
+ },
+ {
+  "Id": "folk_mats",
+  "Name": "Mats",
+  "Title": "Junge",
+  "X": 2600,
+  "Y": 4000,
+  "Z": 692.6,
+  "Yaw": 0,
+  "Dialogue": "folk_c",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "child",
+  "Shop": "",
+  "Bark": [
+   "Wetten, ich bin schneller als du?",
+   "Lina sagt, Glimmer ist ein Geist. Ich glaub ihr nicht."
+  ]
+ },
+ {
+  "Id": "folk_berta",
+  "Name": "Berta",
+  "Title": "Alte Frau",
+  "X": 2800,
+  "Y": 4000,
+  "Z": 680.8,
+  "Yaw": 0,
+  "Dialogue": "folk_a",
+  "Cond": "",
+  "Female": true,
+  "Outfit": "peasant",
+  "Shop": "",
+  "Bark": [
+   "Früher war der Himmel dunkler. Und die Leute freundlicher.",
+   "Setz dich, Kind. Oder geh. Aber steh nicht so rum."
+  ]
+ },
+ {
+  "Id": "watch_1",
+  "Name": "Dorfwache Harm",
+  "Title": "Dorfwache von Haldenbruck",
+  "X": 2000,
+  "Y": 8850,
+  "Z": 726.2,
+  "Yaw": -180,
+  "Dialogue": "watch_root",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "guard",
+  "Shop": "",
+  "Bark": [
+   "Weitergehen. Nichts zu sehen.",
+   "Nachts bleibt man drinnen, wenn man klug ist.",
+   "Ich hab ein Auge auf dich."
+  ]
+ },
+ {
+  "Id": "watch_2",
+  "Name": "Dorfwache Lutz",
+  "Title": "Dorfwache von Haldenbruck",
+  "X": 800,
+  "Y": -1000,
+  "Z": 721.3,
+  "Yaw": 0,
+  "Dialogue": "watch_root",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "guard",
+  "Shop": "",
+  "Bark": [
+   "Weitergehen. Nichts zu sehen.",
+   "Nachts bleibt man drinnen, wenn man klug ist.",
+   "Ich hab ein Auge auf dich."
+  ]
+ },
+ {
+  "Id": "watch_3",
+  "Name": "Dorfwache Irmel",
+  "Title": "Dorfwache von Haldenbruck",
+  "X": 6900,
+  "Y": 2400,
+  "Z": 708,
+  "Yaw": 90,
+  "Dialogue": "watch_root",
+  "Cond": "",
+  "Female": true,
+  "Outfit": "guard",
+  "Shop": "",
+  "Bark": [
+   "Weitergehen. Nichts zu sehen.",
+   "Nachts bleibt man drinnen, wenn man klug ist.",
+   "Ich hab ein Auge auf dich."
+  ]
+ },
+ {
+  "Id": "watch_4",
+  "Name": "Dorfwache Konz",
+  "Title": "Dorfwache von Haldenbruck",
+  "X": -1600,
+  "Y": 3800,
+  "Z": 629.7,
+  "Yaw": -90,
+  "Dialogue": "watch_root",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "guard",
+  "Shop": "",
+  "Bark": [
+   "Weitergehen. Nichts zu sehen.",
+   "Nachts bleibt man drinnen, wenn man klug ist.",
+   "Ich hab ein Auge auf dich."
+  ]
+ },
+ {
+  "Id": "hauptmann",
+  "Name": "Hauptmann Gerold",
+  "Title": "Befehlshaber auf Burg Haldenstein",
+  "X": 7500,
+  "Y": -5800,
+  "Z": 1257.4,
+  "Yaw": -150.69,
+  "Dialogue": "captain_root",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "armor_order",
+  "Shop": "",
+  "Bark": [
+   "Schwerter hoch, Rücken gerade!",
+   "Die Mauern halten. Die Frage ist, wie lange noch."
+  ]
+ },
+ {
+  "Id": "soldier_1",
+  "Name": "Burgwache Arnulf",
+  "Title": "Grenzwacht, Burg Haldenstein",
+  "X": 7500,
+  "Y": -5800,
+  "Z": 1257.4,
+  "Yaw": -150.69,
+  "Dialogue": "watch_root",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "guard",
+  "Shop": "",
+  "Bark": [
+   "Halt, wer da? … Ach, geh weiter.",
+   "Der Hauptmann lässt uns üben, bis die Arme abfallen.",
+   "Nachts sieht man von den Türmen das Glas leuchten."
+  ]
+ },
+ {
+  "Id": "soldier_2",
+  "Name": "Burgwache Detlef",
+  "Title": "Grenzwacht, Burg Haldenstein",
+  "X": 7600,
+  "Y": -5800,
+  "Z": 1259.4,
+  "Yaw": -150.69,
+  "Dialogue": "watch_root",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "guard",
+  "Shop": "",
+  "Bark": [
+   "Halt, wer da? … Ach, geh weiter.",
+   "Der Hauptmann lässt uns üben, bis die Arme abfallen.",
+   "Nachts sieht man von den Türmen das Glas leuchten."
+  ]
+ },
+ {
+  "Id": "soldier_3",
+  "Name": "Burgwache Wendel",
+  "Title": "Grenzwacht, Burg Haldenstein",
+  "X": 7700,
+  "Y": -5800,
+  "Z": 1261.1,
+  "Yaw": -150.69,
+  "Dialogue": "watch_root",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "guard",
+  "Shop": "",
+  "Bark": [
+   "Halt, wer da? … Ach, geh weiter.",
+   "Der Hauptmann lässt uns üben, bis die Arme abfallen.",
+   "Nachts sieht man von den Türmen das Glas leuchten."
+  ]
+ },
+ {
+  "Id": "soldier_4",
+  "Name": "Burgwache Adelheid",
+  "Title": "Grenzwacht, Burg Haldenstein",
+  "X": 7800,
+  "Y": -5800,
+  "Z": 1262.8,
+  "Yaw": -150.69,
+  "Dialogue": "watch_root",
+  "Cond": "",
+  "Female": true,
+  "Outfit": "guard",
+  "Shop": "",
+  "Bark": [
+   "Halt, wer da? … Ach, geh weiter.",
+   "Der Hauptmann lässt uns üben, bis die Arme abfallen.",
+   "Nachts sieht man von den Türmen das Glas leuchten."
+  ]
+ },
+ {
+  "Id": "castle_cook",
+  "Name": "Walpurga",
+  "Title": "Köchin der Burg",
+  "X": 7200,
+  "Y": -5600,
+  "Z": 1255.9,
+  "Yaw": 0,
+  "Dialogue": "folk_c",
+  "Cond": "",
+  "Female": true,
+  "Outfit": "maid",
+  "Shop": "",
+  "Bark": [
+   "Wer Hunger hat, schält Rüben.",
+   "Die Wachen essen wie Pferde."
+  ]
+ },
+ {
+  "Id": "castle_groom",
+  "Name": "Pit",
+  "Title": "Stallknecht",
+  "X": 7300,
+  "Y": -5600,
+  "Z": 1258.1,
+  "Yaw": 0,
+  "Dialogue": "folk_b",
+  "Cond": "",
+  "Female": false,
+  "Outfit": "peasant",
+  "Shop": "",
+  "Bark": [
+   "Die Pferde scheuen, wenn es nachts leuchtet.",
+   "Mist schaufeln ist ehrliche Arbeit."
+  ]
+ },
+ {
+  "Id": "castle_maid",
+  "Name": "Hilde",
+  "Title": "Magd auf der Burg",
+  "X": 7400,
+  "Y": -5600,
+  "Z": 1260.3,
+  "Yaw": 0,
+  "Dialogue": "folk_a",
+  "Cond": "",
+  "Female": true,
+  "Outfit": "maid",
+  "Shop": "",
+  "Bark": [
+   "Der Hauptmann will seine Stiefel geputzt. Schon wieder."
+  ]
+ }
+]

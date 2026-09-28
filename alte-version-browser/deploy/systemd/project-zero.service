@@ -1,0 +1,28 @@
+[Unit]
+Description=Project Zero Spielserver
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=projectzero
+Group=projectzero
+WorkingDirectory=/opt/project-zero/current/server
+EnvironmentFile=/etc/project-zero/env
+ExecStartPre=/usr/bin/node --no-warnings=ExperimentalWarning server.mjs --migrate-only
+ExecStart=/usr/bin/node --no-warnings=ExperimentalWarning server.mjs
+Restart=on-failure
+RestartSec=3
+# Beim Stoppen speichert der Server alle Charaktere (SIGTERM)
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# Härtung
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/project-zero
+
+[Install]
+WantedBy=multi-user.target

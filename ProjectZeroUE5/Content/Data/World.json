@@ -1,0 +1,350 @@
+{
+ "Landscape": {
+  "Resolution": 1009,
+  "ScaleXY": 89.3,
+  "ScaleZ": 100,
+  "LocationX": -45000,
+  "LocationY": -45000,
+  "LocationZ": 0
+ },
+ "SpawnPoint": {
+  "X": -14600,
+  "Y": -3600,
+  "Z": 557.7
+ },
+ "River": {
+  "Width": 700,
+  "Points": [
+   {
+    "X": -13000,
+    "Y": -42000
+   },
+   {
+    "X": -11200,
+    "Y": -30000
+   },
+   {
+    "X": -9600,
+    "Y": -19000
+   },
+   {
+    "X": -7800,
+    "Y": -9000
+   },
+   {
+    "X": -7400,
+    "Y": 0
+   },
+   {
+    "X": -7800,
+    "Y": 9000
+   },
+   {
+    "X": -6200,
+    "Y": 18000
+   },
+   {
+    "X": -5000,
+    "Y": 25000
+   },
+   {
+    "X": -4400,
+    "Y": 33000
+   }
+  ]
+ },
+ "Sea": {
+  "Shore": [
+   {
+    "X": -45000,
+    "Y": 28412.6
+   },
+   {
+    "X": -40000,
+    "Y": 28219.9
+   },
+   {
+    "X": -35000,
+    "Y": 29083
+   },
+   {
+    "X": -30000,
+    "Y": 27898.1
+   },
+   {
+    "X": -25000,
+    "Y": 28571.1
+   },
+   {
+    "X": -20000,
+    "Y": 28647.2
+   },
+   {
+    "X": -15000,
+    "Y": 28187.5
+   },
+   {
+    "X": -10000,
+    "Y": 28697.3
+   },
+   {
+    "X": -5000,
+    "Y": 28159.9
+   },
+   {
+    "X": 0,
+    "Y": 28580.2
+   },
+   {
+    "X": 5000,
+    "Y": 28120.6
+   },
+   {
+    "X": 10000,
+    "Y": 28269
+   },
+   {
+    "X": 15000,
+    "Y": 28713.5
+   },
+   {
+    "X": 20000,
+    "Y": 28595.8
+   },
+   {
+    "X": 25000,
+    "Y": 28604.5
+   },
+   {
+    "X": 30000,
+    "Y": 28183.1
+   },
+   {
+    "X": 35000,
+    "Y": 28572
+   },
+   {
+    "X": 40000,
+    "Y": 28056.7
+   },
+   {
+    "X": 45000,
+    "Y": 28698.5
+   }
+  ],
+  "Level": 0
+ },
+ "Village": {
+  "X": 2000,
+  "Y": 4000,
+  "R": 6400
+ },
+ "Castle": {
+  "X": 7500,
+  "Y": -5800,
+  "R": 3000,
+  "Yaw": -150.69
+ },
+ "Zones": [
+  {
+   "Id": "haldenbruck",
+   "Name": "Haldenbruck",
+   "Kind": "village",
+   "X": 2000,
+   "Z": 40,
+   "R": 7800,
+   "Priority": 5,
+   "Xp": 20,
+   "Desc": "Palisadendorf am Fluss Sael. Letzter sicherer Ort vor der Glasnarbe.",
+   "Y": 4000
+  },
+  {
+   "Id": "fluesterforst",
+   "Name": "Flüsterforst",
+   "Kind": "forest",
+   "X": -19000,
+   "Z": -60,
+   "R": 16000,
+   "Priority": 2,
+   "Xp": 25,
+   "Desc": "Dichter Nadelwald. Nachts hört man hier Stimmen, die niemandem gehören.",
+   "Y": -6000
+  },
+  {
+   "Id": "haldenstein",
+   "Name": "Burg Haldenstein",
+   "Kind": "village",
+   "X": 7500,
+   "Z": -58,
+   "R": 3400,
+   "Priority": 6,
+   "Xp": 25,
+   "Desc": "Grenzburg über Haldenbruck. Die Grenzwacht hält hier Mauern, Pferde und die Nachtwache.",
+   "Y": -5800
+  },
+  {
+   "Id": "wegkreuz",
+   "Name": "Zerbrochenes Wegkreuz",
+   "Kind": "forest",
+   "X": -15000,
+   "Z": -40,
+   "R": 2200,
+   "Priority": 6,
+   "Xp": 5,
+   "Desc": "Hier liegt der zerstörte Wagen der Expedition.",
+   "Y": -4000
+  },
+  {
+   "Id": "sankt_oda",
+   "Name": "Sankt Odas Wacht",
+   "Kind": "ruin",
+   "X": -6000,
+   "Z": -230,
+   "R": 5500,
+   "Priority": 5,
+   "Xp": 40,
+   "Desc": "Ruine eines Heiligtums der Gezeitenheiligen Oda. Die Glockensäulen stehen noch.",
+   "Y": -23000
+  },
+  {
+   "Id": "glasnarbe",
+   "Name": "Die Glasnarbe",
+   "Kind": "danger",
+   "X": 20000,
+   "Z": -60,
+   "R": 9500,
+   "Priority": 5,
+   "Xp": 50,
+   "Desc": "Hier riss das Nulllicht die Erde auf. Das Glas wächst weiter.",
+   "Y": -6000
+  },
+  {
+   "Id": "tiefenrast_tor",
+   "Name": "Grube Tiefenrast",
+   "Kind": "wild",
+   "X": 25500,
+   "Z": -235,
+   "R": 4000,
+   "Priority": 5,
+   "Xp": 30,
+   "Desc": "Der verlassene Eingang zum Bergwerk der Gilde.",
+   "Y": -23500
+  },
+  {
+   "Id": "rabenkanzel",
+   "Name": "Rabenkanzel",
+   "Kind": "viewpoint",
+   "X": 24000,
+   "Z": 225,
+   "R": 3000,
+   "Priority": 6,
+   "Xp": 60,
+   "Desc": "Klippe über der See. Bei klarem Wetter sieht man die Türme von Vardenfall.",
+   "Y": 22500
+  },
+  {
+   "Id": "salzkueste",
+   "Name": "Salzküste",
+   "Kind": "coast",
+   "X": -6000,
+   "Z": 300,
+   "R": 19000,
+   "Priority": 1,
+   "Xp": 25,
+   "Desc": "Graue Brandung, Salzpfannen und das Wrack der „Mövenschrei“.",
+   "Y": 30000
+  },
+  {
+   "Id": "wrack",
+   "Name": "Wrack der Mövenschrei",
+   "Kind": "coast",
+   "X": -13000,
+   "Z": 292,
+   "R": 2600,
+   "Priority": 6,
+   "Xp": 15,
+   "Desc": "Ein Salzfrachter, vor zwei Wintern auf Grund gelaufen.",
+   "Y": 29200
+  },
+  {
+   "Id": "ertrunkene_kapelle",
+   "Name": "Die Ertrunkene Kapelle",
+   "Kind": "secret",
+   "X": -26200,
+   "Z": 352,
+   "R": 2600,
+   "Priority": 9,
+   "Xp": 150,
+   "Desc": "Eine Kapelle auf einer Felsnadel im Meer. Niemand weiß, wie man hingelangt.",
+   "Y": 35200
+  },
+  {
+   "Id": "nordhang",
+   "Name": "Nordhänge",
+   "Kind": "wild",
+   "X": 8000,
+   "Z": -200,
+   "R": 12000,
+   "Priority": 1,
+   "Xp": 10,
+   "Desc": "Karge Hänge unter den Grenzbergen.",
+   "Y": -20000
+  },
+  {
+   "Id": "tiefenrast",
+   "Name": "Grube Tiefenrast – Stollen",
+   "Kind": "dungeon",
+   "X": 150000,
+   "Z": 0,
+   "R": 20000,
+   "Priority": 10,
+   "Xp": 50,
+   "Desc": "Verlassene Stollen, durchzogen von Glasadern.",
+   "Y": 0
+  }
+ ],
+ "RestPoints": [
+  {
+   "Id": "rp_haldenbruck",
+   "Name": "Dorfplatz Haldenbruck",
+   "X": 2200,
+   "Y": 4400,
+   "Z": 720.8
+  },
+  {
+   "Id": "rp_wegkreuz",
+   "Name": "Lager am Wegkreuz",
+   "X": -14400,
+   "Y": -3000,
+   "Z": 487.2
+  },
+  {
+   "Id": "rp_oda",
+   "Name": "Pilgerstein von Sankt Oda",
+   "X": -4400,
+   "Y": -20000,
+   "Z": 1991.4
+  },
+  {
+   "Id": "rp_tiefenrast",
+   "Name": "Grubenhaus Tiefenrast",
+   "X": 23800,
+   "Y": -21400,
+   "Z": 2120
+  },
+  {
+   "Id": "rp_kueste",
+   "Name": "Fischerhütte",
+   "X": -3000,
+   "Y": 26200,
+   "Z": 433
+  },
+  {
+   "Id": "rp_dungeon",
+   "Name": "Letztes Lager",
+   "X": 150600,
+   "Y": 1000,
+   "Z": 0
+  }
+ ]
+}

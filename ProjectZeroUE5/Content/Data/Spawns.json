@@ -1,0 +1,364 @@
+[
+ {
+  "Id": "sp_first",
+  "X": -11800,
+  "Z": 600.3,
+  "Radius": 300,
+  "Enemies": [
+   {
+    "Def": "glassrunner",
+    "N": 1,
+    "Level": 1
+   }
+  ],
+  "Respawn": 90,
+  "Area": "overworld",
+  "Y": -1600,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_forest_runners",
+  "X": -20500,
+  "Z": 128.9,
+  "Radius": 800,
+  "Enemies": [
+   {
+    "Def": "glassrunner",
+    "N": 2,
+    "Level": 2
+   }
+  ],
+  "Respawn": 150,
+  "Area": "overworld",
+  "Y": -15000,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_forest_runners2",
+  "X": -27000,
+  "Z": 338.4,
+  "Radius": 800,
+  "Enemies": [
+   {
+    "Def": "glassrunner",
+    "N": 2,
+    "Level": 2
+   }
+  ],
+  "Respawn": 150,
+  "Area": "overworld",
+  "Y": -6000,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_bandit_camp",
+  "X": -24000,
+  "Z": 548.1,
+  "Radius": 1000,
+  "Enemies": [
+   {
+    "Def": "bandit",
+    "N": 2,
+    "Level": 2
+   },
+   {
+    "Def": "bandit_archer",
+    "N": 1,
+    "Level": 2
+   }
+  ],
+  "Respawn": 240,
+  "Area": "overworld",
+  "Y": 1000,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_bandit_chief",
+  "X": -25000,
+  "Z": 458,
+  "Radius": 300,
+  "Enemies": [
+   {
+    "Def": "bandit_chief",
+    "N": 1,
+    "Level": 4
+   }
+  ],
+  "Respawn": 600,
+  "Area": "overworld",
+  "Cond": "quest:s_ledger",
+  "Y": 1800,
+  "Night": false
+ },
+ {
+  "Id": "sp_forest_echo",
+  "X": -18000,
+  "Z": 610.8,
+  "Radius": 500,
+  "Enemies": [
+   {
+    "Def": "echo",
+    "N": 1,
+    "Level": 3
+   }
+  ],
+  "Respawn": 200,
+  "Area": "overworld",
+  "Night": true,
+  "Y": -11000,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_oda_moths",
+  "X": -6000,
+  "Z": 1979.3,
+  "Radius": 1000,
+  "Enemies": [
+   {
+    "Def": "moth",
+    "N": 2,
+    "Level": 3
+   }
+  ],
+  "Respawn": 180,
+  "Area": "overworld",
+  "Y": -25000,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_oda_echo",
+  "X": -7000,
+  "Z": 1993.5,
+  "Radius": 600,
+  "Enemies": [
+   {
+    "Def": "echo",
+    "N": 1,
+    "Level": 3
+   }
+  ],
+  "Respawn": 200,
+  "Area": "overworld",
+  "Y": -21400,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_north_colossus",
+  "X": 10000,
+  "Z": 698,
+  "Radius": 600,
+  "Enemies": [
+   {
+    "Def": "colossus",
+    "N": 1,
+    "Level": 3
+   }
+  ],
+  "Respawn": 300,
+  "Area": "overworld",
+  "Y": -18000,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_north_runners",
+  "X": 4000,
+  "Z": 577.6,
+  "Radius": 800,
+  "Enemies": [
+   {
+    "Def": "glassrunner",
+    "N": 3,
+    "Level": 3
+   }
+  ],
+  "Respawn": 150,
+  "Area": "overworld",
+  "Y": -15000,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_scar_1",
+  "X": 17000,
+  "Z": 520.1,
+  "Radius": 1000,
+  "Enemies": [
+   {
+    "Def": "glassrunner",
+    "N": 3,
+    "Level": 4
+   }
+  ],
+  "Respawn": 150,
+  "Area": "overworld",
+  "Y": -6000,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_scar_2",
+  "X": 22000,
+  "Z": 441.3,
+  "Radius": 800,
+  "Enemies": [
+   {
+    "Def": "colossus",
+    "N": 1,
+    "Level": 4
+   },
+   {
+    "Def": "moth",
+    "N": 1,
+    "Level": 4
+   }
+  ],
+  "Respawn": 240,
+  "Area": "overworld",
+  "Y": -9500,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_scar_3",
+  "X": 23500,
+  "Z": 440.8,
+  "Radius": 800,
+  "Enemies": [
+   {
+    "Def": "moth",
+    "N": 2,
+    "Level": 4
+   }
+  ],
+  "Respawn": 180,
+  "Area": "overworld",
+  "Y": -3500,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_scar_4",
+  "X": 19500,
+  "Z": 469.4,
+  "Radius": 800,
+  "Enemies": [
+   {
+    "Def": "echo",
+    "N": 2,
+    "Level": 4
+   }
+  ],
+  "Respawn": 220,
+  "Area": "overworld",
+  "Y": -2000,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_scar_5",
+  "X": 16000,
+  "Z": 553.3,
+  "Radius": 800,
+  "Enemies": [
+   {
+    "Def": "glassrunner",
+    "N": 2,
+    "Level": 4
+   },
+   {
+    "Def": "moth",
+    "N": 1,
+    "Level": 4
+   }
+  ],
+  "Respawn": 180,
+  "Area": "overworld",
+  "Y": -10000,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_mine_gate",
+  "X": 25000,
+  "Z": 2659.5,
+  "Radius": 800,
+  "Enemies": [
+   {
+    "Def": "bandit",
+    "N": 2,
+    "Level": 4
+   },
+   {
+    "Def": "bandit_archer",
+    "N": 1,
+    "Level": 4
+   }
+  ],
+  "Respawn": 240,
+  "Area": "overworld",
+  "Y": -25000,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_wreck",
+  "X": -11000,
+  "Z": 288.8,
+  "Radius": 800,
+  "Enemies": [
+   {
+    "Def": "bandit",
+    "N": 2,
+    "Level": 3
+   }
+  ],
+  "Respawn": 220,
+  "Area": "overworld",
+  "Y": 27000,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_coast_moths",
+  "X": 8000,
+  "Z": 894.8,
+  "Radius": 1000,
+  "Enemies": [
+   {
+    "Def": "moth",
+    "N": 2,
+    "Level": 3
+   }
+  ],
+  "Respawn": 180,
+  "Area": "overworld",
+  "Y": 24000,
+  "Night": false,
+  "Cond": ""
+ },
+ {
+  "Id": "sp_tide_warden",
+  "X": -26200,
+  "Z": 600,
+  "Radius": 300,
+  "Enemies": [
+   {
+    "Def": "tide_warden",
+    "N": 1,
+    "Level": 7
+   }
+  ],
+  "Respawn": 900,
+  "Area": "overworld",
+  "Cond": "flag:tidepath_open",
+  "Y": 35200,
+  "Night": false
+ }
+]

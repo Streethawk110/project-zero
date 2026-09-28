@@ -1,0 +1,31 @@
+{
+  "name": "project-zero-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Project Zero – Desktop-App (Windows, macOS, Linux)",
+  "author": "Project Zero",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "electron . --smoke",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^38.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "de.projectzero.game",
+    "productName": "Project Zero",
+    "directories": { "output": "release", "buildResources": "build" },
+    "files": ["main.cjs", "preload.cjs", "package.json"],
+    "extraResources": [{ "from": "../client/dist", "to": "client" }],
+    "win": { "target": ["nsis", "portable"], "icon": "build/icon.png" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true },
+    "mac": { "target": ["dmg"], "category": "public.app-category.role-playing-games", "icon": "build/icon.png" },
+    "linux": { "target": ["AppImage", "tar.gz"], "category": "Game", "icon": "build/icon.png" }
+  }
+}

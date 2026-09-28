@@ -1,0 +1,3213 @@
+[
+ {
+  "Id": "isra_root",
+  "Speaker": "isra",
+  "Text": "Brauchst du was? Ich halte die Augen offen.",
+  "Variants": [
+   {
+    "Cond": "quest:mq_1=wake",
+    "Text": "Du lebst. Gut. Ich dachte schon, ich müsste mit den Toten allein reden. Durchsuch den Wagen – vielleicht ist noch etwas zu retten."
+   },
+   {
+    "Cond": "quest:mq_4=isra",
+    "Text": "Da bist du. Setz dich. Nein – bleib stehen. Das hier ist leichter, wenn ich dich nicht ansehen muss."
+   },
+   {
+    "Cond": "companion>=15",
+    "Text": "Na, Partner? Ich hab die Karte schon wieder ergänzt. Du läufst schneller, als ich zeichnen kann."
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Wer bist du noch mal?",
+    "Cond": "!flag:isra_intro",
+    "Effects": [],
+    "Next": "isra_intro",
+    "Tag": ""
+   },
+   {
+    "Text": "Was ist mit der Expedition passiert?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "isra_expedition",
+    "Tag": ""
+   },
+   {
+    "Text": "Hier sind Tobins Seiten.",
+    "Cond": "quest:c_tobin=talk",
+    "Effects": [],
+    "Next": "isra_tobin_done",
+    "Tag": ""
+   },
+   {
+    "Text": "Hast du etwas von deinem Bruder gehört?",
+    "Cond": "!quest:c_tobin:any & quest:mq_1:done",
+    "Effects": [],
+    "Next": "isra_tobin_start",
+    "Tag": ""
+   },
+   {
+    "Text": "Was denkst du über den Herzsplitter?",
+    "Cond": "quest:mq_2=decide",
+    "Effects": [],
+    "Next": "isra_splitter",
+    "Tag": ""
+   },
+   {
+    "Text": "Wir müssen reden. Über mich.",
+    "Cond": "quest:mq_4=isra",
+    "Effects": [],
+    "Next": "isra_epilogue",
+    "Tag": ""
+   },
+   {
+    "Text": "Wie geht es dir?",
+    "Cond": "quest:mq_1:done",
+    "Effects": [],
+    "Next": "isra_mood",
+    "Tag": ""
+   },
+   {
+    "Text": "Nichts. Gehen wir.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_intro",
+  "Speaker": "isra",
+  "Text": "Isra Venn. Kartografin der Expedition. Die, die dich aus dem Wagen gezogen hat, bevor das Glas ihn gefressen hat. Du erinnerst dich nicht?",
+  "Variants": [],
+  "Effects": [
+   "flag:isra_intro",
+   "codex:person_isra"
+  ],
+  "Choices": [
+   {
+    "Text": "Nicht an viel.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "isra_intro2",
+    "Tag": ""
+   },
+   {
+    "Text": "Danke, dass du mich gerettet hast.",
+    "Cond": "",
+    "Effects": [
+     "companion:+3"
+    ],
+    "Next": "isra_intro2",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_intro2",
+  "Speaker": "isra",
+  "Text": "Das Nulllicht nimmt Erinnerungen. Manchmal gibt es sie zurück. Meistens nicht. Haldenbruck ist nicht weit – wenn der Vogt noch lebt, weiß er, wem wir diesen Schlamassel zu verdanken haben.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "isra_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_expedition",
+  "Speaker": "isra",
+  "Text": "Zwölf Leute, drei Wagen, ein Auftrag: messen, wie stark das Licht wieder geworden ist. Hauptmann Rast hat uns direkt zum Grubentor geführt, obwohl das nicht der Plan war. Dann kam der Blitz. Weißes Licht, das nach oben fiel. Als ich aufwachte, gab es nur noch dich und mich.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Rast hat den Plan geändert?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "isra_rast",
+    "Tag": ""
+   },
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "isra_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_rast",
+  "Speaker": "isra",
+  "Text": "Er hatte es eilig. Als käme er zu spät zu einer Verabredung. Er hat die ganze Fahrt einen Brief in der Hand gehalten und ihn nie geöffnet.",
+  "Variants": [],
+  "Effects": [
+   "flag:rast_hint"
+  ],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "isra_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_mood",
+  "Speaker": "isra",
+  "Text": "Ehrlich? Ich zeichne Karten, damit ich nicht nachdenken muss. Solange du weiterläufst, habe ich genug zu zeichnen.",
+  "Variants": [
+   {
+    "Cond": "touch>=40",
+    "Text": "Ich schaue dir auf die Hände, wenn du schläfst. Sie leuchten. Ich sage es nur, weil du es wissen solltest – nicht, weil ich Angst habe. Na gut. Ein bisschen."
+   },
+   {
+    "Cond": "flag:choice_kontor",
+    "Text": "Du hast es Aldric verkauft. Ich verstehe es sogar. Aber jedes Mal, wenn ich eine Kontorlampe sehe, denke ich an Tobin."
+   },
+   {
+    "Cond": "flag:choice_order",
+    "Text": "Der Orden versiegelt das Herz. Gut. Hoffentlich versiegeln sie nicht auch uns."
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Du bist nicht allein.",
+    "Cond": "",
+    "Effects": [
+     "companion:+2"
+    ],
+    "Next": "isra_mood2",
+    "Tag": ""
+   },
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "isra_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_mood2",
+  "Speaker": "isra",
+  "Text": "Hm. Sag das nicht zu laut, sonst gewöhne ich mich dran.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "isra_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_tobin_start",
+  "Speaker": "isra",
+  "Text": "Tobin. Mein kleiner Bruder. Er hat für die Akademie Pilze kartiert, vor einem Jahr, genau hier. Dann kam nichts mehr. Wenn du Seiten mit einer unordentlichen Handschrift findest, die Ränder voller Käferzeichnungen … das ist er.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Ich halte die Augen offen.",
+    "Cond": "",
+    "Effects": [
+     "quest:start:c_tobin",
+     "companion:+2"
+    ],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_tobin_done",
+  "Speaker": "isra",
+  "Text": "Das sind … seine. Alle drei. „Das Licht ruft nicht, es antwortet.“ Das hat er geschrieben. Und dann: „Isra wird es verstehen.“ Ich verstehe gar nichts, Tobin.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Er hat dir vertraut.",
+    "Cond": "",
+    "Effects": [
+     "flag:tobin_done",
+     "companion:+5"
+    ],
+    "Next": "isra_tobin_end",
+    "Tag": ""
+   },
+   {
+    "Text": "Vielleicht lebt er noch.",
+    "Cond": "",
+    "Effects": [
+     "flag:tobin_done",
+     "companion:+3"
+    ],
+    "Next": "isra_tobin_end",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_tobin_end",
+  "Speaker": "isra",
+  "Text": "Hier. Sein Kompass. Die Nadel zeigt nie nach Norden, nur auf Dinge, die jemand versteckt hat. Er hätte gewollt, dass ihn jemand trägt, der noch sucht.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Den Kompass annehmen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_splitter",
+  "Speaker": "isra",
+  "Text": "Ysolde will ihn verbrennen, Aldric verkaufen, Maren … füttern. Und du hältst ihn fest, als würde er dir gehören. Vielleicht tut er das.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Ich behalte ihn. Niemand bekommt das Herz.",
+    "Cond": "item:herzsplitter",
+    "Effects": [
+     "touch:+20",
+     "flag:choice_self",
+     "flag:splitter_decided",
+     "flag:mine_open",
+     "item:+mine_key:1",
+     "rep:order-10",
+     "rep:kontor-10",
+     "rep:rooted-5",
+     "companion:+2",
+     "quest:choice:mq_2:Behalten – du trägst das Licht selbst",
+     "quest:start:mq_3"
+    ],
+    "Next": "isra_keep",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Ich habe mich noch nicht entschieden.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_keep",
+  "Speaker": "isra",
+  "Text": "Dann tragen wir das jetzt beide. Wenn du anfängst zu leuchten, kippe ich dir einen Eimer Wasser über den Kopf. … Emrik am Grubentor hatte übrigens einen Schlüssel. Hatte.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_epilogue",
+  "Speaker": "isra",
+  "Text": "Ich habe die Expeditionsliste nie verloren. Ich habe sie versteckt. Zwölf Namen. Deiner ist nicht dabei. Die Nummer auf deinem Siegel – Null – gehört zu keinem Menschen. Rast hat dich nicht angeworben, {name}. Er hat dich gefunden. In der Grube. Vor drei Wochen. Du lagst im Glas, als hättest du dort geschlafen.",
+  "Variants": [],
+  "Effects": [
+   "codex:event_number_zero"
+  ],
+  "Choices": [
+   {
+    "Text": "Dann bin ich … was?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "isra_epi2",
+    "Tag": ""
+   },
+   {
+    "Text": "Warum hast du es mir nicht gesagt?",
+    "Cond": "",
+    "Effects": [
+     "companion:-1"
+    ],
+    "Next": "isra_epi2",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_epi2",
+  "Speaker": "isra",
+  "Text": "Ich weiß es nicht. Das Licht wurde stärker in der Nacht, als du die Augen aufgeschlagen hast. Maren sagt, das Herz hat sich jemanden gesucht, der es hört. Ysolde würde sagen, du bist die Wunde. Ich sage: Du hast mir mehr als einmal das Leben gerettet. Das reicht mir.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Dann finden wir gemeinsam heraus, wer ich bin.",
+    "Cond": "",
+    "Effects": [
+     "flag:epilogue_isra",
+     "companion:+5",
+     "achieve:number_zero"
+    ],
+    "Next": "isra_epi_end",
+    "Tag": ""
+   },
+   {
+    "Text": "Ich muss das allein herausfinden.",
+    "Cond": "",
+    "Effects": [
+     "flag:epilogue_isra",
+     "achieve:number_zero"
+    ],
+    "Next": "isra_epi_alone",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_epi_end",
+  "Speaker": "isra",
+  "Text": "Gemeinsam. Dann hole ich meine Karten. Ein ganzer Norden wartet darauf, falsch gezeichnet zu werden. Und Vardenfall … Vardenfall hat noch ein paar Antworten für uns.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Ende der Hauptgeschichte – die Welt bleibt offen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "isra_epi_alone",
+  "Speaker": "isra",
+  "Text": "Allein kommt niemand weit in diesem Land. Aber gut. Wenn du zurückkommst – ich bin in der Laterne. Ich warte.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Ende der Hauptgeschichte – die Welt bleibt offen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "vogt_root",
+  "Speaker": "npc",
+  "Text": "Wieder da, {name}? Haldenbruck hat seine Tore für dich offen – vorerst.",
+  "Variants": [
+   {
+    "Cond": "!flag:met_vogt",
+    "Text": "Halt. Du trägst die Farben der Expedition. Der Expedition, die vor drei Tagen durch mein Tor zog und nicht zurückkam. Wer bist du – und warum lebst du?"
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Ich bin {name}. Ich erinnere mich an kaum etwas.",
+    "Cond": "!flag:met_vogt",
+    "Effects": [],
+    "Next": "vogt_meet1",
+    "Tag": ""
+   },
+   {
+    "Text": "Wo finde ich die Fraktionen?",
+    "Cond": "quest:mq_2=voices",
+    "Effects": [],
+    "Next": "vogt_voices",
+    "Tag": ""
+   },
+   {
+    "Text": "Die Grube ist offen.",
+    "Cond": "quest:mq_3=gate | quest:mq_3=seal",
+    "Effects": [],
+    "Next": "vogt_mine",
+    "Tag": ""
+   },
+   {
+    "Text": "Der Hauptmann ist tot.",
+    "Cond": "quest:mq_4=report",
+    "Effects": [],
+    "Next": "vogt_epi",
+    "Tag": ""
+   },
+   {
+    "Text": "Wie steht es um das Dorf?",
+    "Cond": "flag:met_vogt",
+    "Effects": [],
+    "Next": "vogt_status",
+    "Tag": ""
+   },
+   {
+    "Text": "Leb wohl.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "vogt_meet1",
+  "Speaker": "npc",
+  "Text": "Kaum etwas. Wie praktisch. Isra bürgt für dich? … Gut. Dann hör zu: Seit ihr in der Grube wart, leuchtet das Glas wieder. Tiere werden krank, Kinder träumen dasselbe. Und drei Gruppen in meinem Dorf wollen alle dasselbe – dich.",
+  "Variants": [],
+  "Effects": [
+   "codex:person_vogt"
+  ],
+  "Choices": [
+   {
+    "Text": "Mich?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "vogt_meet2",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "vogt_meet2",
+  "Speaker": "npc",
+  "Text": "Du bist der einzige Überlebende, der dort etwas gesehen haben könnte. Der Orden, das Kontor und die Verwurzelten. Sprich mit allen dreien, bevor sie sich deinetwegen die Köpfe einschlagen. Und such dir einen Schlafplatz – Hedda in der Laterne hat noch Betten.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Ich höre sie an.",
+    "Cond": "",
+    "Effects": [
+     "flag:met_vogt",
+     "quest:start:mq_2"
+    ],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "vogt_voices",
+  "Speaker": "npc",
+  "Text": "Ysolde sitzt in der Kapelle im Norden des Dorfes, Aldric im Kontor, als gehörte ihm alles schon. Maren kommt nicht mehr hinter die Palisade. Du findest sie im Flüsterforst, an einem Schrein aus Wurzeln – westlich, jenseits der Brücke.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "vogt_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "vogt_status",
+  "Speaker": "npc",
+  "Text": "Wir halten durch. Die Palisade ist alt, die Wachen sind müde. Rotbarts Plünderer werden frecher. Wenn du helfen willst – Brann am Westtor kann jede Klinge brauchen.",
+  "Variants": [
+   {
+    "Cond": "flag:choice_order",
+    "Text": "Der Orden bewacht jetzt die Tore. Sicherer ist es. Aber die Leute flüstern, wenn eine Kutte vorbeigeht."
+   },
+   {
+    "Cond": "flag:choice_kontor",
+    "Text": "Das Kontor zahlt gut. Die Grube frisst wieder Männer. Ich kann nicht sagen, ob das ein guter Tausch ist."
+   },
+   {
+    "Cond": "flag:choice_rooted",
+    "Text": "Überall wachsen Wurzeln aus den Wänden. Die Kinder lachen wieder. Die Alten beten."
+   },
+   {
+    "Cond": "flag:choice_self",
+    "Text": "Die Leute schauen dich an wie ein Gewitter, das noch nicht entschieden hat, wo es einschlägt."
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "vogt_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "vogt_mine",
+  "Speaker": "npc",
+  "Text": "Dann geht es also wieder los. Vierzig Jahre war das Tor zu. Bring zurück, was dort unten ist – oder sorge dafür, dass es dort bleibt.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "vogt_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "vogt_epi",
+  "Speaker": "npc",
+  "Text": "Tot. Rast. Ich habe mit ihm gedient, weißt du. Vor dem Einsturz. Er hat seine Tochter in Tiefenrast verloren – Elin. Sieben Jahre alt. Die Kontorleute haben sie nie gefunden.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Er wollte sie zurückholen. Mit dem Licht.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "vogt_epi2",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "vogt_epi2",
+  "Speaker": "npc",
+  "Text": "Und das Herz? Es schlägt weiter, sagen alle. Nur keiner weiß, für wen.",
+  "Variants": [
+   {
+    "Cond": "flag:choice_order",
+    "Text": "Nun wacht der Orden über das Herz. Sie sagen, sie werden es versiegeln. Ich hoffe, sie meinen nur das Herz."
+   },
+   {
+    "Cond": "flag:choice_kontor",
+    "Text": "Das Kontor wird aus dem Herzen Lampen machen, Geld und Waffen. Vardenfall wird leuchten. Ich frage mich, womit wir bezahlen."
+   },
+   {
+    "Cond": "flag:choice_rooted",
+    "Text": "Die Verwurzelten sagen, das Herz schläft jetzt ruhig. Der Wald wächst schneller als die Felder. Wir werden lernen müssen, mit ihm zu leben."
+   },
+   {
+    "Cond": "flag:choice_self",
+    "Text": "Und das Herz? Es schlägt in dir, sagt Isra. Ich weiß nicht, ob ich dir danken oder dich aus dem Dorf werfen soll."
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Was wird jetzt aus Haldenbruck?",
+    "Cond": "",
+    "Effects": [
+     "flag:epilogue_vogt"
+    ],
+    "Next": "vogt_epi3",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "vogt_epi3",
+  "Speaker": "npc",
+  "Text": "Haldenbruck bleibt. Das tut es immer. Sprich mit Isra. Sie hat etwas auf dem Herzen, das sie seit Wochen mit sich herumträgt.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ysolde_root",
+  "Speaker": "npc",
+  "Text": "Die Flamme sieht dich, {name}.",
+  "Variants": [
+   {
+    "Cond": "touch>=60",
+    "Text": "Bleib, wo du bist. Ich sehe das Licht in deinen Adern. Sprich schnell – und dann geh."
+   },
+   {
+    "Cond": "!flag:heard_order",
+    "Text": "Du. Der Überlebende. Setz dich nicht, wir haben keine Zeit für Höflichkeiten."
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Was will der Orden?",
+    "Cond": "!flag:heard_order",
+    "Effects": [],
+    "Next": "ys_intro",
+    "Tag": ""
+   },
+   {
+    "Text": "Ich habe den Herzsplitter.",
+    "Cond": "item:herzsplitter & quest:mq_2=decide & touch<60",
+    "Effects": [],
+    "Next": "ys_splitter",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Gibt es Arbeit für mich?",
+    "Cond": "flag:heard_order & !quest:o_fires:any & touch<60",
+    "Effects": [],
+    "Next": "ys_fires",
+    "Tag": ""
+   },
+   {
+    "Text": "Die Feuer brennen.",
+    "Cond": "quest:o_fires=return",
+    "Effects": [],
+    "Next": "ys_fires_done",
+    "Tag": ""
+   },
+   {
+    "Text": "Aldric Vey hat den Einsturz befohlen. Hier ist der Beweis.",
+    "Cond": "quest:s_ledger=decide",
+    "Effects": [],
+    "Next": "ys_ledger",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Linas Katze ist aus Glas.",
+    "Cond": "quest:s_cat=choose",
+    "Effects": [],
+    "Next": "ys_cat",
+    "Tag": ""
+   },
+   {
+    "Text": "Zeig mir die Ordenskammer.",
+    "Cond": "touch<60",
+    "Effects": [
+     "shop:order"
+    ],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Leb wohl.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ys_intro",
+  "Speaker": "npc",
+  "Text": "Vor vierzig Jahren brannte das Licht diese Region fast leer. Der Orden hat damals Feuer gegen Feuer gesetzt. Es hat funktioniert. Es hat auch … Opfer gefordert. Nun ist das Licht zurück. Wir wollen das Herz versiegeln – in Stein und Flamme – bevor es noch mehr Seelen frisst.",
+  "Variants": [],
+  "Effects": [
+   "flag:heard_order",
+   "codex:faction_order",
+   "codex:person_ysolde"
+  ],
+  "Choices": [
+   {
+    "Text": "Opfer?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "ys_victims",
+    "Tag": ""
+   },
+   {
+    "Text": "Ich werde darüber nachdenken.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ys_victims",
+  "Speaker": "npc",
+  "Text": "Berührte. Menschen, deren Adern leuchten. Wir haben sie … gereinigt. Es war notwendig. Glaub nicht, ich schliefe gut deswegen.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Ihr habt Menschen verbrannt.",
+    "Cond": "",
+    "Effects": [
+     "rep:order-2"
+    ],
+    "Next": "ys_victims2",
+    "Tag": ""
+   },
+   {
+    "Text": "Manchmal gibt es keine gute Wahl.",
+    "Cond": "",
+    "Effects": [
+     "rep:order+3"
+    ],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ys_victims2",
+  "Speaker": "npc",
+  "Text": "Wir haben Dörfer gerettet. Frag die Leute in Haldenbruck, ob sie lieber eine Kutte oder ein Glaswesen an ihrer Tür sehen.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ys_splitter",
+  "Speaker": "npc",
+  "Text": "Er pulsiert. Wie ein Herz. Gib ihn mir, {name}. Unter der Kapelle liegt ein Ofen, heißer als jedes Nulllicht. Dort endet er – und mit ihm diese Welle.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Nimm ihn. Versiegle das Herz.",
+    "Cond": "",
+    "Effects": [
+     "item:-herzsplitter:1",
+     "flag:choice_order",
+     "flag:splitter_decided",
+     "flag:mine_open",
+     "item:+order_writ:1",
+     "rep:order+25",
+     "rep:kontor-10",
+     "rep:rooted-15",
+     "touch:-10",
+     "quest:choice:mq_2:Dem Orden übergeben – das Herz soll versiegelt werden",
+     "quest:start:mq_3"
+    ],
+    "Next": "ys_splitter_done",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Noch nicht.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ys_splitter_done",
+  "Speaker": "npc",
+  "Text": "Die Flamme dankt dir. Nimm diesen Brief – Emrik am Grubentor wird dir öffnen. Und {name} … wenn deine Adern zu leuchten beginnen, komm zu mir. Bevor es zu spät ist.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ys_fires",
+  "Speaker": "npc",
+  "Text": "Drei alte Feuerschalen säumen die Wege – am Nordweg, am Ostweg, am Fluss. Entzünde sie. Licht gegen Licht. Die Kreaturen meiden unser Feuer.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Ich kümmere mich darum.",
+    "Cond": "",
+    "Effects": [
+     "quest:start:o_fires"
+    ],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ys_fires_done",
+  "Speaker": "npc",
+  "Text": "Ich sehe den Rauch vom Kapellendach. Gut. Die Flamme vergisst nicht, wer sie genährt hat.",
+  "Variants": [],
+  "Effects": [
+   "flag:fires_done"
+  ],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ys_ledger",
+  "Speaker": "npc",
+  "Text": "Zeig her. … Bei der Flamme. Die Handschrift ist seine. Vierzig Jahre haben wir Berührte verbrannt für ein Feuer, das er gelegt hat.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Stell ihn vor Gericht.",
+    "Cond": "",
+    "Effects": [
+     "flag:ledger_decided",
+     "flag:ledger_order",
+     "rep:order+15",
+     "rep:kontor-30",
+     "quest:choice:s_ledger:Den Beweis dem Orden gegeben – Aldric wird angeklagt",
+     "achieve:truth"
+    ],
+    "Next": "ys_ledger2",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Ich will erst mit ihm selbst reden.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ys_ledger2",
+  "Speaker": "npc",
+  "Text": "Das werde ich. Und ich werde lernen müssen, womit ich meine eigenen Sünden bezahle.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ys_cat",
+  "Speaker": "npc",
+  "Text": "Eine Glaskatze. Ein Kind wird damit spielen, bis es selbst leuchtet. Bring sie mir. Ich mache es schnell und schmerzlos.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Gut. Nimm sie.",
+    "Cond": "",
+    "Effects": [
+     "flag:cat_decided",
+     "flag:cat_order",
+     "rep:order+8",
+     "rep:rooted-5",
+     "quest:choice:s_cat:Glimmer dem Orden übergeben"
+    ],
+    "Next": "ys_cat2",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Niemals.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ys_cat2",
+  "Speaker": "npc",
+  "Text": "Du hast ein Kind heute vor etwas bewahrt, das es noch nicht versteht. Es wird dich hassen. Das ist der Preis.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "aldric_root",
+  "Speaker": "npc",
+  "Text": "Ah, {name}. Zeit ist Geld. Deine und meine.",
+  "Variants": [
+   {
+    "Cond": "flag:ledger_order",
+    "Text": "Du hast mich verraten. Die Präzeptorin hat mir einen Brief geschickt. Ich reise ab, bevor ihre Kutten kommen. Sag, was du willst, und dann geh."
+   },
+   {
+    "Cond": "flag:ledger_blackmail",
+    "Text": "Mein liebster Geschäftspartner. Solange du schweigst, bin ich dein bester Freund."
+   },
+   {
+    "Cond": "!flag:heard_kontor",
+    "Text": "Der Überlebende! Setz dich, setz dich. Wein? Nein? Recht so, der hier ist schlecht. Also, geschäftlich."
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Was will das Kontor?",
+    "Cond": "!flag:heard_kontor",
+    "Effects": [],
+    "Next": "al_intro",
+    "Tag": ""
+   },
+   {
+    "Text": "Ich habe den Herzsplitter.",
+    "Cond": "item:herzsplitter & quest:mq_2=decide & !flag:ledger_order",
+    "Effects": [],
+    "Next": "al_splitter",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Brauchst du Hilfe?",
+    "Cond": "flag:heard_kontor & !quest:k_probes:any & !flag:ledger_order",
+    "Effects": [],
+    "Next": "al_probes",
+    "Tag": ""
+   },
+   {
+    "Text": "Hier sind die Messdaten.",
+    "Cond": "quest:k_probes=return",
+    "Effects": [],
+    "Next": "al_probes_done",
+    "Tag": ""
+   },
+   {
+    "Text": "Ich habe dein Buch gelesen.",
+    "Cond": "quest:s_ledger=decide & !flag:ledger_order",
+    "Effects": [],
+    "Next": "al_ledger",
+    "Tag": ""
+   },
+   {
+    "Text": "Was hast du zu verkaufen?",
+    "Cond": "!flag:ledger_order",
+    "Effects": [
+     "shop:kontor"
+    ],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Leb wohl.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "al_intro",
+  "Speaker": "npc",
+  "Text": "Das Nulllicht ist die größte Energiequelle, die dieses Land je gesehen hat. Vardenfall könnte damit Lampen betreiben, Schmieden, Pumpen. Kein Holz mehr, keine Kohle. Der Orden will es verbrennen, die Baumkuschler wollen es anbeten. Ich will es nutzen. Das ist alles.",
+  "Variants": [],
+  "Effects": [
+   "flag:heard_kontor",
+   "codex:faction_kontor",
+   "codex:person_aldric"
+  ],
+  "Choices": [
+   {
+    "Text": "Und die Menschen, die es verändert?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "al_people",
+    "Tag": ""
+   },
+   {
+    "Text": "Klingt vernünftig.",
+    "Cond": "",
+    "Effects": [
+     "rep:kontor+3"
+    ],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "al_people",
+  "Speaker": "npc",
+  "Text": "Menschen sterben auch in Kohlegruben, mein Freund. Der Fortschritt hatte schon immer Opfer. Der Unterschied ist: Ich zähle sie. Der Orden zählt nur Seelen.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "al_splitter",
+  "Speaker": "npc",
+  "Text": "Oh. Oh, sieh dir das an. Weißt du, was das wert ist? Nicht in Gold – in Jahren. Gib ihn mir, und das Kontor öffnet die Grube, bezahlt jede Familie in Haldenbruck und lässt dich an allem teilhaben, was daraus entsteht.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Einverstanden. Nimm ihn.",
+    "Cond": "",
+    "Effects": [
+     "item:-herzsplitter:1",
+     "flag:choice_kontor",
+     "flag:splitter_decided",
+     "flag:mine_open",
+     "item:+mine_key:1",
+     "gold:+200",
+     "rep:kontor+25",
+     "rep:order-15",
+     "rep:rooted-10",
+     "quest:choice:mq_2:Dem Kontor verkauft – das Herz soll genutzt werden",
+     "quest:start:mq_3"
+    ],
+    "Next": "al_splitter_done",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Nicht für Gold.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "al_splitter_done",
+  "Speaker": "npc",
+  "Text": "Kluge Wahl. Der Schlüssel zum Grubentor. Emrik weiß Bescheid. Ach – und falls du da unten etwas über den alten Einsturz findest … bring es zuerst zu mir. Nur zu mir.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "al_probes",
+  "Speaker": "npc",
+  "Text": "Meine Leute haben drei Messsonden in der Glasnarbe zurückgelassen, als die Glasläufer kamen. Lies sie aus. Ohne Daten kein Geschäft, ohne Geschäft kein Dorf.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Abgemacht.",
+    "Cond": "",
+    "Effects": [
+     "quest:start:k_probes"
+    ],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "al_probes_done",
+  "Speaker": "npc",
+  "Text": "Hervorragend! Siehst du die Kurve? Die Welle steigt nicht gleichmäßig, sie pulsiert – etwa sechzig Schläge in der Minute. Wie ein … nun ja. Hier, dein Anteil.",
+  "Variants": [],
+  "Effects": [
+   "flag:probes_done"
+  ],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "al_ledger",
+  "Speaker": "npc",
+  "Text": "Ah. Das Buch. Vor vierzig Jahren stritten drei Kontore um die Grube. Ich habe den Stollen sprengen lassen, um die anderen aufzuhalten. Ich wusste nicht, was darunter lag. Niemand wusste es.",
+  "Variants": [],
+  "Effects": [
+   "codex:event_collapse_truth"
+  ],
+  "Choices": [
+   {
+    "Text": "Zahl mir mein Schweigen.",
+    "Cond": "",
+    "Effects": [
+     "flag:ledger_decided",
+     "flag:ledger_blackmail",
+     "gold:+300",
+     "rep:kontor+5",
+     "quest:choice:s_ledger:Aldric erpresst – Schweigen für 300 Gold"
+    ],
+    "Next": "al_ledger_pay",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Du wirst dich stellen. [Stärke 10 oder Intellekt 10]",
+    "Cond": "attr:str>=10 | attr:int>=10",
+    "Effects": [
+     "flag:ledger_decided",
+     "flag:ledger_confess",
+     "rep:kontor-10",
+     "rep:order+10",
+     "quest:choice:s_ledger:Aldric zum Geständnis gezwungen",
+     "achieve:truth"
+    ],
+    "Next": "al_ledger_confess",
+    "Tag": "Probe"
+   },
+   {
+    "Text": "Ich überlege es mir.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "al_ledger_pay",
+  "Speaker": "npc",
+  "Text": "Dreihundert. Und du vergisst, dass du lesen kannst. Wir verstehen uns.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "al_ledger_confess",
+  "Speaker": "npc",
+  "Text": "Du … hast recht. Vierzig Jahre lang habe ich alles gezählt. Nur mich selbst nicht. Ich werde zu Ysolde gehen. Morgen. Vielleicht übermorgen.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "maren_root",
+  "Speaker": "npc",
+  "Text": "Die Wurzeln haben dich angekündigt.",
+  "Variants": [
+   {
+    "Cond": "!flag:heard_rooted",
+    "Text": "Du bist es. Das Herz hat deinen Namen geflüstert, bevor du ihn selbst wusstest. Setz dich zu mir."
+   },
+   {
+    "Cond": "touch>=30",
+    "Text": "Du leuchtest, Schwester des Lichts. Hab keine Angst davor."
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Wer seid ihr?",
+    "Cond": "!flag:heard_rooted",
+    "Effects": [],
+    "Next": "ma_intro",
+    "Tag": ""
+   },
+   {
+    "Text": "Ich habe den Herzsplitter.",
+    "Cond": "item:herzsplitter & quest:mq_2=decide",
+    "Effects": [],
+    "Next": "ma_splitter",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Kann ich helfen?",
+    "Cond": "flag:heard_rooted & !quest:r_seed:any",
+    "Effects": [],
+    "Next": "ma_seed",
+    "Tag": ""
+   },
+   {
+    "Text": "Der Samen ist gepflanzt.",
+    "Cond": "quest:r_seed=return",
+    "Effects": [],
+    "Next": "ma_seed_done",
+    "Tag": ""
+   },
+   {
+    "Text": "Das Kontorbuch beweist Aldrics Schuld.",
+    "Cond": "quest:s_ledger=decide",
+    "Effects": [],
+    "Next": "ma_ledger",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Linas Katze ist aus Glas.",
+    "Cond": "quest:s_cat=choose",
+    "Effects": [],
+    "Next": "ma_cat",
+    "Tag": ""
+   },
+   {
+    "Text": "Zeig mir deine Gaben.",
+    "Cond": "",
+    "Effects": [
+     "shop:maren"
+    ],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Leb wohl.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ma_intro",
+  "Speaker": "npc",
+  "Text": "Wir sind die, die geblieben sind, als der Orden brannte und das Kontor floh. Wir haben gelernt, dass das Licht lebt. Es hat Hunger, es hat Angst, es träumt. Wenn man es nährt, wird es ruhig. Wenn man es angreift, schlägt es zurück.",
+  "Variants": [],
+  "Effects": [
+   "flag:heard_rooted",
+   "codex:faction_rooted",
+   "codex:person_maren"
+  ],
+  "Choices": [
+   {
+    "Text": "Nährt? Womit?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "ma_feed",
+    "Tag": ""
+   },
+   {
+    "Text": "Das klingt friedlich.",
+    "Cond": "",
+    "Effects": [
+     "rep:rooted+3"
+    ],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ma_feed",
+  "Speaker": "npc",
+  "Text": "Mit Leben. Ein wenig Blut. Ein Tier, dann und wann. Und manchmal jemand, der sich verirrt hat und nicht mehr gefunden werden will.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Ihr opfert Menschen?",
+    "Cond": "",
+    "Effects": [
+     "rep:rooted-2"
+    ],
+    "Next": "ma_feed2",
+    "Tag": ""
+   },
+   {
+    "Text": "Ich verstehe.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ma_feed2",
+  "Speaker": "npc",
+  "Text": "Wir geben zurück, was das Land uns gibt. Du hältst mich für ein Ungeheuer. Frag dich, wie viele der Orden verbrannt hat und wie viele wir gegeben haben. Dann entscheide.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ma_splitter",
+  "Speaker": "npc",
+  "Text": "Da ist es. Ein Stück seines Herzens. Es ruft nach Hause. Gib es mir, und ich trage es zurück zu den Wurzeln – die Welle wird sich legen, das Land wird heilen. Auf seine Weise.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Bring es heim.",
+    "Cond": "",
+    "Effects": [
+     "item:-herzsplitter:1",
+     "flag:choice_rooted",
+     "flag:splitter_decided",
+     "flag:mine_open",
+     "item:+mine_key:1",
+     "rep:rooted+25",
+     "rep:order-15",
+     "rep:kontor-10",
+     "touch:+5",
+     "quest:choice:mq_2:Den Verwurzelten gegeben – das Herz soll ruhen",
+     "quest:start:mq_3"
+    ],
+    "Next": "ma_splitter_done",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Noch nicht.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ma_splitter_done",
+  "Speaker": "npc",
+  "Text": "Die Wurzeln danken dir. Unter der Grube schläft etwas, das nicht schlafen will – ein Mann, der das Herz festhält. Emrik hatte einen Schlüssel, den ich ihm … abgenommen habe. Er gehört jetzt dir.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ma_seed",
+  "Speaker": "npc",
+  "Text": "Ein Samen des Herzbaums will gepflanzt werden, am Schrein hinter mir. Aber er braucht Borke, die das Licht getrunken hat. Die Wurzelkolosse an den Nordhängen tragen sie.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Ich hole sie.",
+    "Cond": "",
+    "Effects": [
+     "quest:start:r_seed"
+    ],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ma_seed_done",
+  "Speaker": "npc",
+  "Text": "Er keimt. Hörst du? Er singt. Nimm dies – einen Samen, den du bei dir tragen kannst.",
+  "Variants": [],
+  "Effects": [
+   "flag:seed_done",
+   "item:+relic_seed:1"
+  ],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ma_ledger",
+  "Speaker": "npc",
+  "Text": "Aldric. Natürlich. Die Wurzeln haben ihn nie gemocht. Gib mir das Buch, und jede Familie in Vardenfall erfährt, wem sie ihre leuchtenden Kinder verdankt.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Nimm es. Die Wahrheit gehört allen.",
+    "Cond": "",
+    "Effects": [
+     "flag:ledger_decided",
+     "flag:ledger_rooted",
+     "rep:rooted+15",
+     "rep:kontor-25",
+     "quest:choice:s_ledger:Den Verwurzelten gegeben – die Wahrheit wird verbreitet",
+     "achieve:truth"
+    ],
+    "Next": "ma_ledger2",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Noch nicht.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ma_ledger2",
+  "Speaker": "npc",
+  "Text": "Wahrheit ist wie Wasser. Sie findet ihren Weg.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ma_cat",
+  "Speaker": "npc",
+  "Text": "Ein Kind des Lichts. Es gehört zu uns. Lass sie bei mir, und sie wird wachsen, ohne jemandem zu schaden.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Nimm Glimmer auf.",
+    "Cond": "",
+    "Effects": [
+     "flag:cat_decided",
+     "flag:cat_rooted",
+     "rep:rooted+8",
+     "quest:choice:s_cat:Glimmer den Verwurzelten anvertraut"
+    ],
+    "Next": "ma_cat2",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Nein.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ma_cat2",
+  "Speaker": "npc",
+  "Text": "Lina darf sie besuchen. Wenn sie mutig genug ist, in den Wald zu kommen.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "oswin_root",
+  "Speaker": "npc",
+  "Text": "Na? Brauchst du Stahl oder Rat? Stahl ist billiger.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Warum ist die Esse kalt?",
+    "Cond": "!quest:s_smith:any",
+    "Effects": [],
+    "Next": "os_quest",
+    "Tag": ""
+   },
+   {
+    "Text": "Hier sind Erz und Holz.",
+    "Cond": "quest:s_smith=return & item:iron_ore>=6 & item:wood>=4",
+    "Effects": [
+     "item:-iron_ore:6",
+     "item:-wood:4",
+     "flag:smith_done"
+    ],
+    "Next": "os_done",
+    "Tag": ""
+   },
+   {
+    "Text": "Zeig mir deine Waren.",
+    "Cond": "",
+    "Effects": [
+     "shop:oswin"
+    ],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Ich will etwas herstellen oder verbessern.",
+    "Cond": "",
+    "Effects": [
+     "craft"
+    ],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Erzähl mir von Haldenbruck.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "os_lore",
+    "Tag": ""
+   },
+   {
+    "Text": "Bis dann.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "os_quest",
+  "Speaker": "npc",
+  "Text": "Kein Erz mehr! Die Nordhänge sind voller Glasviecher, und keiner traut sich hin. Bring mir sechs Brocken Eisenerz und vier Scheite Hartholz – dann schmiede ich dir, was du willst.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Mache ich.",
+    "Cond": "",
+    "Effects": [
+     "quest:start:s_smith"
+    ],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "os_done",
+  "Speaker": "npc",
+  "Text": "Ha! Gutes Erz, rot wie ein Sonnenuntergang. Hier, drei Barren für dich – und ab jetzt verbessere ich deine Waffen an der Werkbank, wenn du Material bringst.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "os_lore",
+  "Speaker": "npc",
+  "Text": "Haldenbruck heißt so, weil hier die Halden der alten Grube lagen. Erz, Schlacke, Staub. Dann kam der Einsturz, und aus den Halden wuchs Glas. Mein Vater hat daraus Messer gemacht. Sie haben geleuchtet, bis er starb.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "oswin_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "pell_root",
+  "Speaker": "npc",
+  "Text": "Pell, Krämer, Händler, Retter in der Not! Was darf’s sein?",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Zeig mir deine Waren.",
+    "Cond": "",
+    "Effects": [
+     "shop:pell"
+    ],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Was gibt’s Neues?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "pell_news",
+    "Tag": ""
+   },
+   {
+    "Text": "Nichts.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "pell_news",
+  "Speaker": "npc",
+  "Text": "Neues? Die Preise steigen, der Mut sinkt. Und angeblich leuchten die Rüben vom alten Tam.",
+  "Variants": [
+   {
+    "Cond": "flag:choice_kontor",
+    "Text": "Das Kontor liefert jetzt Kristalltrunk und Feuertöpfe! Gefährlich? Ach was, nur wenn man sie benutzt."
+   },
+   {
+    "Cond": "flag:choice_order",
+    "Text": "Seit der Orden am Tor steht, kaufen die Leute vor allem Läuterungstonikum. Gut fürs Geschäft, schlecht für die Stimmung."
+   },
+   {
+    "Cond": "flag:choice_rooted",
+    "Text": "Die Verwurzelten tauschen jetzt Kräuter gegen Salz. Ich habe noch nie so viel Silberwurz gesehen."
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "pell_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "hedda_root",
+  "Speaker": "npc",
+  "Text": "Willkommen in der Letzten Laterne. Die Suppe ist warm, die Betten sind kalt.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Du wirkst besorgt.",
+    "Cond": "!quest:s_hedda:any & quest:mq_1:done",
+    "Effects": [],
+    "Next": "he_quest",
+    "Tag": ""
+   },
+   {
+    "Text": "Die Stimme ist verstummt.",
+    "Cond": "quest:s_hedda=return",
+    "Effects": [],
+    "Next": "he_done",
+    "Tag": ""
+   },
+   {
+    "Text": "Erzähl mir Gerüchte.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "he_rumor",
+    "Tag": ""
+   },
+   {
+    "Text": "Eine Schüssel Suppe, bitte. (4 Gold)",
+    "Cond": "gold>=4",
+    "Effects": [
+     "gold:-4",
+     "need:food:70"
+    ],
+    "Next": "he_soup",
+    "Tag": ""
+   },
+   {
+    "Text": "Ein Bett für die Nacht. (10 Gold)",
+    "Cond": "gold>=10",
+    "Effects": [
+     "gold:-10",
+     "sleep"
+    ],
+    "Next": "he_rest",
+    "Tag": ""
+   },
+   {
+    "Text": "Ein heißes Bad. (3 Gold)",
+    "Cond": "gold>=3",
+    "Effects": [
+     "gold:-3",
+     "wash:bath"
+    ],
+    "Next": "he_bath",
+    "Tag": ""
+   },
+   {
+    "Text": "Tschüss.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "he_quest",
+  "Speaker": "npc",
+  "Text": "Jede Nacht, wenn es still wird, flüstert jemand meinen Namen. Es klingt wie Bertram, mein Mann. Er ist vor zwei Wintern im Wald geblieben. Ich weiß, dass er tot ist. Aber … könntest du nachsehen? Nachts, im Flüsterforst, bei den alten Eichen östlich von Marens Schrein.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Ich sehe nach.",
+    "Cond": "",
+    "Effects": [
+     "quest:start:s_hedda"
+    ],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "he_done",
+  "Speaker": "npc",
+  "Text": "Es war … nur ein Nachhall? Ein Schatten, der seine Stimme trug. Danke. Ich glaube, heute Nacht werde ich schlafen.",
+  "Variants": [],
+  "Effects": [
+   "flag:hedda_done"
+  ],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "he_rumor",
+  "Speaker": "npc",
+  "Text": "Man sagt, auf der Felsnadel draußen im Meer steht eine Kapelle. Die alte Oda soll dort gebetet haben, bis die Flut kam. Keiner weiß, wie man hinkommt – Jorun an der Küste murmelt was von leuchtenden Zeichen.",
+  "Variants": [
+   {
+    "Cond": "flag:tidepath_open",
+    "Text": "Du warst draußen auf der Felsnadel? Dann bist du entweder ein Heiliger oder ein Narr. Trink was, geht aufs Haus."
+   },
+   {
+    "Cond": "quest:mq_3:any",
+    "Text": "Die Leute sagen, in Tiefenrast singt nachts jemand ein Kinderlied. Ich glaube, ich will nicht wissen, wer."
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "hedda_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "he_rest",
+  "Speaker": "npc",
+  "Text": "Die Kammer oben links. Das Bett ist hart, aber trocken. Schlaf gut – und wenn du nachts etwas kratzen hörst … schlaf trotzdem.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "he_bath",
+  "Speaker": "npc",
+  "Text": "Der Zuber steht hinten, das Wasser ist heiß. Seife liegt daneben – nimm sie auch.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Danke.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "hedda_root",
+    "Tag": ""
+   },
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "he_soup",
+  "Speaker": "npc",
+  "Text": "Rübensuppe mit Speck. Die Rüben leuchten nicht, versprochen. Iss, solange sie warm ist.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Danke.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "hedda_root",
+    "Tag": ""
+   },
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "brann_root",
+  "Speaker": "npc",
+  "Text": "Westtor. Augen offen.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Brauchst du Hilfe?",
+    "Cond": "!quest:s_ledger:any & quest:mq_1:done",
+    "Effects": [],
+    "Next": "br_quest",
+    "Tag": ""
+   },
+   {
+    "Text": "Rotbart ist erledigt. Er trug einen Schlüssel.",
+    "Cond": "quest:s_ledger=ledger",
+    "Effects": [],
+    "Next": "br_chief",
+    "Tag": ""
+   },
+   {
+    "Text": "Wie ist die Lage?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "br_status",
+    "Tag": ""
+   },
+   {
+    "Text": "Bis dann.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "br_quest",
+  "Speaker": "npc",
+  "Text": "Rotbart und seine Plünderer. Sie überfallen Wagen im Westwald – aber nur die vom Orden und von freien Händlern. Kontorwagen lassen sie fahren. Seltsam, oder? Ihr Lager liegt westlich im Forst. Wenn du Rotbart erledigst, schau nach, was er bei sich trägt.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Ich kümmere mich um Rotbart.",
+    "Cond": "",
+    "Effects": [
+     "quest:start:s_ledger"
+    ],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "br_chief",
+  "Speaker": "npc",
+  "Text": "Ein Kontorschlüssel? Bei Rotbart? … Das Kontorbuch steht in Aldrics Schreibstube, gleich neben der Tür. Ich habe nichts gesagt.",
+  "Variants": [],
+  "Effects": [
+   "flag:ledger_key"
+  ],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "br_status",
+  "Speaker": "npc",
+  "Text": "Tagsüber ruhig. Nachts kommen die Nachhalle bis an die Palisade. Sieh ihnen in die Augen, dann bleiben sie stehen. Dreh dich nie um.",
+  "Variants": [
+   {
+    "Cond": "flag:raid_defended",
+    "Text": "Seit wir den Überfall zurückgeschlagen haben, grüßen mich die Leute wieder. Das hast du gut gemacht."
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "brann_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "lina_root",
+  "Speaker": "npc",
+  "Text": "Hallo! Bist du ein Ritter?",
+  "Variants": [
+   {
+    "Cond": "flag:cat_lina",
+    "Text": "Glimmer schläft auf meinem Kopfkissen und summt! Mama schimpft, aber nur ein bisschen."
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Was ist los, Kleine?",
+    "Cond": "!quest:s_cat:any",
+    "Effects": [],
+    "Next": "li_quest",
+    "Tag": ""
+   },
+   {
+    "Text": "Ich habe Glimmer gefunden.",
+    "Cond": "quest:s_cat=choose",
+    "Effects": [],
+    "Next": "li_cat",
+    "Tag": ""
+   },
+   {
+    "Text": "Kein Ritter. Tut mir leid.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "li_quest",
+  "Speaker": "npc",
+  "Text": "Glimmer ist weg! Meine Katze! Sie ist in den Wald gelaufen, dorthin, wo ich nicht hindarf. Sie ist grau und … ein bisschen durchsichtig geworden. Und sie summt. Bitte!",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Ich suche sie.",
+    "Cond": "",
+    "Effects": [
+     "quest:start:s_cat"
+    ],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "li_cat",
+  "Speaker": "npc",
+  "Text": "GLIMMER! Oh … sie leuchtet. Mama sagt, leuchtende Sachen muss man zum Orden bringen. Aber sie ist doch meine Katze.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Behalte sie. Pass gut auf sie auf.",
+    "Cond": "",
+    "Effects": [
+     "flag:cat_decided",
+     "flag:cat_lina",
+     "rep:order-3",
+     "quest:choice:s_cat:Glimmer bei Lina gelassen"
+    ],
+    "Next": "li_keep",
+    "Tag": "Entscheidung"
+   },
+   {
+    "Text": "Ich frage jemanden, der sich auskennt.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "li_keep",
+  "Speaker": "npc",
+  "Text": "Danke! Danke! Du bist doch ein Ritter!",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "ute_root",
+  "Speaker": "npc",
+  "Text": "Hast du Lina gesehen? Das Kind treibt mich in den Wahnsinn.",
+  "Variants": [
+   {
+    "Cond": "quest:s_cat:done",
+    "Text": "Lina redet nur noch von dir und dieser Katze. Danke. Glaube ich."
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "tam_root",
+  "Speaker": "npc",
+  "Text": "Tam. Bauer. Leuchtende Rüben. Frag nicht.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Leuchtende Rüben?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "tam2",
+    "Tag": ""
+   },
+   {
+    "Text": "Bis dann.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "tam2",
+  "Speaker": "npc",
+  "Text": "Sie schmecken nach Kupfer und machen komische Träume. Meine Frau isst sie trotzdem. Sagt, sie träumt vom Meer.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "folk_a",
+  "Speaker": "npc",
+  "Text": "Hm? Ich hab zu tun. Aber sag schon.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Was gibt es Neues im Dorf?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "folk_a_news",
+    "Tag": ""
+   },
+   {
+    "Text": "Lust auf eine Runde Würfel? (10 Gold Einsatz)",
+    "Cond": "gold>=10",
+    "Effects": [
+     "dice:10"
+    ],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Würfeln um 30 Gold?",
+    "Cond": "gold>=30",
+    "Effects": [
+     "dice:30"
+    ],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Wo finde ich hier was?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "folk_where",
+    "Tag": ""
+   },
+   {
+    "Text": "Nichts. Mach weiter.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "folk_a_news",
+  "Speaker": "npc",
+  "Text": "Seit die Expedition kam, schläft keiner mehr richtig. Nachts leuchtet es über dem Nordwald, und der Vogt tut, als wäre nichts. Frag ihn mal, ob er selbst noch schläft.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Und sonst?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "folk_a",
+    "Tag": ""
+   },
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "folk_b",
+  "Speaker": "npc",
+  "Text": "Na, Fremder. Suchst du Arbeit oder Ärger?",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Gerüchte?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "folk_b_news",
+    "Tag": ""
+   },
+   {
+    "Text": "Lust auf eine Runde Würfel? (10 Gold Einsatz)",
+    "Cond": "gold>=10",
+    "Effects": [
+     "dice:10"
+    ],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Würfeln um 30 Gold?",
+    "Cond": "gold>=30",
+    "Effects": [
+     "dice:30"
+    ],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Wo finde ich hier was?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "folk_where",
+    "Tag": ""
+   },
+   {
+    "Text": "Weder noch.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "folk_b_news",
+  "Speaker": "npc",
+  "Text": "Rotbarts Leute sind am Fluss gesehen worden. Und der Kontor kauft jedes Stück Nullglas, das man ihm bringt – zu Preisen, die zu gut sind, um ehrlich zu sein.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Noch was?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "folk_b",
+    "Tag": ""
+   },
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "folk_c",
+  "Speaker": "npc",
+  "Text": "Oh – hallo. Brauchst du was?",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Was erzählt man sich?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "folk_c_news",
+    "Tag": ""
+   },
+   {
+    "Text": "Lust auf eine Runde Würfel? (10 Gold Einsatz)",
+    "Cond": "gold>=10",
+    "Effects": [
+     "dice:10"
+    ],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Würfeln um 30 Gold?",
+    "Cond": "gold>=30",
+    "Effects": [
+     "dice:30"
+    ],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Wo finde ich hier was?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "folk_where",
+    "Tag": ""
+   },
+   {
+    "Text": "Nein, danke.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "folk_c_news",
+  "Speaker": "npc",
+  "Text": "Hedda sagt, im Keller der Laterne kratzt es nachts. Die Wachen gehen jetzt mit Fackeln Streife, jede Nacht zwei Runden ums Dorf. Hilft es? Wer weiß.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Noch etwas?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "folk_c",
+    "Tag": ""
+   },
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "folk_where",
+  "Speaker": "npc",
+  "Text": "Oswin schmiedet an der Esse bis zum Abend, mittags isst er in der Laterne. Pell steht tagsüber am Markt, nachts ist sein Laden zu. Den Vogt findest du am Vogthaus im Norden – abends sitzt er meist im Gasthaus. Und nachts schlafen anständige Leute.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Danke.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "captain_root",
+  "Speaker": "npc",
+  "Text": "Hauptmann Gerold, Grenzwacht. Wenn du keine Botschaft hast, halt die Leute nicht vom Üben ab.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Was ist das für eine Burg?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "cap_castle",
+    "Tag": ""
+   },
+   {
+    "Text": "Was macht die Grenzwacht gegen das Nulllicht?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "cap_null",
+    "Tag": ""
+   },
+   {
+    "Text": "Bringt Ihr mir das Kämpfen bei? (Übungskampf, 5 Gold)",
+    "Cond": "gold>=5",
+    "Effects": [],
+    "Next": "cap_train",
+    "Tag": ""
+   },
+   {
+    "Text": "Ich gehe schon.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "cap_train",
+  "Speaker": "npc",
+  "Text": "Fünf Gold, und du blutest nicht zu sehr. Stumpfe Klingen, volle Härte. Wer jammert, fliegt. Bereit?",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Bereit.",
+    "Cond": "gold>=5",
+    "Effects": [
+     "train"
+    ],
+    "Next": "cap_train_done",
+    "Tag": ""
+   },
+   {
+    "Text": "Lieber nicht.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "captain_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "cap_train_done",
+  "Speaker": "npc",
+  "Text": "Nicht schlecht. Deine Deckung ist ein Scheunentor, aber du stehst wieder auf. Das ist mehr, als die meisten schaffen.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Danke.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "captain_root",
+    "Tag": ""
+   },
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "cap_castle",
+  "Speaker": "npc",
+  "Text": "Haldenstein. Früher saß hier der Vogt, bevor er ins Dorf zog, wo es wärmer ist. Jetzt ist es Kaserne, Pferdestall und Wachturm in einem. Von den Türmen sieht man bis zur Glasnarbe.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Und sonst?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "captain_root",
+    "Tag": ""
+   },
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "cap_null",
+  "Speaker": "npc",
+  "Text": "Wir halten die Straßen offen und zählen die Nächte. Tagsüber üben die Männer, nachts gehen zwei Mann mit Fackeln um die Mauern. Mehr kann Stahl gegen Licht nicht tun.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Verstehe.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "captain_root",
+    "Tag": ""
+   },
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "watch_root",
+  "Speaker": "npc",
+  "Text": "Halt. Was willst du?",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Nur vorbei.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Ist es sicher im Dorf?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "watch_safe",
+    "Tag": ""
+   },
+   {
+    "Text": "Nichts.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "caught_root",
+  "Speaker": "npc",
+  "Text": "Stehen bleiben! Ich hab genau gesehen, was du da getrieben hast. Das macht {fine} Gold – oder du kommst mit ins Loch.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Schon gut, ich zahle. ({fine} Gold)",
+    "Cond": "canpay",
+    "Effects": [
+     "fine:pay"
+    ],
+    "Next": "caught_paid",
+    "Tag": ""
+   },
+   {
+    "Text": "[Überreden] Das ist ein Missverständnis. Ich wollte nur nach dem Rechten sehen …",
+    "Cond": "!flag:fine_try",
+    "Effects": [
+     "fine:talk"
+    ],
+    "Next": "caught_talk",
+    "Tag": ""
+   },
+   {
+    "Text": "[Einschüchtern] Überleg dir gut, mit wem du dich anlegst.",
+    "Cond": "!flag:fine_try & attr:str>=6",
+    "Effects": [
+     "fine:scare"
+    ],
+    "Next": "caught_scare",
+    "Tag": ""
+   },
+   {
+    "Text": "So viel hab ich nicht. Dann steck mich eben ein.",
+    "Cond": "",
+    "Effects": [
+     "fine:jail"
+    ],
+    "Next": "caught_jail",
+    "Tag": ""
+   },
+   {
+    "Text": "[Davonlaufen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "caught_paid",
+  "Speaker": "npc",
+  "Text": "Na also. Und jetzt Finger weg von fremdem Eigentum, sonst wird’s teurer.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Verstanden.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "caught_talk",
+  "Speaker": "npc",
+  "Text": "Die Wache mustert dich lange.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Weiter]",
+    "Cond": "flag:fine_ok",
+    "Effects": [],
+    "Next": "caught_talk_ok",
+    "Tag": ""
+   },
+   {
+    "Text": "[Weiter]",
+    "Cond": "!flag:fine_ok",
+    "Effects": [],
+    "Next": "caught_talk_fail",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "caught_talk_ok",
+  "Speaker": "npc",
+  "Text": "Hm. Na gut. Diesmal glaub ich dir. Aber ich hab dein Gesicht gesehen.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Danke.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "caught_talk_fail",
+  "Speaker": "npc",
+  "Text": "Nach dem Rechten sehen, ja? Netter Versuch. {fine} Gold. Jetzt.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Schon gut, ich zahle. ({fine} Gold)",
+    "Cond": "canpay",
+    "Effects": [
+     "fine:pay"
+    ],
+    "Next": "caught_paid",
+    "Tag": ""
+   },
+   {
+    "Text": "So viel hab ich nicht. Dann steck mich eben ein.",
+    "Cond": "",
+    "Effects": [
+     "fine:jail"
+    ],
+    "Next": "caught_jail",
+    "Tag": ""
+   },
+   {
+    "Text": "[Davonlaufen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "caught_scare",
+  "Speaker": "npc",
+  "Text": "Die Wache greift zum Schwert – und zögert.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Weiter]",
+    "Cond": "flag:fine_ok",
+    "Effects": [],
+    "Next": "caught_scare_ok",
+    "Tag": ""
+   },
+   {
+    "Text": "[Weiter]",
+    "Cond": "!flag:fine_ok",
+    "Effects": [],
+    "Next": "caught_scare_fail",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "caught_scare_ok",
+  "Speaker": "npc",
+  "Text": "Schon gut, schon gut … Verschwinde einfach. Und lass dich hier nicht so schnell wieder blicken.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Klug von dir.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "caught_scare_fail",
+  "Speaker": "npc",
+  "Text": "Du drohst mir? Einer Wache? Das kostet jetzt {fine} Gold, und zwar sofort.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Schon gut, ich zahle. ({fine} Gold)",
+    "Cond": "canpay",
+    "Effects": [
+     "fine:pay"
+    ],
+    "Next": "caught_paid",
+    "Tag": ""
+   },
+   {
+    "Text": "So viel hab ich nicht. Dann steck mich eben ein.",
+    "Cond": "",
+    "Effects": [
+     "fine:jail"
+    ],
+    "Next": "caught_jail",
+    "Tag": ""
+   },
+   {
+    "Text": "[Davonlaufen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "caught_jail",
+  "Speaker": "npc",
+  "Text": "Dann komm. Eine Nacht bei Wasser und Brot hat noch keinem geschadet.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Mitgehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "watch_safe",
+  "Speaker": "npc",
+  "Text": "Sicher? Tagsüber ja. Nachts gehen wir Streife, zwei Runden, Fackeln an. Wer nachts in fremde Häuser steigt, zahlt – oder sitzt. Merk dir das.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Verstanden.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "jorun_root",
+  "Speaker": "npc",
+  "Text": "Salz in den Taschen? Gut. Dann kannst du bleiben.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Kann ich helfen?",
+    "Cond": "!quest:s_nets:any",
+    "Effects": [],
+    "Next": "jo_quest",
+    "Tag": ""
+   },
+   {
+    "Text": "Deine Netze sind frei.",
+    "Cond": "quest:s_nets=return",
+    "Effects": [],
+    "Next": "jo_done",
+    "Tag": ""
+   },
+   {
+    "Text": "Erzähl mir von der Felsnadel.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "jo_needle",
+    "Tag": ""
+   },
+   {
+    "Text": "Was verkaufst du?",
+    "Cond": "",
+    "Effects": [
+     "shop:jorun"
+    ],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Mach’s gut.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "jo_quest",
+  "Speaker": "npc",
+  "Text": "Meine Netze hängen am Strand fest, eins im Westen, eins im Osten. Und am Wrack hausen Plünderer, die mir die Fische klauen. Mach das eine und das andere, und du kriegst was Gutes.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Abgemacht.",
+    "Cond": "",
+    "Effects": [
+     "quest:start:s_nets"
+    ],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "jo_done",
+  "Speaker": "npc",
+  "Text": "Die Netze! Und die Plünderer hab ich rennen sehen. Nimm das, hält dich auf den Beinen.",
+  "Variants": [],
+  "Effects": [
+   "flag:nets_done"
+  ],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "jo_needle",
+  "Speaker": "npc",
+  "Text": "Die Kapelle da draußen? Als ich jung war, sah ich nachts Lichter über dem Wasser. Ein Pfad, sagte mein Vater, der nur erscheint, wenn man die Zeichen in der richtigen Reihenfolge an die Stele legt. Wald, Ruine, Wrack. Die kleinste Zahl zuerst. Und nur, wenn der Mond sinkt.",
+  "Variants": [],
+  "Effects": [
+   "codex:lore_tidepath_hint"
+  ],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "jorun_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "emrik_root",
+  "Speaker": "npc",
+  "Text": "Grubenwart Emrik. Vierzig Jahre Wache vor einem Loch.",
+  "Variants": [
+   {
+    "Cond": "flag:mine_open",
+    "Text": "Das Tor ist offen. Pass auf dich auf da unten. Und wenn du Rast siehst … sag ihm, Emrik hat nie aufgehört zu graben."
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Öffne das Tor.",
+    "Cond": "!flag:mine_open & quest:mq_2:any",
+    "Effects": [],
+    "Next": "em_locked",
+    "Tag": ""
+   },
+   {
+    "Text": "Kann ich helfen?",
+    "Cond": "!quest:s_emrik:any",
+    "Effects": [],
+    "Next": "em_quest",
+    "Tag": ""
+   },
+   {
+    "Text": "Hier sind Splitter und Staub.",
+    "Cond": "quest:s_emrik=return & item:glass_shard>=5 & item:moth_dust>=2",
+    "Effects": [
+     "item:-glass_shard:5",
+     "item:-moth_dust:2",
+     "flag:emrik_done"
+    ],
+    "Next": "em_done",
+    "Tag": ""
+   },
+   {
+    "Text": "Was ist damals passiert?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "em_past",
+    "Tag": ""
+   },
+   {
+    "Text": "Ich möchte die Werkbank benutzen.",
+    "Cond": "",
+    "Effects": [
+     "craft"
+    ],
+    "Next": "",
+    "Tag": ""
+   },
+   {
+    "Text": "Bis dann.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "em_locked",
+  "Speaker": "npc",
+  "Text": "Ohne Siegel, Schlüssel oder Befehl öffne ich nicht. Das Kontor zahlt mich, der Orden bedroht mich, und die Verwurzelten … die klauen mir die Schlüssel. Entscheide dich, wem du traust, dann reden wir.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "emrik_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "em_quest",
+  "Speaker": "npc",
+  "Text": "Die Nachhalle da unten hassen Licht. Richtiges Licht. Bring mir fünf Glassplitter und zwei Prisen Irrlichtstaub, dann baue ich Lampen, die sie blenden.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Ich besorge sie.",
+    "Cond": "",
+    "Effects": [
+     "quest:start:s_emrik"
+    ],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "em_done",
+  "Speaker": "npc",
+  "Text": "Gut. Das reicht für ein Dutzend Lampen. Nimm die Tränke. Du wirst sie brauchen.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "em_past",
+  "Speaker": "npc",
+  "Text": "Ich war siebzehn. Wir hörten die Sprengung, dann das Licht. Es fiel nach oben, wie Schnee, der zurück in den Himmel will. Rast hat drei Tage gegraben. Mit den Händen. Seine Tochter war da unten.",
+  "Variants": [],
+  "Effects": [
+   "codex:event_collapse"
+  ],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "emrik_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "anselm_root",
+  "Speaker": "npc",
+  "Text": "Friede der Flamme mit dir. Du bist weit von der Straße entfernt.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Was tust du hier?",
+    "Cond": "",
+    "Effects": [],
+    "Next": "an_here",
+    "Tag": ""
+   },
+   {
+    "Text": "Wie löse ich das Glockenrätsel?",
+    "Cond": "!flag:oda_bells_solved",
+    "Effects": [],
+    "Next": "an_bells",
+    "Tag": ""
+   },
+   {
+    "Text": "Leb wohl.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "an_here",
+  "Speaker": "npc",
+  "Text": "Ich bete. Sankt Oda ist keine Heilige des Ordens, aber sie hat einst das Meer aufgehalten. Vielleicht hält sie auch das Licht auf. Bisher hat sie nicht geantwortet.",
+  "Variants": [],
+  "Effects": [
+   "codex:person_anselm"
+  ],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "anselm_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "an_bells",
+  "Speaker": "npc",
+  "Text": "Die Steintafel am Eingang. Lies sie. Oda hat in Rätseln gepredigt, weil sie glaubte, dass nur, wer sucht, auch findet. Ein falscher Ton weckt die Schatten – sei vorsichtig.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Zurück]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "anselm_root",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "anselm_mine",
+  "Speaker": "npc",
+  "Text": "Du gehst hinunter? Dann nimm meinen Segen – auch wenn du ihn nicht willst.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "Danke, Bruder.",
+    "Cond": "",
+    "Effects": [
+     "restore"
+    ],
+    "Next": "an_mine2",
+    "Tag": ""
+   },
+   {
+    "Text": "Brauch ich nicht.",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "an_mine2",
+  "Speaker": "npc",
+  "Text": "Die Flamme sei deine Laterne. Und wenn du dem Hauptmann begegnest … er war ein guter Mann. Einst.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "order_guard",
+  "Speaker": "npc",
+  "Text": "Halt. Zeig deine Hände. … Gut, kein Leuchten. Weiter.",
+  "Variants": [
+   {
+    "Cond": "touch>=30",
+    "Text": "Deine Adern leuchten. Der Orden behält dich im Auge, Berührter. Geh weiter – langsam."
+   }
+  ],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "kontor_foreman",
+  "Speaker": "npc",
+  "Text": "Schichtwechsel! Wenn du nicht arbeitest, steh nicht im Weg. Das Kontor hat die Grube übernommen – mit deiner Hilfe, wie ich höre.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ },
+ {
+  "Id": "rooted_keeper",
+  "Speaker": "npc",
+  "Text": "Die Wurzeln sind jetzt im Dorf. Keine Angst – sie beißen nur die, die Äxte tragen.",
+  "Variants": [],
+  "Effects": [],
+  "Choices": [
+   {
+    "Text": "[Gehen]",
+    "Cond": "",
+    "Effects": [],
+    "Next": "",
+    "Tag": ""
+   }
+  ]
+ }
+]

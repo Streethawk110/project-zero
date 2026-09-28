@@ -1,0 +1,21 @@
+{
+  "name": "@pz/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "PZ_ALLOW_TEST_ACCOUNTS=1 tsx watch --clear-screen=false src/main.ts",
+    "build": "node build.mjs",
+    "start": "node --no-warnings=ExperimentalWarning dist/server.mjs",
+    "migrate": "node --no-warnings=ExperimentalWarning dist/server.mjs --migrate-only",
+    "backup": "node --no-warnings=ExperimentalWarning dist/server.mjs --backup"
+  },
+  "dependencies": {
+    "@pz/shared": "*",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/ws": "^8.18.1"
+  }
+}
